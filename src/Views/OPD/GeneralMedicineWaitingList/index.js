@@ -64,6 +64,8 @@ import {
   ENT_DEPARTMENT_CODE,
   DENTAL_DEPARTMENT_CODE,
   OPD_CASE_SHEET_REPORT,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  MAS_SURGERY_GET_ALL,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -92,16 +94,11 @@ const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
 
-const [selectedOT, setSelectedOT] = useState("");
-const [surgeryDate, setSurgeryDate] = useState("");
-const [surgeryTime, setSurgeryTime] = useState("");
-const otOptions = [
-  { id: 1, name: "Main OT-01" },
-  { id: 2, name: "Main OT-02" },
-  { id: 3, name: "Minor OT-01" },
-  { id: 4, name: "Cath Lab OT" },
-];
+  const [selectedOT, setSelectedOT] = useState("");
+  const [surgeryDate, setSurgeryDate] = useState("");
+  const [surgeryTime, setSurgeryTime] = useState("");
 
+  const [otOptions, setOtOptions] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [doctorData, setDoctorData] = useState([]);
@@ -925,6 +922,21 @@ const otOptions = [
     periphery: "Periphery",
   };
 
+  const fetchOperationTheatres = async () => {
+    try {
+      const response = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setOtOptions(response.response);
+      } else {
+        setOtOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Operation Theatres:", error);
+      setOtOptions([]);
+    }
+  };
+
   // Handlers
   const handleSaveVision = (e) => {
     e.preventDefault();
@@ -1539,18 +1551,6 @@ const otOptions = [
     }
   };
 
-  // useEffect(() => {
-  //   fetchWaitingList();
-  //   fetchDoctorData();
-  //   fetchSessionData();
-  //   fetchMasICDData();
-  //   fetchMasProcedureData();
-  //   fetchOpdTemplateData();
-  //   fetchDrugOptions();
-  //   fetchAllFrequencies();
-  //   fetchWardCategoryData();
-  // }, []);
-
   useEffect(() => {
     if (initialDataLoadedRef.current) return;
 
@@ -1564,6 +1564,7 @@ const otOptions = [
     fetchWardCategoryData();
     fetchDistanceVisionData();
     fetchNearVisionData();
+    fetchOperationTheatres();
   }, []);
 
   const handleDiagnosisOpen = () => {
@@ -1924,15 +1925,9 @@ const otOptions = [
   ]);
 
   const [referralNotes, setReferralNotes] = useState("");
-
-  const surgeryOptions = [
-    { id: 1, name: "Appendectomy", code: "APD" },
-    { id: 2, name: "Cholecystectomy", code: "CHO" },
-    { id: 3, name: "Hernia Repair", code: "HER" },
-    { id: 4, name: "Hysterectomy", code: "HYS" },
-    { id: 5, name: "Prostatectomy", code: "PRO" },
-  ];
-
+  const surgeryMasterLoadedRef = useRef(false);
+  const otMasterLoadedRef = useRef(false);
+  const [surgeryOptions, setSurgeryOptions] = useState([]);
   const [surgeryItems, setSurgeryItems] = useState([
     {
       surgery: "",
@@ -1972,6 +1967,24 @@ const otOptions = [
     setOpenDropdown(null);
     setOpenInvestigationDropdown(null);
     setShowCurrentMedicationModal(true);
+  };
+
+  const handleSurgeryAdviceOpen = async () => {
+    const willOpen = !expandedSections.surgeryAdvice;
+    toggleSection("surgeryAdvice");
+
+    if (!willOpen) return;
+
+    // Load Surgery Master
+    if (!surgeryMasterLoadedRef.current) {
+      await fetchSurgeryMasterData();
+    }
+
+    // Load OT Master
+    if (!otMasterLoadedRef.current) {
+      await fetchOperationTheatres();
+      otMasterLoadedRef.current = true;
+    }
   };
 
   const handleCloseCurrentMedicationModal = () => {
@@ -2476,6 +2489,24 @@ const otOptions = [
       return;
     }
 
+    const fetchSurgeryMasterData = async () => {
+      if (surgeryMasterLoadedRef.current) return;
+
+      try {
+        const response = await getRequest(`${MAS_SURGERY_GET_ALL}/0`);
+
+        if (response?.status === 200 && Array.isArray(response.response)) {
+          setSurgeryOptions(response.response);
+          surgeryMasterLoadedRef.current = true;
+        } else {
+          setSurgeryOptions([]);
+        }
+      } catch (error) {
+        console.error("Error fetching Surgery Master:", error);
+        setSurgeryOptions([]);
+      }
+    };
+
     // ---- NO DUPLICATE → UPDATE ROW ----
     const newItems = [...investigationItems];
     newItems[index] = {
@@ -2738,6 +2769,24 @@ const otOptions = [
   //     console.error("Error updating status:", error);
   //   }
   // };
+
+  const fetchSurgeryMasterData = async () => {
+    if (surgeryMasterLoadedRef.current) return;
+
+    try {
+      const response = await getRequest(`${MAS_SURGERY_GET_ALL}/1`);
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setSurgeryOptions(response.response);
+        surgeryMasterLoadedRef.current = true;
+      } else {
+        setSurgeryOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Surgery Master:", error);
+      setSurgeryOptions([]);
+    }
+  };
 
   const checkVitalPresent = async (visitId) => {
     clearVitalFields();
@@ -6934,200 +6983,250 @@ const otOptions = [
                   )}
                 </div>
                 {/* Surgery Advice Section */}
-      <div className="card mb-3">
-  <div
-    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("surgeryAdvice")}
-  >
-    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.surgeryAdvice ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.surgeryAdvice && (
-    <div className="card-body">
-   <div className="row mb-3 align-items-center">
-  {/* Surgery Type */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold d-block">
-      Surgery Type
-    </label>
-    <div className="d-flex gap-3 align-items-center">
-      {/* removed fixed height: "31px" */}
-      <div className="form-check mb-0">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="surgeryType"
-          id="major"
-          checked={surgeryType === "major"}
-          onChange={() => setSurgeryType("major")}
-        />
-        <label className="form-check-label" htmlFor="major">
-          Major
-        </label>
-      </div>
-      <div className="form-check mb-0">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="surgeryType"
-          id="minor"
-          checked={surgeryType === "minor"}
-          onChange={() => setSurgeryType("minor")}
-        />
-        <label className="form-check-label" htmlFor="minor">
-          Minor
-        </label>
-      </div>
-    </div>
-  </div>
-
-  {/* OT */}
-  <div className="col-auto" style={{ minWidth: "180px" }}>
-    <label className="form-label small fw-bold mb-1">OT</label>
-    <select
-      className="form-select form-select-sm"
-      value={selectedOT}
-      onChange={(e) => setSelectedOT(e.target.value)}
-    >
-      <option value="">Select OT</option>
-      {otOptions.map((ot) => (
-        <option key={ot.id} value={ot.id}>
-          {ot.name}
-        </option>
-      ))}
-    </select>
-  </div>
-
-  {/* Surgery Date */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1">Surgery Date</label>
-    <input
-      type="date"
-      className="form-control form-control-sm"
-      value={surgeryDate}
-      onChange={(e) => setSurgeryDate(e.target.value)}
-    />
-  </div>
-
-  {/* Surgery Time */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1">Surgery Time</label>
-    <input
-      type="time"
-      className="form-control form-control-sm"
-      value={surgeryTime}
-      onChange={(e) => setSurgeryTime(e.target.value)}
-    />
-  </div>
-
-  {/* OTCalendar Button */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1 d-block opacity-0">
-      OTCalendar
-    </label>
-    <button
-      className="btn btn-sm btn-primary"
-      onClick={(e) => {
-        e.stopPropagation();
-        setShowOtCalendarModal(true);
-      }}
-      style={{ fontSize: "12px" }}
-    >
-      OTCalendar
-    </button>
-  </div>
-</div>
-
-      <div className="table-responsive">
-        <table className="table table-bordered">
-          <thead style={{ backgroundColor: "#b0c4de" }}>
-            <tr>
-              <th style={{ width: "10%" }}>S.No</th>
-              <th style={{ width: "80%" }}>Surgery</th>
-              <th style={{ width: "5%" }}>Add</th>
-              <th style={{ width: "5%" }}>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {surgeryItems.map((item, index) => (
-              <tr key={index}>
-                <td className="text-center">{index + 1}</td>
-                <td className="position-relative">
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={item.surgery}
-                    onChange={(e) => {
-                      handleSurgerySearchChange(
-                        e.target.value,
-                        index,
-                      );
-                    }}
-                    placeholder="Search Surgery"
-                    autoComplete="off"
-                  />
-                  {isSurgeryDropdownVisible &&
-                    selectedSurgeryIndex === index &&
-                    surgerySearchInput && (
-                      <ul
-                        className="list-group position-absolute w-100 mt-1"
-                        style={{ zIndex: 1000, top: "100%" }}
-                      >
-                        {surgeryOptions
-                          .filter((surgery) =>
-                            surgery.name
-                              .toLowerCase()
-                              .includes(
-                                surgerySearchInput.toLowerCase(),
-                              ),
-                          )
-                          .map((surgery) => (
-                            <li
-                              key={surgery.id}
-                              className="list-group-item list-group-item-action"
-                              onClick={() =>
-                                handleSurgerySelect(
-                                  surgery,
-                                  index,
-                                )
-                              }
-                            >
-                              {surgery.name}
-                            </li>
-                          ))}
-                      </ul>
-                    )}
-                </td>
-                <td className="text-center">
-                  <button
-                    className="btn btn-sm btn-success"
-                    onClick={handleAddSurgeryItem}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={handleSurgeryAdviceOpen}
                   >
-                    +
-                  </button>
-                </td>
-                <td className="text-center">
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() =>
-                      handleRemoveSurgeryItem(index)
-                    }
-                    disabled={surgeryItems.length === 1}
-                  >
-                    −
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )}
-</div>
+                    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.surgeryAdvice ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.surgeryAdvice && (
+                    <div className="card-body">
+                      <div className="row mb-3 align-items-center">
+                        {/* Surgery Type */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold d-block">
+                            Surgery Type
+                          </label>
+                          <div className="d-flex gap-3 align-items-center">
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="major"
+                                checked={surgeryType === "major"}
+                                onChange={() => setSurgeryType("major")}
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="major"
+                              >
+                                Major
+                              </label>
+                            </div>
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="minor"
+                                checked={surgeryType === "minor"}
+                                onChange={() => setSurgeryType("minor")}
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="minor"
+                              >
+                                Minor
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* OT */}
+                        <div className="col-auto" style={{ minWidth: "180px" }}>
+                          <label className="form-label small fw-bold mb-1">
+                            OT
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={selectedOT}
+                            onChange={(e) => setSelectedOT(e.target.value)}
+                          >
+                            <option value="">Select OT</option>
+                            {otOptions.map((ot) => (
+                              <option key={ot.otId} value={ot.otId}>
+                                {ot.otCode} - {ot.otName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Surgery Date */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Date
+                          </label>
+                          <input
+                            type="date"
+                            className="form-control form-control-sm"
+                            value={surgeryDate}
+                            onChange={(e) => setSurgeryDate(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Surgery Time */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Time
+                          </label>
+                          <input
+                            type="time"
+                            className="form-control form-control-sm"
+                            value={surgeryTime}
+                            onChange={(e) => setSurgeryTime(e.target.value)}
+                          />
+                        </div>
+
+                        {/* OTCalendar Button */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1 d-block opacity-0">
+                            OTCalendar
+                          </label>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowOtCalendarModal(true);
+                            }}
+                            style={{ fontSize: "12px" }}
+                          >
+                            OTCalendar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-bordered">
+                          <thead style={{ backgroundColor: "#b0c4de" }}>
+                            <tr>
+                              <th style={{ width: "10%" }}>S.No</th>
+                              <th style={{ width: "80%" }}>Surgery</th>
+                              <th style={{ width: "5%" }}>Add</th>
+                              <th style={{ width: "5%" }}>Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {surgeryItems.map((item, index) => (
+                              <tr key={index}>
+                                <td className="text-center">{index + 1}</td>
+                                <td className="position-relative">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={
+                                      item.surgeryName || surgerySearchInput
+                                    }
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setSurgerySearchInput(value);
+                                      setIsSurgeryDropdownVisible(true);
+                                      setSelectedSurgeryIndex(index);
+
+                                      // Filter surgery options based on search
+                                      const allOptions = [...surgeryOptions];
+                                      const filtered = allOptions.filter(
+                                        (option) =>
+                                          option.surgeryName
+                                            ?.toLowerCase()
+                                            .includes(value.toLowerCase()) ||
+                                          option.surgeryCode
+                                            ?.toLowerCase()
+                                            .includes(value.toLowerCase()),
+                                      );
+                                      setSurgeryOptions(
+                                        filtered.length > 0
+                                          ? filtered
+                                          : allOptions,
+                                      );
+                                    }}
+                                    onFocus={() => {
+                                      // Reset options and show dropdown
+                                      fetchSurgeryMasterData();
+                                      setIsSurgeryDropdownVisible(true);
+                                      setSelectedSurgeryIndex(index);
+                                    }}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        setIsSurgeryDropdownVisible(false);
+                                        setSelectedSurgeryIndex(null);
+                                      }, 200);
+                                    }}
+                                    placeholder="Search Surgery"
+                                    autoComplete="off"
+                                  />
+                                  {isSurgeryDropdownVisible &&
+                                    selectedSurgeryIndex === index &&
+                                    surgeryOptions.length > 0 && (
+                                      <ul
+                                        className="list-group position-absolute w-100 mt-1"
+                                        style={{
+                                          zIndex: 1000,
+                                          top: "100%",
+                                          maxHeight: "200px",
+                                          overflowY: "auto",
+                                          backgroundColor: "white",
+                                          border: "1px solid #ddd",
+                                          borderRadius: "4px",
+                                          boxShadow:
+                                            "0 4px 8px rgba(0,0,0,0.1)",
+                                        }}
+                                      >
+                                        {surgeryOptions.map((surgery) => (
+                                          <li
+                                            key={surgery.surgeryId}
+                                            className="list-group-item list-group-item-action"
+                                            style={{
+                                              cursor: "pointer",
+                                              padding: "8px 12px",
+                                            }}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleSurgerySelect(
+                                                surgery,
+                                                index,
+                                              );
+                                            }}
+                                          >
+                                            {surgery.surgeryCode} -{" "}
+                                            {surgery.surgeryName}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddSurgeryItem}
+                                  >
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() =>
+                                      handleRemoveSurgeryItem(index)
+                                    }
+                                    disabled={surgeryItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div

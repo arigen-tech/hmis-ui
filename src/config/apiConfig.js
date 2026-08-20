@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -283,6 +283,8 @@ export const GET_RECALL_PATIENT_DETAILS = `/opd/recallPatientDetailsByVisit`;
 export const UPDATE_RECALL_PATIENT = `/opd/update-recall-patient`;
 export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic`;
 
+export const MAS_OPERATION_THEATRE_GET_ALL = `${MASTERS}/operationTheatre/getAll`;
+export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
 export const MAS_ROOM = `${MASTERS}/mas-room`;
