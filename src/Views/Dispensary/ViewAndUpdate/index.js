@@ -70,10 +70,10 @@ const OpeningBalanceApproval = () => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [approvalData, setApprovalData] = useState([])
-  const [brandOptions, setBrandOptions] = useState([])
-  const [dtRecord, setDtRecord] = useState([])
+  const [brandOptionsByRow, setBrandOptionsByRow] = useState({}); // per-row brand options
   const [manufacturerOptions, setManufacturerOptions] = useState([])
   const [drugCodeOptions, setDrugCodeOptions] = useState([])
+  const [dtRecord, setDtRecord] = useState([])
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const [fromDate, setFromDate] = useState("");
@@ -121,6 +121,10 @@ const OpeningBalanceApproval = () => {
 
   const [reportPdfUrl, setReportPdfUrl] = useState(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // *** MOVED: detailEntries and popupMessage states to the top ***
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [detailEntries, setDetailEntries] = useState([])
 
   // ── close dropdown when clicking outside any tracked input ──────────────
   useEffect(() => {
@@ -237,6 +241,74 @@ const OpeningBalanceApproval = () => {
       setLoadingDetails(false);
     }
   };
+
+  // Fetch manufacturers based on balance type
+  const fetchManufacturersByBalanceType = async (balanceType) => {
+    if (!balanceType) {
+      setManufacturerOptions([]);
+      return;
+    }
+    const normalizedType = balanceType.toLowerCase();
+    const itemTypeCode = normalizedType === "drug" ? SECTION_CODE_FOR_DRUGS : SECTION_CODE_FOR_NON_DRUGS;
+    try {
+      const response = await getRequest(`${GET_ALL_MANUFACTURER_FOR_DROPDOWN}?itemTypeCode=${itemTypeCode}`);
+      if (response && response.status === 200) {
+        setManufacturerOptions(response.response);
+      } else {
+        showPopup(response?.message || "Failed to fetch manufacturers", "error");
+        setManufacturerOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching manufacturers:", error);
+      showPopup("Something went wrong while fetching manufacturers", "error");
+      setManufacturerOptions([]);
+    }
+  };
+
+  // Fetch brands for a specific row based on manufacturerId
+  const fetchBrandsForRow = async (entryId, manufacturerId) => {
+    if (!selectedRecord?.balanceType || !manufacturerId) {
+      setBrandOptionsByRow(prev => ({ ...prev, [entryId]: [] }));
+      return;
+    }
+    const normalizedType = selectedRecord.balanceType.toLowerCase();
+    const itemTypeCode = normalizedType === "drug" ? SECTION_CODE_FOR_DRUGS : SECTION_CODE_FOR_NON_DRUGS;
+    try {
+      const response = await getRequest(`${GET_ALL_BRANDS_FOR_DROPDOWN}/${manufacturerId}?itemTypeCode=${itemTypeCode}`);
+      if (response && response.status === 200) {
+        setBrandOptionsByRow(prev => ({ ...prev, [entryId]: response.response }));
+      } else {
+        showPopup(response?.message || "Failed to fetch brands", "error");
+        setBrandOptionsByRow(prev => ({ ...prev, [entryId]: [] }));
+      }
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+      showPopup("Something went wrong while fetching brands", "error");
+      setBrandOptionsByRow(prev => ({ ...prev, [entryId]: [] }));
+    }
+  };
+
+  // Effect to fetch manufacturers when balance type changes (on entering detail view)
+  useEffect(() => {
+    if (currentView === "detail" && selectedRecord) {
+      fetchManufacturersByBalanceType(selectedRecord.balanceType);
+    } else {
+      setManufacturerOptions([]);
+    }
+  }, [currentView, selectedRecord]);
+
+  // After detail entries are set, fetch brands for each row that has manufacturerId
+  useEffect(() => {
+    if (currentView === "detail" && detailEntries.length > 0) {
+      detailEntries.forEach(entry => {
+        if (entry.manufacturerId) {
+          fetchBrandsForRow(entry.id, entry.manufacturerId);
+        } else {
+          setBrandOptionsByRow(prev => ({ ...prev, [entry.id]: [] }));
+        }
+      });
+    }
+  }, [detailEntries, currentView, selectedRecord]);
 
   // Fetch items from API with debounce - Uses balanceType from selectedRecord
   const fetchItems = async (page, searchText = "") => {
@@ -408,34 +480,6 @@ const OpeningBalanceApproval = () => {
     }
   };
 
-  const fetchBrand = async () => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${GET_ALL_BRANDS_FOR_DROPDOWN}`);
-      if (response && response.response) {
-        setBrandOptions(response.response);
-      }
-    } catch (err) {
-      console.error("Error fetching brand:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchManufacturer = async () => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${GET_ALL_MANUFACTURER_FOR_DROPDOWN}`);
-      if (response && response.response) {
-        setManufacturerOptions(response.response);
-      }
-    } catch (err) {
-      console.error("Error fetching manufacturer:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchDrugCodeOptions = async () => {
     try {
       setLoading(true);
@@ -491,8 +535,6 @@ const OpeningBalanceApproval = () => {
   useEffect(() => {
     fetchOpenBalance(0);
     fetchDrugCodeOptions();
-    fetchBrand();
-    fetchManufacturer();
     fetchCurrentUser();
     fetchDepartment();
   }, []);
@@ -546,9 +588,6 @@ const OpeningBalanceApproval = () => {
     }
   };
 
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [detailEntries, setDetailEntries] = useState([])
-
   const handleEditClick = async (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
@@ -569,6 +608,8 @@ const OpeningBalanceApproval = () => {
     setActiveDrugCodeDropdown(null);
     setItemSearch("");
     setItemDropdown([]);
+    setManufacturerOptions([]);
+    setBrandOptionsByRow({});
   }
 
   const addNewEntry = () => {
@@ -594,6 +635,7 @@ const OpeningBalanceApproval = () => {
       drugData: null,
     };
     setDetailEntries([...detailEntries, newEntry]);
+    setBrandOptionsByRow(prev => ({ ...prev, [newId]: [] }));
   }
 
   const deleteEntry = (id) => {
@@ -601,6 +643,11 @@ const OpeningBalanceApproval = () => {
     setDtRecord((prev) => {
       const updated = [...prev, id];
       return updated;
+    });
+    setBrandOptionsByRow(prev => {
+      const newOptions = { ...prev };
+      delete newOptions[id];
+      return newOptions;
     });
   };
 
@@ -630,6 +677,15 @@ const OpeningBalanceApproval = () => {
     });
 
     setDetailEntries(updatedEntries);
+  };
+
+  const handleManufacturerChange = (id, manufacturerId) => {
+    setDetailEntries(prev =>
+      prev.map(entry =>
+        entry.id === id ? { ...entry, manufacturerId, brandId: "" } : entry
+      )
+    );
+    fetchBrandsForRow(id, manufacturerId);
   };
 
   const formatToDate = (dateStr) => {
@@ -830,6 +886,7 @@ const OpeningBalanceApproval = () => {
       showPopup(OPENING_BALANCE_NOT_FOUND, "error");
     }
   };
+
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
@@ -942,8 +999,9 @@ const OpeningBalanceApproval = () => {
                         <th style={{ width: "100px", minWidth: "100px" }}>GST Percent</th>
                         <th style={{ width: "100px", minWidth: "100px" }}>MRP/Unit</th>
                         <th style={{ width: "100px", minWidth: "100px" }}>Total Cost</th>
-                        <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
+                        {/* Manufacturer column moved before Brand Name */}
                         <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
+                        <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
                         {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
                           <>
                             <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
@@ -1263,35 +1321,40 @@ const OpeningBalanceApproval = () => {
                                 style={{ backgroundColor: "#f8f9fa", minWidth: "90px" }}
                               />
                             </td>
+
+                            {/* Manufacturer select */}
+                            <td>
+                              <select
+                                className="form-select"
+                                value={entry.manufacturerId || ""}
+                                onChange={(e) => handleManufacturerChange(entry.id, e.target.value)}
+                                style={{ minWidth: "170px" }}
+                                disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                              >
+                                <option value="">Select Manufacturer</option>
+                                {manufacturerOptions.map((option) => (
+                                  <option key={option.manufacturerId} value={option.manufacturerId}>
+                                    {option.manufacturerName}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            {/* Brand Name select */}
                             <td>
                               <select
                                 className="form-select"
                                 value={entry.brandId || ""}
                                 onChange={(e) => updateEntry(entry.id, "brandId", e.target.value)}
                                 style={{ minWidth: "130px" }}
-                                disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                                disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p" || !entry.manufacturerId}
                               >
-                                <option value="">Select Brand</option>
-                                {brandOptions.map((option) => (
+                                <option value="">
+                                  {!entry.manufacturerId ? "Select Manufacturer first" : "Select Brand"}
+                                </option>
+                                {(brandOptionsByRow[entry.id] || []).map((option) => (
                                   <option key={option.brandId} value={option.brandId}>
                                     {option.brandName}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-
-                            <td>
-                              <select
-                                className="form-select"
-                                value={entry.manufacturerId || ""}
-                                onChange={(e) => updateEntry(entry.id, "manufacturerId", e.target.value)}
-                                style={{ minWidth: "170px" }}
-                                disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                              >
-                                <option value="">Select</option>
-                                {manufacturerOptions.map((option) => (
-                                  <option key={option.manufacturerId} value={option.manufacturerId}>
-                                    {option.manufacturerName}
                                   </option>
                                 ))}
                               </select>
