@@ -15,7 +15,7 @@ import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
 import BloodTransfusion from "../BloodTransfusion"
 import AdmissionDetails from "../AdmissionDetails"; 
-// import OTDetails from "../OTDetails"
+import OTDetails from "../OTDetails"
 import ShiftHandover from "../ShiftHandover"
 
 const WardManagement = () => {
@@ -786,10 +786,9 @@ const WardManagement = () => {
 {activeTab === "Blood / Transfusion" && (
   <BloodTransfusion selectedPatient={selectedPatient} />
 )}
-{/* 
 {activeTab === "OT Details" && (
   <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />
-)} */}
+)} 
 
 
 {activeTab === "Shift Handover" && (
