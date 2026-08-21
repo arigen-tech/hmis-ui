@@ -70,18 +70,14 @@ const SurgeryPricing = () => {
     surgeryId: "",
     billingTypeId: "",
     amount: "",
-    discountAllowed: "",
     effectiveFrom: "",
-    effectiveTo: ""
+    effectiveTo: "",
+    remarks: ""
   })
   const [isFormValid, setIsFormValid] = useState(false)
 
   // Dropdown options
   const [billingTypeOptions, setBillingTypeOptions] = useState([])
-  const discountAllowedOptions = [
-    { value: "Y", label: "Yes" },
-    { value: "N", label: "No" }
-  ]
 
   // Autocomplete for Surgery Name
   const surgeryContainerRef = useRef(null)
@@ -119,22 +115,22 @@ const SurgeryPricing = () => {
   }, [surgerySearchText, surgeryOptions])
 
   // Close dropdown when clicking outside
- useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      surgeryContainerRef.current &&
-      !surgeryContainerRef.current.contains(event.target)
-    ) {
-      setShowSurgeryDropdown(false)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        surgeryContainerRef.current &&
+        !surgeryContainerRef.current.contains(event.target)
+      ) {
+        setShowSurgeryDropdown(false)
+      }
     }
-  }
 
-  document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside)
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside)
-  }
-}, [])
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   // Handle search input change
   const handleSurgerySearch = (e) => {
@@ -144,16 +140,16 @@ const SurgeryPricing = () => {
   }
 
   // Handle selection from dropdown
- const handleSurgerySelect = (surgery) => {
-  setSurgerySearchText(surgery.surgeryName);
+  const handleSurgerySelect = (surgery) => {
+    setSurgerySearchText(surgery.surgeryName);
 
-  setFormData((prev) => ({
-    ...prev,
-    surgeryId: String(surgery.surgeryId),
-  }));
+    setFormData((prev) => ({
+      ...prev,
+      surgeryId: String(surgery.surgeryId),
+    }));
 
-  setShowSurgeryDropdown(false);
-};
+    setShowSurgeryDropdown(false);
+  };
 
   // Fetch billing type options
   const fetchBillingTypeOptions = async () => {
@@ -178,7 +174,7 @@ const SurgeryPricing = () => {
       if (surgeryNameSearch) params.append("surgeryName", surgeryNameSearch)
 
       const data = await getRequest(`${MAS_SURGERY_PRICING}/getAll?${params.toString()}`)
-      
+
       if (data.status === 200 && data.response) {
         setSurgeryPricingData(data.response.content || [])
         setTotalItems(data.response.totalElements || 0)
@@ -252,15 +248,14 @@ const SurgeryPricing = () => {
 
   // Validate form
   useEffect(() => {
-    const requiredValid = 
+    const requiredValid =
       formData.surgeryId !== "" &&
       formData.billingTypeId !== "" &&
       formData.amount !== "" &&
       !isNaN(parseFloat(formData.amount)) &&
       parseFloat(formData.amount) > 0 &&
-      formData.effectiveFrom !== "" &&
-      formData.discountAllowed !== ""
-    
+      formData.effectiveFrom !== ""
+
     let toDateValid = true
     if (formData.effectiveTo) {
       toDateValid = new Date(formData.effectiveTo) >= new Date(formData.effectiveFrom)
@@ -274,9 +269,9 @@ const SurgeryPricing = () => {
       surgeryId: "",
       billingTypeId: "",
       amount: "",
-      discountAllowed: "",
       effectiveFrom: "",
-      effectiveTo: ""
+      effectiveTo: "",
+      remarks: ""
     })
     setSurgerySearchText("")
     setShowSurgeryDropdown(false)
@@ -289,9 +284,9 @@ const SurgeryPricing = () => {
       surgeryId: item.surgeryId?.toString() || "",
       billingTypeId: item.billingTypeId?.toString() || "",
       amount: item.amount?.toString() || "",
-      discountAllowed: item.discountAllowed || "",
       effectiveFrom: item.effectiveFrom || "",
-      effectiveTo: item.effectiveTo || ""
+      effectiveTo: item.effectiveTo || "",
+      remarks: item.remarks || ""
     })
     setSurgerySearchText(item.surgeryName || "")
     setShowSurgeryDropdown(false)
@@ -307,9 +302,9 @@ const SurgeryPricing = () => {
       surgeryId: parseInt(formData.surgeryId, 10),
       billingTypeId: parseInt(formData.billingTypeId, 10),
       amount: parseFloat(formData.amount),
-      discountAllowed: formData.discountAllowed,
       effectiveFrom: formData.effectiveFrom,
-      effectiveTo: formData.effectiveTo || null
+      effectiveTo: formData.effectiveTo || null,
+      remarks: formData.remarks || null
     }
 
     try {
@@ -321,7 +316,7 @@ const SurgeryPricing = () => {
         )
         if (response.status === 200) {
           setPopupMessage({
-            message: "Surgery pricing updated successfully!",
+            message: UPDATE_SURGERY_PRICING_SUCC_MSG || "Surgery pricing updated successfully!",
             type: "success",
             onClose: () => {
               setPopupMessage(null)
@@ -337,7 +332,7 @@ const SurgeryPricing = () => {
         response = await postRequest(`${MAS_SURGERY_PRICING}/create`, payload)
         if (response.status === 201 || response.status === 200) {
           setPopupMessage({
-            message: "Surgery pricing added successfully!",
+            message: ADD_SURGERY_PRICING_SUCC_MSG || "Surgery pricing added successfully!",
             type: "success",
             onClose: () => {
               setPopupMessage(null)
@@ -365,9 +360,9 @@ const SurgeryPricing = () => {
       surgeryId: "",
       billingTypeId: "",
       amount: "",
-      discountAllowed: "",
       effectiveFrom: "",
-      effectiveTo: ""
+      effectiveTo: "",
+      remarks: ""
     })
     setSurgerySearchText("")
   }
@@ -378,11 +373,11 @@ const SurgeryPricing = () => {
 
   // Status toggle
   const handleSwitchChange = (id, name, newStatus) => {
-    setConfirmDialog({ 
-      isOpen: true, 
-      itemId: id, 
-      newStatus, 
-      itemName: name 
+    setConfirmDialog({
+      isOpen: true,
+      itemId: id,
+      newStatus,
+      itemName: name
     })
   }
 
@@ -493,7 +488,7 @@ const SurgeryPricing = () => {
                         onClick={handleShowAll}
                         disabled={isShowAllLoading}
                       >
-                        {isShowAllLoading ? <><span className="spinner-border spinner-border-sm me-2" />Show All...</> : "Show All"}
+                        {isShowAllLoading ? <><span className="spinner-border spinner-border-sm me-2" />Show All...</> : "Reset"}
                       </button>
                     </div>
                   </div>
@@ -506,55 +501,52 @@ const SurgeryPricing = () => {
                           <th>Surgery Name</th>
                           <th>Billing Type</th>
                           <th>Amount (₹)</th>
-                          <th>Discount Allowed</th>
                           <th>Effective From</th>
                           <th>Effective To</th>
+                          <th>Remarks</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
                         {surgeryPricingData.length > 0 ? (
-                          surgeryPricingData.map(item => {
-                            const discountAllowedLabel = item.discountAllowed === "Y" ? "Yes" : "No"
-                            return (
-                              <tr key={item.surgeryPricingId}>
-                                <td>{item.surgeryName || '-'}</td>
-                                <td>{item.billingTypeName || '-'}</td>
-                                <td>₹{item.amount?.toLocaleString() || 0}</td>
-                                <td>{discountAllowedLabel}</td>
-                                <td>{formatDate(item.effectiveFrom)}</td>
-                                <td>{formatDate(item.effectiveTo)}</td>
-                                <td>
-                                  <div className="form-check form-switch">
-                                    <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={item.status?.toLowerCase() === "y"}
-                                      onChange={() => handleSwitchChange(
-                                        item.surgeryPricingId,
-                                        item.surgeryName,
-                                        item.status?.toLowerCase() === "y" ? "n" : "y"
-                                      )}
-                                      id={`switch-${item.surgeryPricingId}`}
-                                    />
-                                    <label className="form-check-label px-0" htmlFor={`switch-${item.surgeryPricingId}`}>
-                                      {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
-                                    </label>
-                                  </div>
-                                </td>
-                                <td>
-                                  <button
-                                    className="btn btn-sm btn-success me-2"
-                                    onClick={() => handleEdit(item)}
-                                    disabled={item.status?.toLowerCase() !== "y"}
-                                  >
-                                    <i className="fa fa-pencil"></i>
-                                  </button>
-                                </td>
-                              </tr>
-                            )
-                          })
+                          surgeryPricingData.map(item => (
+                            <tr key={item.surgeryPricingId}>
+                              <td>{item.surgeryName || '-'}</td>
+                              <td>{item.billingTypeName || '-'}</td>
+                              <td>₹{item.amount?.toLocaleString() || 0}</td>
+                              <td>{formatDate(item.effectiveFrom)}</td>
+                              <td>{formatDate(item.effectiveTo)}</td>
+                              <td>{item.remarks || '-'}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={item.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(
+                                      item.surgeryPricingId,
+                                      item.surgeryName,
+                                      item.status?.toLowerCase() === "y" ? "n" : "y"
+                                    )}
+                                    id={`switch-${item.surgeryPricingId}`}
+                                  />
+                                  <label className="form-check-label px-0" htmlFor={`switch-${item.surgeryPricingId}`}>
+                                    {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(item)}
+                                  disabled={item.status?.toLowerCase() !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
                         ) : (
                           <tr>
                             <td colSpan="8" className="text-center py-4">No records found</td>
@@ -583,10 +575,9 @@ const SurgeryPricing = () => {
                     <div className="form-group col-md-4 mt-3">
                       <label>Surgery Name <span className="text-danger">*</span></label>
                       <div className="dropdown-search-container position-relative"
-                         ref={surgeryContainerRef}
-                         >
+                        ref={surgeryContainerRef}
+                      >
                         <input
-                          //  ref={surgeryInputRef}
                           type="text"
                           className="form-control"
                           placeholder="Type surgery name..."
@@ -601,7 +592,7 @@ const SurgeryPricing = () => {
                           required
                         />
                         <PortalDropdown
-                    anchorRef={surgeryContainerRef}
+                          anchorRef={surgeryContainerRef}
                           show={showSurgeryDropdown}
                         >
                           {isSurgeryLoading && filteredSurgeries.length === 0 ? (
@@ -670,23 +661,6 @@ const SurgeryPricing = () => {
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>Discount Allowed <span className="text-danger">*</span></label>
-                      <select
-                        className="form-select"
-                        id="discountAllowed"
-                        value={formData.discountAllowed}
-                        onChange={handleSelectChange}
-                        required
-                        disabled={process}
-                      >
-                        <option value="">Select Option</option>
-                        {discountAllowedOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group col-md-4 mt-3">
                       <label>Effective From <span className="text-danger">*</span></label>
                       <input
                         type="date"
@@ -712,6 +686,20 @@ const SurgeryPricing = () => {
                       {formData.effectiveTo && new Date(formData.effectiveTo) < new Date(formData.effectiveFrom) && (
                         <div className="text-danger mt-1">Effective To cannot be before Effective From</div>
                       )}
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>Remarks</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="remarks"
+                        placeholder="Enter remarks"
+                        value={formData.remarks}
+                        onChange={handleInputChange}
+                        maxLength={300}
+                        disabled={process}
+                      />
                     </div>
                   </div>
 
@@ -749,7 +737,7 @@ const SurgeryPricing = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} 
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}
                           <strong> {confirmDialog.itemName}</strong> surgery pricing?
                         </p>
                       </div>
