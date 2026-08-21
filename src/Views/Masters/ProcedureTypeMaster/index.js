@@ -20,6 +20,7 @@ const ProcedureTypeMaster = () => {
   const [formData, setFormData] = useState({
     procedureTypeName: "",
     description: "",
+    procedureTypeCode: "",
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,6 +31,7 @@ const ProcedureTypeMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const PROCEDURE_TYPE_NAME_MAX_LENGTH = 100;
+  const PROCEDURE_TYPE_CODE_MAX_LENGTH = 10;
 
   // Function to format date as dd/MM/YYYY
   const formatDate = (dateString) => {
@@ -63,6 +65,7 @@ const ProcedureTypeMaster = () => {
           id: item.procedureTypeId,
           procedureTypeName: item.procedureTypeName,
           description: item.description || "N/A",
+          procedureTypeCode: item.procedureTypeCode || "",
           status: item.status,
           lastUpdated: formatDate(item.lastUpdateDate),
           createdBy: item.createdBy || "",
@@ -86,7 +89,8 @@ const ProcedureTypeMaster = () => {
   // Filter data based on search query
   const filteredProcedureTypeData = procedureTypeData.filter(procedureType =>
     procedureType.procedureTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    procedureType.procedureTypeCode?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -102,17 +106,18 @@ const ProcedureTypeMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { procedureTypeName, description } = formData;
+      const { procedureTypeName, description, procedureTypeCode } = formData;
       return (
         procedureTypeName.trim() !== "" &&
-        description.trim() !== ""
+        description.trim() !== "" &&
+        procedureTypeCode.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
   }, [formData]);
 
   const resetForm = () => {
-    setFormData({ procedureTypeName: "", description: "" });
+    setFormData({ procedureTypeName: "", description: "", procedureTypeCode: "" });
     setIsFormValid(false);
     setEditingProcedureType(null);
   };
@@ -126,6 +131,7 @@ const ProcedureTypeMaster = () => {
     setFormData({
       procedureTypeName: procedureType.procedureTypeName || "",
       description: procedureType.description || "",
+      procedureTypeCode: procedureType.procedureTypeCode || "",
     });
     setShowForm(true);
   };
@@ -137,10 +143,12 @@ const ProcedureTypeMaster = () => {
       return;
     }
 
-    // Check for duplicates (case-insensitive)
+    // Check for duplicates (case-insensitive) — name or code already in use
     const isDuplicate = procedureTypeData.some(
       (procedureType) =>
-        procedureType.procedureTypeName.toLowerCase() === formData.procedureTypeName.toLowerCase() &&
+        (procedureType.procedureTypeName.toLowerCase() === formData.procedureTypeName.toLowerCase() ||
+          (procedureType.procedureTypeCode &&
+            procedureType.procedureTypeCode.toLowerCase() === formData.procedureTypeCode.toLowerCase())) &&
         (!editingProcedureType || editingProcedureType.id !== procedureType.id)
     );
 
@@ -154,7 +162,8 @@ const ProcedureTypeMaster = () => {
     try {
       const requestData = {
         procedureTypeName: formData.procedureTypeName,
-        description: formData.description
+        description: formData.description,
+        procedureTypeCode: formData.procedureTypeCode
       };
 
       if (editingProcedureType) {
@@ -169,6 +178,7 @@ const ProcedureTypeMaster = () => {
               setPopupMessage(null);
               resetForm();
               setShowForm(false);
+              fetchProcedureTypeData();
             }
           });
         } else {
@@ -186,6 +196,7 @@ const ProcedureTypeMaster = () => {
               setPopupMessage(null);
               resetForm();
               setShowForm(false);
+              fetchProcedureTypeData();
             }
           });
         } else {
@@ -363,6 +374,7 @@ const ProcedureTypeMaster = () => {
                       <thead className="table-light">
                         <tr>
                           <th>Procedure Type Name</th>
+                          <th>Code</th>
                           <th>Description</th>
                           <th>Last Updated</th>
                           <th>Status</th>
@@ -374,6 +386,7 @@ const ProcedureTypeMaster = () => {
                           currentItems.map((procedureType) => (
                             <tr key={procedureType.id}>
                               <td>{procedureType.procedureTypeName || "N/A"}</td>
+                              <td>{procedureType.procedureTypeCode || "N/A"}</td>
                               <td>{procedureType.description}</td>
                               <td>{procedureType.lastUpdated}</td>
                               <td>
@@ -406,7 +419,7 @@ const ProcedureTypeMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No Records Found</td>
+                            <td colSpan="6" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
@@ -440,6 +453,26 @@ const ProcedureTypeMaster = () => {
                   </div>
 
                   <div className="form-group col-md-6">
+                    <label>Procedure Type Code <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      id="procedureTypeCode"
+                      name="procedureTypeCode"
+                      placeholder="Enter short code (e.g., SURG)"
+                      value={formData.procedureTypeCode}
+                      onChange={(e) =>
+                        setFormData((prevData) => ({
+                          ...prevData,
+                          procedureTypeCode: e.target.value.toUpperCase(),
+                        }))
+                      }
+                      maxLength={PROCEDURE_TYPE_CODE_MAX_LENGTH}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group col-md-12">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
                       className="form-control mt-1"
