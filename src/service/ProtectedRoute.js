@@ -270,6 +270,9 @@ const validRoutes = [
   "/ActiveAdmissionList",
   "/OperationTheatre",
   "/OTDaysAllocation",
+  "/AnaesthesiaTypeMaster",
+  "/AnaesthesiaInstructionMaster",
+  "/DepartmentIndentReturn",
 ];
 
 // Routes that should bypass authorization

@@ -268,9 +268,13 @@ import IPDDischargeRecords from './Views/IPD/Reports/IPDDischargeDocuments';
 import SurgeryTypeMaster from './Views/Masters/SurgeryTypeMaster';
 import AddPrescription from './Views/Dispensary/AddPrescription';
 import ViewDownloadWithUnlimitedButtons from './Components/ViewDownloadWithUnlimitedButtons';
+// import AnaesthesiaTypeMaster from './Views/Masters/AnaesthesiaTypeMaster';
+// import AnaesthesiaInstructionMaster from './Views/Masters/AnaesthesiaInstructionMaster';
+
 
 import OperationTheatre from './Views/Masters/OperationTheatreMaster';
 import OTDaysAllocation from './Views/Masters/OTDaysAllocation';
+import DepartmentIndentReturn from './Views/WardPharmacy/DepartmentIndentReturn';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -574,6 +578,9 @@ function App() {
                 <Route path="/ActiveAdmissionList" element={<ActiveAdmissionList />} />
                 <Route path="/OperationTheatre" element={<OperationTheatre />} />
                 <Route path="/OTDaysAllocation" element={<OTDaysAllocation />} />
+                <Route path="/DepartmentIndentReturn" element={<DepartmentIndentReturn/>} />
+                {/* <Route path="/AnaesthesiaTypeMaster" element={<AnaesthesiaTypeMaster/>} /> */}
+                {/* <Route path="/AnaesthesiaInstructionMaster" element={<AnaesthesiaInstructionMaster/>} /> */}
 
 
                 
