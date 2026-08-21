@@ -50,6 +50,9 @@ import {
   REQUEST_PARAM_REQUESTED_DEPT_ID,
   DISPENSARY_DEPARTMENT_ID,
   GET_ITEM_DETAILS_BY_ID,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  MAS_SURGERY_GET_BY_LEVEL,
+  CHECK_DAY_AVAILABLE_VALIDITY,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -67,6 +70,10 @@ import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryP
 import PregnancySection from "../Pregnancy";
 
 const OpdRRecallPatient = () => {
+   const currentDoctorId =
+    sessionStorage.getItem("userId") ||
+    localStorage.getItem("userId") ||
+    "";
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const [showDetailView, setShowDetailView] = useState(false);
@@ -109,6 +116,17 @@ const OpdRRecallPatient = () => {
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  };
+
+  const formatTimeForInput = (value) => {
+    if (!value) return "";
+
+    const normalized = String(value);
+    const timePart = normalized.includes("T")
+      ? normalized.split("T")[1]
+      : normalized;
+
+    return timePart.slice(0, 5);
   };
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [treatmentTemplateLoading, setTreatmentTemplateLoading] =
@@ -227,8 +245,7 @@ const OpdRRecallPatient = () => {
   const [investigationSearch, setInvestigationSearch] = useState([]);
   const [investigationPage, setInvestigationPage] = useState(0);
   const [investigationLastPage, setInvestigationLastPage] = useState(true);
-  const [openInvestigationDropdown, setOpenInvestigationDropdown] =
-    useState(null);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
 
   const debounceInvestigationRef = useRef([]);
   const dropdownInvestigationRef = useRef(null);
@@ -1475,8 +1492,6 @@ const handleRemoveTreatmentItem = (index) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const currentDoctorId =
-    sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -2102,6 +2117,31 @@ const handleClearAllTreatmentTemplates = () => {
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
+        surgeryAdvice:
+          selectedOT ||
+          surgeryDate ||
+          surgeryTime ||
+          surgeryItems.some(
+            (item) => item.surgeryName && item.surgeryName.trim() !== "",
+          )
+            ? {
+                otId: selectedOT || null,
+                surgeryDate: surgeryDate || null,
+                surgeryTime: surgeryTime || null,
+                surgeryDetails: surgeryItems
+                  .filter(
+                    (item) =>
+                      item.surgeryId &&
+                      item.surgeryName &&
+                      item.surgeryName.trim() !== "",
+                  )
+                  .map((item) => ({
+                    surgeryId: item.surgeryId,
+                    surgeryName: item.surgeryName,
+                  })),
+              }
+            : null,
+
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
         referralRemarks: referralNotes || null,
         referralDate:
@@ -2300,12 +2340,17 @@ const handleClearAllTreatmentTemplates = () => {
     },
   ]);
 
+  const [selectedOT, setSelectedOT] = useState("");
+  const [surgeryDate, setSurgeryDate] = useState("");
+  const [surgeryTime, setSurgeryTime] = useState("");
+  const [otOptions, setOtOptions] = useState([]);
   const [surgeryType, setSurgeryType] = useState("major");
   const [surgerySearchInput, setSurgerySearchInput] = useState("");
   const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] =
     useState(false);
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null);
   const [additionalAdvice, setAdditionalAdvice] = useState("");
+  const [surgeryOptions, setSurgeryOptions] = useState([]);
 
   const [referralData, setReferralData] = useState({
     isReferred: "No",
@@ -2331,18 +2376,10 @@ const handleClearAllTreatmentTemplates = () => {
 
   const [referralNotes, setReferralNotes] = useState("");
 
-  const surgeryOptions = [
-    { id: 1, name: "Appendectomy", code: "APD" },
-    { id: 2, name: "Cholecystectomy", code: "CHO" },
-    { id: 3, name: "Hernia Repair", code: "HER" },
-    { id: 4, name: "Hysterectomy", code: "HYS" },
-    { id: 5, name: "Prostatectomy", code: "PRO" },
-  ];
-
   const [surgeryItems, setSurgeryItems] = useState([
     {
-      surgery: "",
-      selected: false,
+      surgeryId: null,
+      surgeryName: "",
     },
   ]);
 
@@ -2352,6 +2389,8 @@ const handleClearAllTreatmentTemplates = () => {
   const itemsPerPage = 5;
 
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set());
+  const surgeryMasterLoadedRef = useRef(false);
+  const otMasterLoadedRef = useRef(false);
 
   const handleOpenInvestigationModal = (type = "create") => {
     setInvestigationModalType(type);
@@ -2382,6 +2421,221 @@ const handleClearAllTreatmentTemplates = () => {
     setShowCurrentMedicationModal(false);
   };
 
+  const fetchOperationTheatres = async () => {
+    try {
+      const response = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setOtOptions(response.response);
+      } else {
+        setOtOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Operation Theatres:", error);
+      setOtOptions([]);
+    }
+  };
+
+  const fetchSurgeryMasterData = async () => {
+    if (surgeryMasterLoadedRef.current) return;
+
+    try {
+      const level = surgeryType.toUpperCase();
+      const response = await getRequest(
+        `${MAS_SURGERY_GET_BY_LEVEL}/${level}/${1}`,
+      );
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setSurgeryOptions(response.response);
+        surgeryMasterLoadedRef.current = true;
+      } else {
+        setSurgeryOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Surgery Master:", error);
+      setSurgeryOptions([]);
+    }
+  };
+
+  const handleSurgeryAdviceOpen = async () => {
+    const willOpen = !expandedSections.surgeryAdvice;
+    toggleSection("surgeryAdvice");
+
+    if (!willOpen) return;
+
+    surgeryMasterLoadedRef.current = false;
+    await fetchSurgeryMasterData();
+
+    if (!otMasterLoadedRef.current) {
+      await fetchOperationTheatres();
+      otMasterLoadedRef.current = true;
+    }
+  };
+
+  const checkOTAvailability = async (otId, date, time) => {
+    if (!otId || !date || !time) return true;
+
+    try {
+      const departmentId =
+        sessionStorage.getItem("departmentId") ||
+        localStorage.getItem("departmentId");
+
+      if (!departmentId) return true;
+
+      const [hours, minutes] = time.split(":").map(Number);
+      const startTimeObj = new Date(0, 0, 0, hours, minutes);
+      const startTime = startTimeObj.toTimeString().slice(0, 5);
+
+      const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${startTime}`;
+      const response = await getRequest(url);
+
+      if (response?.status === 404) {
+        showPopup("The OT is not configured for this day", "error");
+        setSurgeryTime("");
+        return false;
+      }
+
+      if (response?.status === 200 && response?.response) {
+        return true;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking OT availability:", error);
+      return true;
+    }
+  };
+
+  const resetSurgeryFields = () => {
+    setSelectedOT("");
+    setSurgeryDate("");
+    setSurgeryTime("");
+    setSurgeryItems([{ surgeryId: null, surgeryName: "" }]);
+    setSurgerySearchInput("");
+    surgeryMasterLoadedRef.current = false;
+  };
+
+  const handleAddSurgeryItem = () => {
+    setSurgeryItems((prev) => [
+      ...prev,
+      {
+        surgeryId: null,
+        surgeryName: "",
+      },
+    ]);
+  };
+
+  const handleRemoveSurgeryItem = (index) => {
+    if (surgeryItems.length === 1) {
+      const newItems = [...surgeryItems];
+      newItems[index] = { surgeryId: null, surgeryName: "" };
+      setSurgeryItems(newItems);
+      return;
+    }
+
+    const newItems = surgeryItems.filter((_, i) => i !== index);
+    setSurgeryItems(newItems);
+  };
+
+  const handleSurgerySearchChange = (value, index) => {
+    setSurgerySearchInput(value);
+    setIsSurgeryDropdownVisible(true);
+    setSelectedSurgeryIndex(index);
+
+    const newItems = [...surgeryItems];
+    newItems[index] = {
+      ...newItems[index],
+      surgeryId: null,
+      surgeryName: value,
+    };
+    setSurgeryItems(newItems);
+  };
+
+  const handleSurgerySelect = (surgery, index) => {
+    const duplicateIndex = surgeryItems.findIndex(
+      (item, itemIndex) =>
+        itemIndex !== index &&
+        item.surgeryId &&
+        Number(item.surgeryId) === Number(surgery.surgeryId),
+    );
+
+    if (duplicateIndex !== -1) {
+      showPopup("This surgery is already selected in another row.", "error");
+      return;
+    }
+
+    const newItems = [...surgeryItems];
+    newItems[index] = {
+      surgeryId: surgery.surgeryId,
+      surgeryName: `${surgery.surgeryCode} - ${surgery.surgeryName}`,
+    };
+    setSurgeryItems(newItems);
+    setSurgerySearchInput("");
+    setIsSurgeryDropdownVisible(false);
+  };
+
+  const handleSurgeryChange = (index, field, value) => {
+    const newItems = [...surgeryItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setSurgeryItems(newItems);
+  };
+
+  const getSelectedSurgeryIds = (currentIndex) =>
+    surgeryItems
+      .filter((_, index) => index !== currentIndex)
+      .map((item) => item.surgeryId)
+      .filter(Boolean)
+      .map(Number);
+
+  const handleSurgeryDateChange = async (dateValue) => {
+    setSurgeryDate(dateValue);
+
+    if (dateValue && surgeryTime && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        dateValue,
+        surgeryTime,
+      );
+      if (!isAvailable) {
+        setSurgeryDate("");
+        setSurgeryTime("");
+      }
+    }
+  };
+
+  const handleSurgeryTimeChange = async (timeValue) => {
+    setSurgeryTime(timeValue);
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+        timeValue,
+      );
+      if (!isAvailable) {
+        setSurgeryDate("");
+        setSurgeryTime("");
+      }
+    }
+  };
+
+  const handleOTChange = async (otId) => {
+    setSelectedOT(otId);
+
+    if (otId && surgeryDate && surgeryTime) {
+      const isAvailable = await checkOTAvailability(
+        otId,
+        surgeryDate,
+        surgeryTime,
+      );
+      if (!isAvailable) {
+        setSurgeryDate("");
+        setSurgeryTime("");
+        setSelectedOT("");
+      }
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest(".form-control")) {
@@ -2402,6 +2656,13 @@ const handleClearAllTreatmentTemplates = () => {
   useEffect(() => {
     fetchInvestigationTypes();
   }, []);
+
+  useEffect(() => {
+    if (expandedSections.surgeryAdvice && surgeryType) {
+      surgeryMasterLoadedRef.current = false;
+      fetchSurgeryMasterData();
+    }
+  }, [expandedSections.surgeryAdvice, surgeryType]);
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
@@ -3139,11 +3400,36 @@ debugger
           isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
           referTo: patientData.referTo || "",
           referralDate: patientData.referralDate
-            ? patientData.referralDate.split("T")[0]
-            : getToday(),
+          ? patientData.referralDate.split("T")[0]
+          : getToday(),
           referredHospitalName: patientData.referredHospitalName || "",
         }));
         setReferralNotes(patientData.referralRemarks || "");
+
+        const surgeryAdviceData = patientData.surgeryAdvice || null;
+        if (surgeryAdviceData) {
+          sectionsToExpand.surgeryAdvice = true;
+          setSelectedOT(surgeryAdviceData.otId ? String(surgeryAdviceData.otId) : "");
+          setSurgeryDate(
+            surgeryAdviceData.surgeryDate
+              ? surgeryAdviceData.surgeryDate.split("T")[0]
+              : "",
+          );
+          setSurgeryTime(
+            formatTimeForInput(surgeryAdviceData.surgeryTime || ""),
+          );
+          setSurgeryItems(
+            Array.isArray(surgeryAdviceData.surgeryDetails) &&
+              surgeryAdviceData.surgeryDetails.length > 0
+              ? surgeryAdviceData.surgeryDetails.map((item) => ({
+                  surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
+                  surgeryName: item.surgeryName || "",
+                }))
+              : [{ surgeryId: null, surgeryName: "" }],
+          );
+        } else {
+          resetSurgeryFields();
+        }
 
         const admissionAdvised = patientData.admissionFlag === "y";
         if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
@@ -3724,6 +4010,8 @@ debugger
       },
     ]);
 
+    resetSurgeryFields();
+
     setErrors({});
     setExpandedSections({
       personalDetails: false,
@@ -4266,41 +4554,6 @@ const handleTreatmentTemplateSelect = async (templateId) => {
     setPhysiotherapyItems(newItems);
   };
 
-  const handleAddSurgeryItem = () => {
-    setSurgeryItems([
-      ...surgeryItems,
-      {
-        surgery: "",
-        selected: false,
-      },
-    ]);
-  };
-
-  const handleRemoveSurgeryItem = (index) => {
-    if (surgeryItems.length === 1) return;
-    const newItems = surgeryItems.filter((_, i) => i !== index);
-    setSurgeryItems(newItems);
-  };
-
-  const handleSurgerySearchChange = (value, index) => {
-    setSurgerySearchInput(value);
-    setIsSurgeryDropdownVisible(true);
-    setSelectedSurgeryIndex(index);
-  };
-
-  const handleSurgerySelect = (surgery, index) => {
-    const newItems = [...surgeryItems];
-    newItems[index] = { ...newItems[index], surgery: surgery.name };
-    setSurgeryItems(newItems);
-    setSurgerySearchInput("");
-    setIsSurgeryDropdownVisible(false);
-  };
-
-  const handleSurgeryChange = (index, field, value) => {
-    const newItems = [...surgeryItems];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setSurgeryItems(newItems);
-  };
 
   const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage);
 
@@ -5529,9 +5782,8 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                         !investigationItems[0].name &&
                                         (!investigationItems[0].templateIds ||
                                           investigationItems[0].templateIds
-                                            .length === 0)
+                                            .length === 0)||isOrderCompleted
                                       }
-                                      disabled={isOrderCompleted}
                                     >
                                       −
                                     </button>
@@ -6478,9 +6730,9 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("surgeryAdvice")}
+                    onClick={handleSurgeryAdviceOpen}
                   >
                     <h6 className="mb-0 fw-bold">Surgery Advice</h6>
                     <span style={{ fontSize: "18px" }}>
@@ -6490,47 +6742,116 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                   {expandedSections.surgeryAdvice && (
                     <div className="card-body">
                       <div className="row mb-3 align-items-center">
-                        <div className="col-12 d-flex gap-4 mb-3">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="surgeryType"
-                              id="major"
-                              checked={surgeryType === "major"}
-                              onChange={() => setSurgeryType("major")}
-                            />
-                            <label className="form-check-label" htmlFor="major">
-                              Major
-                            </label>
-                          </div>
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="surgeryType"
-                              id="minor"
-                              checked={surgeryType === "minor"}
-                              onChange={() => setSurgeryType("minor")}
-                            />
-                            <label className="form-check-label" htmlFor="minor">
-                              Minor{" "}
-                            </label>
-                          </div>
-                          <div style={{ cursor: "default" }}>
-                            <div className="d-flex align-items-center">
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowOtCalendarModal(true);
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold d-block">
+                            Surgery Level
+                          </label>
+                          <div className="d-flex gap-3 align-items-center">
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="major"
+                                checked={surgeryType === "major"}
+                                onChange={() => {
+                                  setSurgeryType("major");
+                                  surgeryMasterLoadedRef.current = false;
+                                  setSurgeryOptions([]);
+                                  resetSurgeryFields();
                                 }}
-                                style={{ fontSize: "12px" }}
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="major"
                               >
-                                OTCalendar
-                              </button>
+                                Major
+                              </label>
+                            </div>
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="minor"
+                                checked={surgeryType === "minor"}
+                                onChange={() => {
+                                  setSurgeryType("minor");
+                                  surgeryMasterLoadedRef.current = false;
+                                  setSurgeryOptions([]);
+                                  resetSurgeryFields();
+                                }}
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="minor"
+                              >
+                                Minor
+                              </label>
                             </div>
                           </div>
+                        </div>
+
+                        <div className="col-auto" style={{ minWidth: "180px" }}>
+                          <label className="form-label small fw-bold mb-1">
+                            OT
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={selectedOT}
+                            onChange={(e) => handleOTChange(e.target.value)}
+                          >
+                            <option value="">Select OT</option>
+                            {otOptions.map((ot) => (
+                              <option key={ot.otId} value={ot.otId}>
+                                {ot.otCode} - {ot.otName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Date
+                          </label>
+                          <input
+                            type="date"
+                            className="form-control form-control-sm"
+                            value={surgeryDate}
+                            onChange={(e) =>
+                              handleSurgeryDateChange(e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Time
+                          </label>
+                          <input
+                            type="time"
+                            className="form-control form-control-sm"
+                            value={surgeryTime}
+                            onChange={(e) =>
+                              handleSurgeryTimeChange(e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1 d-block opacity-0">
+                            OTCalendar
+                          </label>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowOtCalendarModal(true);
+                            }}
+                            style={{ fontSize: "12px" }}
+                          >
+                            OTCalendar
+                          </button>
                         </div>
                       </div>
 
@@ -6539,8 +6860,7 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
                               <th style={{ width: "10%" }}>S.No</th>
-                              <th style={{ width: "70%" }}>Surgery</th>
-                              <th style={{ width: "15%" }}>Select</th>
+                              <th style={{ width: "80%" }}>Surgery</th>
                               <th style={{ width: "5%" }}>Add</th>
                               <th style={{ width: "5%" }}>Delete</th>
                             </tr>
@@ -6553,14 +6873,14 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={item.surgery}
+                                    value={item.surgeryName || ""}
                                     onChange={(e) => {
                                       handleSurgerySearchChange(
                                         e.target.value,
                                         index,
                                       );
                                     }}
-                                    placeholder="Search Surgery"
+                                    placeholder="Search Surgery..."
                                     autoComplete="off"
                                   />
                                   {isSurgeryDropdownVisible &&
@@ -6571,43 +6891,43 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                         style={{ zIndex: 1000, top: "100%" }}
                                       >
                                         {surgeryOptions
-                                          .filter((surgery) =>
-                                            surgery.name
-                                              .toLowerCase()
-                                              .includes(
-                                                surgerySearchInput.toLowerCase(),
-                                              ),
-                                          )
+                                          .filter((surgery) => {
+                                            const query =
+                                              surgerySearchInput.toLowerCase();
+                                            const matchesSearch =
+                                              surgery.surgeryName
+                                                ?.toLowerCase()
+                                                .includes(query) ||
+                                              surgery.surgeryCode
+                                                ?.toLowerCase()
+                                                .includes(query);
+                                            const selectedIds =
+                                              getSelectedSurgeryIds(index);
+                                            return (
+                                              matchesSearch &&
+                                              !selectedIds.includes(
+                                                Number(surgery.surgeryId),
+                                              )
+                                            );
+                                          })
                                           .map((surgery) => (
                                             <li
-                                              key={surgery.id}
+                                              key={surgery.surgeryId}
                                               className="list-group-item list-group-item-action"
-                                              onClick={() =>
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
                                                 handleSurgerySelect(
                                                   surgery,
                                                   index,
-                                                )
-                                              }
+                                                );
+                                              }}
                                             >
-                                              {surgery.name}
+                                              {surgery.surgeryCode} -{" "}
+                                              {surgery.surgeryName}
                                             </li>
                                           ))}
                                       </ul>
                                     )}
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={item.selected}
-                                    onChange={(e) =>
-                                      handleSurgeryChange(
-                                        index,
-                                        "selected",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
                                 </td>
                                 <td className="text-center">
                                   <button
