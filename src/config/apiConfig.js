@@ -473,7 +473,6 @@ export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 export const INVENTORY = `/inventory`;
 export const GET_STORE_ISSUE_LIST = `${INVENTORY}/storeIssueM/list`;
 
-export const SECTION_ID_FOR_DRUGS = 18;
 export const SECTION_CODE_FOR_DRUGS = "DRUG";
 export const SECTION_CODE_FOR_NON_DRUGS = "NON_DRUG";
 

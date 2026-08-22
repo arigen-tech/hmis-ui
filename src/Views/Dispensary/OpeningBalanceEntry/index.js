@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import {
-  ALL_REPORTS,
-  SECTION_ID_FOR_DRUGS,
   GET_DEPARTMENT_BY_ID,
   GET_CURRENT_USER_PROFILE_BY_NAME,
   GET_ALL_BRANDS_FOR_DROPDOWN,
