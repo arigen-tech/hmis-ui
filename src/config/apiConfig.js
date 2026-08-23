@@ -430,9 +430,9 @@ export const PRESCRIPTION_INVOICE_REPORT = `${ALL_REPORTS}/prescriptionInvoice`
 
 
 //billing
-export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
-export const OPD_SERVICE_CATAGORY = "SC001";
-export const LAB_SERVICE_CATAGORY = "SC002";
+export const RADIOLOGY_SERVICE_CATAGORY = "RAD_SC";
+export const OPD_SERVICE_CATAGORY = "OPD_SC";
+export const LAB_SERVICE_CATAGORY = "LAB_SC";
 export const SAC_CODE_REGISTRATION = "REG110";
 
 //ENT
