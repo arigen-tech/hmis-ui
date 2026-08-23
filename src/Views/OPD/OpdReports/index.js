@@ -216,7 +216,6 @@ const OPDReports = () => {
     }
 
     try {
-      debugger;
       setDownloadingPrescriptionId(prescriptionHdId);
       console.log("Handling prescription:", prescriptionHdId, patientName);
 

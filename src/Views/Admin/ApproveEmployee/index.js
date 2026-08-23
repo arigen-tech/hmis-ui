@@ -50,7 +50,6 @@ const Approveemployee = () => {
     setLoading(true);
     try {
       const data = await getRequest(`${GET_EMPLOYEE_BY_STATUS}/P`);
-      debugger;
       if (data.status === 200 && Array.isArray(data.response)) {
 
         const cleanedEmployees = data.response.map((emp) => ({

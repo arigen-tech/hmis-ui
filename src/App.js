@@ -268,8 +268,6 @@ import IPDDischargeRecords from './Views/IPD/Reports/IPDDischargeDocuments';
 import SurgeryTypeMaster from './Views/Masters/SurgeryTypeMaster';
 import AddPrescription from './Views/Dispensary/AddPrescription';
 import ViewDownloadWithUnlimitedButtons from './Components/ViewDownloadWithUnlimitedButtons';
-// import AnaesthesiaTypeMaster from './Views/Masters/AnaesthesiaTypeMaster';
-// import AnaesthesiaInstructionMaster from './Views/Masters/AnaesthesiaInstructionMaster';
 
 
 import OperationTheatre from './Views/Masters/OperationTheatreMaster';

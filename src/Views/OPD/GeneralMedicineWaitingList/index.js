@@ -64,6 +64,10 @@ import {
   ENT_DEPARTMENT_CODE,
   DENTAL_DEPARTMENT_CODE,
   OPD_CASE_SHEET_REPORT,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  MAS_SURGERY_GET_ALL,
+  MAS_SURGERY_GET_BY_LEVEL,
+  CHECK_DAY_AVAILABLE_VALIDITY,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -90,18 +94,24 @@ const INDENT_SAVE_TITLE = "OPD Case Sheet";
 const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 
 const GeneralMedicineWaitingList = () => {
+  const [searchFilters, setSearchFilters] = useState({
+    doctorList: "",
+    session: "",
+    mobileNo: "",
+    patientName: "",
+  });
+
+  const userId =
+    localStorage.getItem("userId") || sessionStorage.getItem("userId");
+  const currentDoctorId = searchFilters.doctorList || userId || "";
+
   const [waitingList, setWaitingList] = useState([]);
 
-const [selectedOT, setSelectedOT] = useState("");
-const [surgeryDate, setSurgeryDate] = useState("");
-const [surgeryTime, setSurgeryTime] = useState("");
-const otOptions = [
-  { id: 1, name: "Main OT-01" },
-  { id: 2, name: "Main OT-02" },
-  { id: 3, name: "Minor OT-01" },
-  { id: 4, name: "Cath Lab OT" },
-];
+  const [selectedOT, setSelectedOT] = useState("");
+  const [surgeryDate, setSurgeryDate] = useState("");
+  const [surgeryTime, setSurgeryTime] = useState("");
 
+  const [otOptions, setOtOptions] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [doctorData, setDoctorData] = useState([]);
@@ -139,6 +149,10 @@ const otOptions = [
   const [popupType, setPopupType] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const dropdownRef = useRef(null);
+  const surgeryDataFetchedRef = useRef(false);
+  const [surgeryStartTime, setSurgeryStartTime] = useState("");
+  const [surgeryEndTime, setSurgeryEndTime] = useState("");
+
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [labFlag, setLabFlag] = useState("");
   const [radioFlag, setRadioFlag] = useState("");
@@ -203,6 +217,12 @@ const otOptions = [
     "Normal",
     "Urgent",
     "Critical",
+  ]);
+  const [surgeryItems, setSurgeryItems] = useState([
+    {
+      surgeryId: null,
+      surgeryName: "",
+    },
   ]);
 
   const navigate = useNavigate();
@@ -850,6 +870,53 @@ const otOptions = [
     }));
   };
 
+  const handleSurgeryStartTimeChange = async (timeValue) => {
+    setSurgeryStartTime(timeValue);
+
+    if (surgeryEndTime && timeValue) {
+      const isValid = validateSurgeryTimes(timeValue, surgeryEndTime);
+      if (!isValid) {
+        showPopupMessage("Start time must be before end time", "error");
+        setSurgeryStartTime("");
+        return;
+      }
+    }
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+      );
+      if (!isAvailable) {
+        setSurgeryStartTime("");
+      }
+    }
+  };
+
+  const handleSurgeryEndTimeChange = async (timeValue) => {
+    setSurgeryEndTime(timeValue);
+
+    // Validate that end time is after start time
+    if (surgeryStartTime && timeValue) {
+      const isValid = validateSurgeryTimes(surgeryStartTime, timeValue);
+      if (!isValid) {
+        showPopupMessage("End time must be after start time", "error");
+        setSurgeryEndTime("");
+        return;
+      }
+    }
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+      );
+      if (!isAvailable) {
+        setSurgeryEndTime("");
+      }
+    }
+  };
+
   // Add these state declarations inside the GeneralMedicineWaitingList component
   const [visionFormData, setVisionFormData] = useState({
     fundusGlow: {
@@ -923,6 +990,21 @@ const otOptions = [
     macula: "Macula",
     vessel: "Vessel",
     periphery: "Periphery",
+  };
+
+  const fetchOperationTheatres = async () => {
+    try {
+      const response = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setOtOptions(response.response);
+      } else {
+        setOtOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Operation Theatres:", error);
+      setOtOptions([]);
+    }
   };
 
   // Handlers
@@ -1539,18 +1621,6 @@ const otOptions = [
     }
   };
 
-  // useEffect(() => {
-  //   fetchWaitingList();
-  //   fetchDoctorData();
-  //   fetchSessionData();
-  //   fetchMasICDData();
-  //   fetchMasProcedureData();
-  //   fetchOpdTemplateData();
-  //   fetchDrugOptions();
-  //   fetchAllFrequencies();
-  //   fetchWardCategoryData();
-  // }, []);
-
   useEffect(() => {
     if (initialDataLoadedRef.current) return;
 
@@ -1564,6 +1634,7 @@ const otOptions = [
     fetchWardCategoryData();
     fetchDistanceVisionData();
     fetchNearVisionData();
+    fetchOperationTheatres();
   }, []);
 
   const handleDiagnosisOpen = () => {
@@ -1586,13 +1657,6 @@ const otOptions = [
   const handleTemplateOpen = () => {
     fetchOpdTemplateData();
   };
-
-  const [searchFilters, setSearchFilters] = useState({
-    doctorList: "",
-    session: "",
-    mobileNo: "",
-    patientName: "",
-  });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
@@ -1881,7 +1945,7 @@ const otOptions = [
     useState(null);
 
   const debounceInvestigationRef = useRef([]);
-  const dropdownInvestigationRef = useRef(null);
+  const dropdownInvestigationRefs = useRef([]);
 
   const [procedureCareItems, setProcedureCareItems] = useState([
     { id: "", name: "", frequency: "", days: "", remarks: "" },
@@ -1924,22 +1988,9 @@ const otOptions = [
   ]);
 
   const [referralNotes, setReferralNotes] = useState("");
-
-  const surgeryOptions = [
-    { id: 1, name: "Appendectomy", code: "APD" },
-    { id: 2, name: "Cholecystectomy", code: "CHO" },
-    { id: 3, name: "Hernia Repair", code: "HER" },
-    { id: 4, name: "Hysterectomy", code: "HYS" },
-    { id: 5, name: "Prostatectomy", code: "PRO" },
-  ];
-
-  const [surgeryItems, setSurgeryItems] = useState([
-    {
-      surgery: "",
-      selected: false,
-    },
-  ]);
-
+  const surgeryMasterLoadedRef = useRef(false);
+  const otMasterLoadedRef = useRef(false);
+  const [surgeryOptions, setSurgeryOptions] = useState([]);
   const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] =
     useState("Select..");
 
@@ -1972,6 +2023,23 @@ const otOptions = [
     setOpenDropdown(null);
     setOpenInvestigationDropdown(null);
     setShowCurrentMedicationModal(true);
+  };
+
+  const handleSurgeryAdviceOpen = async () => {
+    const willOpen = !expandedSections.surgeryAdvice;
+    toggleSection("surgeryAdvice");
+
+    if (!willOpen) return;
+
+    surgeryMasterLoadedRef.current = false;
+
+    await fetchSurgeryMasterData();
+
+    // Load OT Master
+    if (!otMasterLoadedRef.current) {
+      await fetchOperationTheatres();
+      otMasterLoadedRef.current = true;
+    }
   };
 
   const handleCloseCurrentMedicationModal = () => {
@@ -2048,9 +2116,12 @@ const otOptions = [
     try {
       setInvestigationTemplateLoading(true);
       const queryParams = new URLSearchParams();
-      if (searchFilters.doctorList) {
-        queryParams.append("doctorId", searchFilters.doctorList);
-      }
+
+      const doctorId =
+        searchFilters.doctorList ||
+        localStorage.getItem("userId") ||
+        sessionStorage.getItem("userId") ||
+        "";
       const response = await getRequest(
         `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
           queryParams.toString() ? `?${queryParams.toString()}` : ""
@@ -2087,9 +2158,14 @@ const otOptions = [
         const selectedIds = investigationItems
           .map((item) => item.investigationId)
           .filter(Boolean);
+        const uniqueContent = Array.from(
+          new Map(
+            data.response.content.map((item) => [item.investigationId, item]),
+          ).values(),
+        );
 
         return {
-          list: data.response.content.filter(
+          list: uniqueContent.filter(
             (item) => !selectedIds.includes(item.investigationId),
           ),
           last: data.response.last,
@@ -2112,7 +2188,21 @@ const otOptions = [
     setInvestigationPage(0);
   };
 
+  const handleSurgeryTypeChange = (type) => {
+    setSurgeryType(type);
+    surgeryMasterLoadedRef.current = false;
+    surgeryDataFetchedRef.current = false;
+    setSurgeryOptions([]);
+    resetSurgeryFields();
+  };
+
   const handleInvestigationSearch = (value, index) => {
+    setInvestigationSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+
     setInvestigationItems((prev) => {
       const updated = [...prev];
 
@@ -2182,10 +2272,10 @@ const otOptions = [
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        dropdownInvestigationRef.current &&
-        !dropdownInvestigationRef.current.contains(e.target)
-      ) {
+      const activeDropdownRef =
+        dropdownInvestigationRefs.current[openInvestigationDropdown];
+
+      if (activeDropdownRef && !activeDropdownRef.contains(e.target)) {
         setOpenInvestigationDropdown(null);
       }
     };
@@ -2281,6 +2371,9 @@ const otOptions = [
 
     setInvestigationItems((prev) => {
       let updated = [...prev];
+      const seenIds = new Set(
+        updated.map((item) => item.investigationId).filter(Boolean),
+      );
 
       if (
         updated.length === 1 &&
@@ -2291,20 +2384,26 @@ const otOptions = [
       }
 
       const existingMap = new Map(
-        updated.map((item) => [item.investigationId, item]),
+        updated.map((item, itemIndex) => [item.investigationId, itemIndex]),
       );
 
       template.investigationResponseList.forEach((item) => {
-        const existing = existingMap.get(item.investigationId);
+        const existingIndex = existingMap.get(item.investigationId);
 
-        if (existing) {
-          if (!existing.templateIds.includes(templateId)) {
-            existing.templateIds = [...existing.templateIds, templateId];
+        if (seenIds.has(item.investigationId) && existingIndex !== undefined) {
+          const existing = updated[existingIndex];
+
+          if (existing && !existing.templateIds.includes(templateId)) {
+            updated[existingIndex] = {
+              ...existing,
+              templateIds: [...existing.templateIds, templateId],
+            };
           }
 
           duplicateItemsBuffer.push({
             investigationId: item.investigationId,
-            investigationName: existing.displayValue ?? item.investigationName,
+            investigationName:
+              existing?.displayValue ?? item.investigationName ?? "",
           });
         } else {
           updated.push({
@@ -2316,6 +2415,8 @@ const otOptions = [
             templateSource: template.opdTemplateName,
             templateIds: [templateId],
           });
+          seenIds.add(item.investigationId);
+          existingMap.set(item.investigationId, updated.length - 1);
         }
       });
 
@@ -2476,6 +2577,24 @@ const otOptions = [
       return;
     }
 
+    const fetchSurgeryMasterData = async () => {
+      if (surgeryMasterLoadedRef.current) return;
+
+      try {
+        const response = await getRequest(`${MAS_SURGERY_GET_ALL}/0`);
+
+        if (response?.status === 200 && Array.isArray(response.response)) {
+          setSurgeryOptions(response.response);
+          surgeryMasterLoadedRef.current = true;
+        } else {
+          setSurgeryOptions([]);
+        }
+      } catch (error) {
+        console.error("Error fetching Surgery Master:", error);
+        setSurgeryOptions([]);
+      }
+    };
+
     // ---- NO DUPLICATE → UPDATE ROW ----
     const newItems = [...investigationItems];
     newItems[index] = {
@@ -2628,10 +2747,10 @@ const otOptions = [
   };
 
   useEffect(() => {
-    if (showDetailView && selectedPatient) {
+    if (showDetailView && selectedPatient && currentDoctorId) {
       fetchInvestigationTemplates();
     }
-  }, [showDetailView, selectedPatient]);
+  }, [showDetailView, selectedPatient, currentDoctorId]);
 
   useEffect(() => {
     filterInvestigationsByMainChargeCode();
@@ -2644,10 +2763,6 @@ const otOptions = [
     }));
     setCurrentPage(1);
   };
-
-  const userId =
-    localStorage.getItem("userId") || sessionStorage.getItem("userId");
-  const currentDoctorId = searchFilters.doctorList || userId || "";
 
   useEffect(() => {
     if (userId) {
@@ -2738,6 +2853,28 @@ const otOptions = [
   //     console.error("Error updating status:", error);
   //   }
   // };
+
+  const fetchSurgeryMasterData = async () => {
+    if (surgeryMasterLoadedRef.current) return;
+
+    try {
+      // Use the selected surgeryType (MAJOR or MINOR)
+      const level = surgeryType.toUpperCase();
+      const response = await getRequest(
+        `${MAS_SURGERY_GET_BY_LEVEL}/${level}/${1}`,
+      );
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setSurgeryOptions(response.response);
+        surgeryMasterLoadedRef.current = true;
+      } else {
+        setSurgeryOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Surgery Master:", error);
+      setSurgeryOptions([]);
+    }
+  };
 
   const checkVitalPresent = async (visitId) => {
     clearVitalFields();
@@ -2983,6 +3120,7 @@ const otOptions = [
       presentComplaints: "",
     });
 
+    resetSurgeryFields();
     setErrors({});
 
     // Reset pagination states
@@ -2992,6 +3130,15 @@ const otOptions = [
     setVitalsCurrentPage(0);
     setVitalsTotalPages(0);
     setVitalsTotalElements(0);
+  };
+
+  const resetSurgeryFields = () => {
+    setSelectedOT("");
+    setSurgeryDate("");
+    setSurgeryTime("");
+    setSurgeryItems([{ surgeryId: null, surgeryName: "" }]);
+    setSurgerySearchInput("");
+    surgeryMasterLoadedRef.current = false;
   };
 
   const toggleSection = (section) => {
@@ -3309,6 +3456,18 @@ const otOptions = [
       }
     }
 
+  if (surgeryStartTime || surgeryEndTime) {
+    if (!surgeryStartTime || !surgeryEndTime) {
+      showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
+      return;
+    }
+    
+    if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+      showPopup("Surgery end time must be after start time", "error");
+      return;
+    }
+  }
+
     if (referralData.isReferred === "Yes") {
       if (!hasValue(referralData.referralDate)) {
         addError("referralDate", "Referral date is required.");
@@ -3399,6 +3558,18 @@ const otOptions = [
     }
 
     return true;
+  };
+
+  const validateSurgeryTimes = (startTime, endTime) => {
+    if (!startTime || !endTime) return true; 
+
+    const [startHours, startMinutes] = startTime.split(":").map(Number);
+    const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+
+    return endTotalMinutes > startTotalMinutes;
   };
 
   const handleWardNameChange = async (deptId) => {
@@ -3494,6 +3665,26 @@ const otOptions = [
           investigationName: item.displayValue,
           investigationDate: item.date,
         }));
+
+      const surgeryAdvicePayload = {
+        otId: selectedOT || null,
+        surgeryDate: surgeryDate || null,
+        surgeryStartTime: surgeryStartTime || null,
+        surgeryEndTime: surgeryEndTime || null,
+        surgeryDetails: surgeryItems
+          .filter((item) => item.surgery && item.surgery.trim() !== "")
+          .map((item) => ({
+            surgeryItemId: item.surgeryId,
+            surgeryName: item.surgery,
+          })),
+      };
+
+      const hasSurgeryData =
+        selectedOT ||
+        surgeryDate ||
+        surgeryStartTime ||
+        surgeryEndTime ||
+        surgeryItems.some((item) => item.surgery && item.surgery.trim() !== "");
 
       const treatmentList = treatmentItems
         .filter((item) => {
@@ -3624,6 +3815,7 @@ const otOptions = [
         // ===== Treatment =====
         treatment: treatmentList,
         treatmentAdvice: generalTreatmentAdvice,
+        surgeryAdvice: hasSurgeryData ? surgeryAdvicePayload : null,
 
         // ======== procedureCare =======
         // procedureCare: procedureCareItems.map(item => ({
@@ -3666,6 +3858,25 @@ const otOptions = [
           : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
+        surgeryAdvice: hasSurgeryData
+          ? {
+              otId: selectedOT || null,
+              surgeryDate: surgeryDate || null,
+              surgeryStartTime: surgeryStartTime || null,
+              surgeryEndTime: surgeryEndTime || null,
+              surgeryDetails: surgeryItems
+                .filter(
+                  (item) =>
+                    item.surgeryId &&
+                    item.surgeryName &&
+                    item.surgeryName.trim() !== "",
+                )
+                .map((item) => ({
+                  surgeryId: item.surgeryId,
+                  surgeryName: item.surgeryName,
+                })),
+            }
+          : null,
         // ================= Referal ================
         referralFlag:
           referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
@@ -3735,6 +3946,41 @@ const otOptions = [
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const checkOTAvailability = async (otId, date) => {
+    if (!otId || !date) return true;
+
+
+    try {
+      const departmentId =
+        sessionStorage.getItem("departmentId") ||
+        localStorage.getItem("departmentId");
+
+      if (!departmentId) {
+        console.warn("Department ID not found");
+        return true;
+      }
+
+      const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}`;
+
+      const response = await getRequest(url);
+
+      if (response?.status === 404) {
+        showPopupMessage("The OT is not configured for this day", "error");
+        setSurgeryTime("");
+        return false;
+      }
+
+      if (response?.status === 200 && response?.response) {
+        return true;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking OT availability:", error);
+      return true;
     }
   };
 
@@ -3814,6 +4060,8 @@ const otOptions = [
       },
     ]);
 
+    resetSurgeryFields();
+
     // Reset treatments with one default row
     setTreatmentItems([
       {
@@ -3831,6 +4079,13 @@ const otOptions = [
       },
     ]);
 
+    setSelectedOT("");
+    setSurgeryDate("");
+    setSurgeryTime("");
+    setSurgeryItems([createEmptySurgeryItem()]);
+    setSurgerySearchInput("");
+    surgeryMasterLoadedRef.current = false;
+
     setPsychiatristAssessment(null);
 
     // Reset form errors
@@ -3839,30 +4094,22 @@ const otOptions = [
 
   const handleRelease = (patientId) => {
     setWaitingList((prevList) => {
-      // Copy the list to avoid mutation
       const updatedList = [...prevList];
 
-      // Find index of clicked item
       const index = updatedList.findIndex((item) => item.id === patientId);
       if (index === -1) return prevList;
 
-      // Take out that item and update status
       const itemToMove = { ...updatedList[index], visitStatus: "released" };
 
-      // Remove from current position
       updatedList.splice(index, 1);
 
-      // Determine the target index (after 5th item → index 5)
       const targetIndex = Math.min(5, updatedList.length); // in case list has <5 items
 
-      // Insert item at target position
       updatedList.splice(targetIndex, 0, itemToMove);
 
-      // ---- Keep pagination stable ----
       const totalPagesNow = Math.ceil(updatedList.length / itemsPerPage);
       const firstIndexOfPage = (currentPage - 1) * itemsPerPage;
 
-      // If current page becomes empty → go to previous page
       if (firstIndexOfPage >= updatedList.length && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
@@ -4347,6 +4594,13 @@ const otOptions = [
   };
 
   useEffect(() => {
+    if (expandedSections.surgeryAdvice && surgeryType) {
+      surgeryMasterLoadedRef.current = false;
+      fetchSurgeryMasterData();
+    }
+  }, [surgeryType]);
+
+  useEffect(() => {
     if (investigationTypes.length > 0 && !investigationType) {
       const firstType = investigationTypes[0];
       setInvestigationType(firstType.id);
@@ -4674,18 +4928,23 @@ const otOptions = [
     setPhysiotherapyItems(newItems);
   };
 
+  const createEmptySurgeryItem = () => ({
+    surgeryId: null,
+    surgeryName: "",
+  });
+
   const handleAddSurgeryItem = () => {
-    setSurgeryItems([
-      ...surgeryItems,
-      {
-        surgery: "",
-        selected: false,
-      },
-    ]);
+    setSurgeryItems((prev) => [...prev, createEmptySurgeryItem()]);
   };
 
   const handleRemoveSurgeryItem = (index) => {
-    if (surgeryItems.length === 1) return;
+    if (surgeryItems.length === 1) {
+      // Reset to empty state instead of removing
+      const newItems = [...surgeryItems];
+      newItems[index] = createEmptySurgeryItem();
+      setSurgeryItems(newItems);
+      return;
+    }
     const newItems = surgeryItems.filter((_, i) => i !== index);
     setSurgeryItems(newItems);
   };
@@ -4694,11 +4953,37 @@ const otOptions = [
     setSurgerySearchInput(value);
     setIsSurgeryDropdownVisible(true);
     setSelectedSurgeryIndex(index);
+
+    const newItems = [...surgeryItems];
+    newItems[index] = {
+      ...newItems[index],
+      surgeryName: value,
+    };
+    setSurgeryItems(newItems);
   };
 
   const handleSurgerySelect = (surgery, index) => {
+    const duplicateIndex = surgeryItems.findIndex(
+      (item, itemIndex) =>
+        itemIndex !== index &&
+        item.surgeryId &&
+        Number(item.surgeryId) === Number(surgery.surgeryId),
+    );
+
+    if (duplicateIndex !== -1) {
+      Swal.fire({
+        icon: "warning",
+        title: "Duplicate surgery",
+        text: "This surgery is already selected in another row.",
+      });
+      return;
+    }
+
     const newItems = [...surgeryItems];
-    newItems[index] = { ...newItems[index], surgery: surgery.name };
+    newItems[index] = {
+      surgeryId: surgery.surgeryId,
+      surgeryName: `${surgery.surgeryCode} - ${surgery.surgeryName}`,
+    };
     setSurgeryItems(newItems);
     setSurgerySearchInput("");
     setIsSurgeryDropdownVisible(false);
@@ -4708,6 +4993,44 @@ const otOptions = [
     const newItems = [...surgeryItems];
     newItems[index] = { ...newItems[index], [field]: value };
     setSurgeryItems(newItems);
+  };
+
+  const getSelectedSurgeryIds = (currentIndex) =>
+    surgeryItems
+      .filter((_, index) => index !== currentIndex)
+      .map((item) => item.surgeryId)
+      .filter(Boolean)
+      .map(Number);
+
+  const handleSurgeryDateChange = async (dateValue) => {
+    setSurgeryDate(dateValue);
+
+    if (dateValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        dateValue,
+      );
+      if (!isAvailable) {
+        setSurgeryDate("");
+      }
+    }
+  };
+
+
+  const handleOTChange = async (otId) => {
+    setSelectedOT(otId);
+
+    // Check availability if both date and time are present
+    if (otId && surgeryDate) {
+      const isAvailable = await checkOTAvailability(
+        otId,
+        surgeryDate,
+      );
+      if (!isAvailable) {
+        setSurgeryDate("");
+        setSelectedOT("");
+      }
+    }
   };
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -5859,7 +6182,10 @@ const otOptions = [
                                 <td>
                                   <div
                                     className="position-relative w-100"
-                                    ref={dropdownInvestigationRef}
+                                    ref={(el) => {
+                                      dropdownInvestigationRefs.current[index] =
+                                        el;
+                                    }}
                                   >
                                     {/* INPUT */}
                                     <input
@@ -6934,200 +7260,329 @@ const otOptions = [
                   )}
                 </div>
                 {/* Surgery Advice Section */}
-      <div className="card mb-3">
-  <div
-    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("surgeryAdvice")}
-  >
-    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.surgeryAdvice ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.surgeryAdvice && (
-    <div className="card-body">
-   <div className="row mb-3 align-items-center">
-  {/* Surgery Type */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold d-block">
-      Surgery Type
-    </label>
-    <div className="d-flex gap-3 align-items-center">
-      {/* removed fixed height: "31px" */}
-      <div className="form-check mb-0">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="surgeryType"
-          id="major"
-          checked={surgeryType === "major"}
-          onChange={() => setSurgeryType("major")}
-        />
-        <label className="form-check-label" htmlFor="major">
-          Major
-        </label>
-      </div>
-      <div className="form-check mb-0">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="surgeryType"
-          id="minor"
-          checked={surgeryType === "minor"}
-          onChange={() => setSurgeryType("minor")}
-        />
-        <label className="form-check-label" htmlFor="minor">
-          Minor
-        </label>
-      </div>
-    </div>
-  </div>
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={handleSurgeryAdviceOpen}
+                  >
+                    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.surgeryAdvice ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.surgeryAdvice && (
+                    <div className="card-body">
+                      <div className="row mb-3 align-items-center">
+                        {/* Surgery Level */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold d-block">
+                            Surgery Level
+                          </label>
+                          <div className="d-flex gap-3 align-items-center">
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="major"
+                                checked={surgeryType === "major"}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("major")
+                                }
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="major"
+                              >
+                                Major
+                              </label>
+                            </div>
+                            <div className="form-check mb-0">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="surgeryType"
+                                id="minor"
+                                checked={surgeryType === "minor"}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("minor")
+                                }
+                              />
+                              <label
+                                className="form-check-label"
+                                htmlFor="minor"
+                              >
+                                Minor
+                              </label>
+                            </div>
+                          </div>
+                        </div>
 
-  {/* OT */}
-  <div className="col-auto" style={{ minWidth: "180px" }}>
-    <label className="form-label small fw-bold mb-1">OT</label>
-    <select
-      className="form-select form-select-sm"
-      value={selectedOT}
-      onChange={(e) => setSelectedOT(e.target.value)}
-    >
-      <option value="">Select OT</option>
-      {otOptions.map((ot) => (
-        <option key={ot.id} value={ot.id}>
-          {ot.name}
-        </option>
-      ))}
-    </select>
-  </div>
+                        {/* OT */}
+                        <div className="col-auto" style={{ minWidth: "180px" }}>
+                          <label className="form-label small fw-bold mb-1">
+                            OT <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={selectedOT}
+                            onChange={(e) => handleOTChange(e.target.value)}
+                          >
+                            <option value="">Select OT</option>
+                            {otOptions.map((ot) => (
+                              <option key={ot.otId} value={ot.otId}>
+                                {ot.otCode} - {ot.otName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-  {/* Surgery Date */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1">Surgery Date</label>
-    <input
-      type="date"
-      className="form-control form-control-sm"
-      value={surgeryDate}
-      onChange={(e) => setSurgeryDate(e.target.value)}
-    />
-  </div>
+                        {/* Surgery Date */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Date <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            className="form-control form-control-sm"
+                            value={surgeryDate}
+                            onChange={(e) =>
+                              handleSurgeryDateChange(e.target.value)
+                            }
+                            min={getToday()}
+                          />
+                        </div>
 
-  {/* Surgery Time */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1">Surgery Time</label>
-    <input
-      type="time"
-      className="form-control form-control-sm"
-      value={surgeryTime}
-      onChange={(e) => setSurgeryTime(e.target.value)}
-    />
-  </div>
+                        {/* Start Time */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Start Time <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryStartTime}
+                            onChange={(e) =>
+                              handleSurgeryStartTimeChange(e.target.value)
+                            }
+                          />
+                        </div>
 
-  {/* OTCalendar Button */}
-  <div className="col-auto">
-    <label className="form-label small fw-bold mb-1 d-block opacity-0">
-      OTCalendar
-    </label>
-    <button
-      className="btn btn-sm btn-primary"
-      onClick={(e) => {
-        e.stopPropagation();
-        setShowOtCalendarModal(true);
-      }}
-      style={{ fontSize: "12px" }}
-    >
-      OTCalendar
-    </button>
-  </div>
-</div>
+                        {/* End Time */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            End Time <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryEndTime}
+                            onChange={(e) =>
+                              handleSurgeryEndTimeChange(e.target.value)
+                            }
+                          />
+                        </div>
 
-      <div className="table-responsive">
-        <table className="table table-bordered">
-          <thead style={{ backgroundColor: "#b0c4de" }}>
-            <tr>
-              <th style={{ width: "10%" }}>S.No</th>
-              <th style={{ width: "80%" }}>Surgery</th>
-              <th style={{ width: "5%" }}>Add</th>
-              <th style={{ width: "5%" }}>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {surgeryItems.map((item, index) => (
-              <tr key={index}>
-                <td className="text-center">{index + 1}</td>
-                <td className="position-relative">
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={item.surgery}
-                    onChange={(e) => {
-                      handleSurgerySearchChange(
-                        e.target.value,
-                        index,
-                      );
-                    }}
-                    placeholder="Search Surgery"
-                    autoComplete="off"
-                  />
-                  {isSurgeryDropdownVisible &&
-                    selectedSurgeryIndex === index &&
-                    surgerySearchInput && (
-                      <ul
-                        className="list-group position-absolute w-100 mt-1"
-                        style={{ zIndex: 1000, top: "100%" }}
+                        {/* OTCalendar Button */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1 d-block opacity-0">
+                            OTCalendar
+                          </label>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowOtCalendarModal(true);
+                            }}
+                            style={{ fontSize: "12px" }}
+                          >
+                            OTCalendar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        className="table-responsive"
+                        style={{ overflow: "visible" }}
                       >
-                        {surgeryOptions
-                          .filter((surgery) =>
-                            surgery.name
-                              .toLowerCase()
-                              .includes(
-                                surgerySearchInput.toLowerCase(),
-                              ),
-                          )
-                          .map((surgery) => (
-                            <li
-                              key={surgery.id}
-                              className="list-group-item list-group-item-action"
-                              onClick={() =>
-                                handleSurgerySelect(
-                                  surgery,
-                                  index,
-                                )
-                              }
-                            >
-                              {surgery.name}
-                            </li>
-                          ))}
-                      </ul>
-                    )}
-                </td>
-                <td className="text-center">
-                  <button
-                    className="btn btn-sm btn-success"
-                    onClick={handleAddSurgeryItem}
-                  >
-                    +
-                  </button>
-                </td>
-                <td className="text-center">
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() =>
-                      handleRemoveSurgeryItem(index)
-                    }
-                    disabled={surgeryItems.length === 1}
-                  >
-                    −
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )}
-</div>
+                        <table className="table table-bordered">
+                          <thead style={{ backgroundColor: "#b0c4de" }}>
+                            <tr>
+                              <th style={{ width: "10%" }}>S.No</th>
+                              <th style={{ width: "75%" }}>Surgery</th>
+                              <th style={{ width: "5%" }}>Add</th>
+                              <th style={{ width: "5%" }}>Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {surgeryItems.map((item, index) => (
+                              <tr key={index}>
+                                <td className="text-center">{index + 1}</td>
+                                <td>
+                                  <div
+                                    className="position-relative"
+                                    style={{ width: "100%", zIndex: 20 }}
+                                  >
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search Surgery..."
+                                      value={item.surgeryName || ""}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        const newItems = [...surgeryItems];
+                                        newItems[index] = {
+                                          ...newItems[index],
+                                          surgeryId: null,
+                                          surgeryName: value,
+                                        };
+                                        setSurgeryItems(newItems);
+                                        setSurgerySearchInput(value);
+                                        setSelectedSurgeryIndex(index);
+                                        setIsSurgeryDropdownVisible(true);
+                                      }}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!surgeryMasterLoadedRef.current) {
+                                          await fetchSurgeryMasterData();
+                                        }
+                                        setIsSurgeryDropdownVisible(true);
+                                        setSelectedSurgeryIndex(index);
+                                      }}
+                                      onFocus={async () => {
+                                        if (!surgeryMasterLoadedRef.current) {
+                                          await fetchSurgeryMasterData();
+                                        }
+                                        setIsSurgeryDropdownVisible(true);
+                                        setSelectedSurgeryIndex(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          setIsSurgeryDropdownVisible(false);
+                                          setSelectedSurgeryIndex(null);
+                                        }, 200);
+                                      }}
+                                      autoComplete="off"
+                                    />
+
+                                    {/* DROPDOWN */}
+                                    {isSurgeryDropdownVisible &&
+                                      selectedSurgeryIndex === index && (
+                                        <div
+                                          className="border rounded mt-1 bg-white position-absolute w-100"
+                                          style={{
+                                            maxHeight: "220px",
+                                            zIndex: 9999,
+                                            overflowY: "auto",
+                                            boxShadow:
+                                              "0 2px 8px rgba(0,0,0,0.15)",
+                                            top: "100%",
+                                            left: 0,
+                                          }}
+                                        >
+                                          {surgeryOptions.length > 0 ? (
+                                            surgeryOptions
+                                              .filter((surgery) => {
+                                                const query =
+                                                  surgerySearchInput?.toLowerCase() ||
+                                                  "";
+                                                const isSearchMatch =
+                                                  surgery.surgeryName
+                                                    ?.toLowerCase()
+                                                    .includes(query) ||
+                                                  surgery.surgeryCode
+                                                    ?.toLowerCase()
+                                                    .includes(query);
+                                                const selectedIds =
+                                                  getSelectedSurgeryIds(index);
+                                                return (
+                                                  isSearchMatch &&
+                                                  !selectedIds.includes(
+                                                    Number(surgery.surgeryId),
+                                                  )
+                                                );
+                                              })
+                                              .map((surgery) => (
+                                                <div
+                                                  key={surgery.surgeryId}
+                                                  className="p-2 cursor-pointer hover:bg-light"
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    borderBottom:
+                                                      "1px solid #f0f0f0",
+                                                  }}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleSurgerySelect(
+                                                      surgery,
+                                                      index,
+                                                    );
+                                                  }}
+                                                >
+                                                  <strong>
+                                                    {surgery.surgeryCode}
+                                                  </strong>{" "}
+                                                  - {surgery.surgeryName}
+                                                </div>
+                                              ))
+                                          ) : (
+                                            <div className="p-2 text-muted text-center">
+                                              {surgeryMasterLoadedRef.current
+                                                ? "No surgeries found"
+                                                : "Loading surgeries..."}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                  </div>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddSurgeryItem}
+                                  >
+                                    +
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() =>
+                                      handleRemoveSurgeryItem(index)
+                                    }
+                                    disabled={surgeryItems.length === 1}
+                                  >
+                                    −
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div

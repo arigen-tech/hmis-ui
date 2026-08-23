@@ -961,18 +961,6 @@ const BookingAppointmentHistory = () => {
             <div className="card-body">
               <div className="row mb-4">
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Mobile Number</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Mobile Number"
-                    value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                    maxLength="10"
-                  />
-                </div>
-
-                <div className="col-md-3">
                   <label className="form-label fw-bold">Name</label>
                   <input
                     type="text"
@@ -981,6 +969,17 @@ const BookingAppointmentHistory = () => {
                     placeholder="Enter patient name"
                     value={patientName}
                     onChange={(e) => setPatientName(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Mobile Number</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter Mobile Number"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
+                    maxLength="10"
                   />
                 </div>
 
