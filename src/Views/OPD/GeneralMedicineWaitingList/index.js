@@ -873,7 +873,6 @@ const GeneralMedicineWaitingList = () => {
   const handleSurgeryStartTimeChange = async (timeValue) => {
     setSurgeryStartTime(timeValue);
 
-    // Validate that start time is before end time
     if (surgeryEndTime && timeValue) {
       const isValid = validateSurgeryTimes(timeValue, surgeryEndTime);
       if (!isValid) {
@@ -887,8 +886,6 @@ const GeneralMedicineWaitingList = () => {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         surgeryDate,
-        timeValue,
-        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryStartTime("");
@@ -913,8 +910,6 @@ const GeneralMedicineWaitingList = () => {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         surgeryDate,
-        surgeryStartTime,
-        timeValue,
       );
       if (!isAvailable) {
         setSurgeryEndTime("");
@@ -3950,14 +3945,9 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const checkOTAvailability = async (otId, date, startTime, endTime) => {
-    if (!otId || !date || !startTime || !endTime) return true;
+  const checkOTAvailability = async (otId, date) => {
+    if (!otId || !date) return true;
 
-    // Validate times before checking availability
-    if (!validateSurgeryTimes(startTime, endTime)) {
-      showPopupMessage("End time must be after start time", "error");
-      return false;
-    }
 
     try {
       const departmentId =
@@ -3969,7 +3959,7 @@ const GeneralMedicineWaitingList = () => {
         return true;
       }
 
-      const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${startTime}`;
+      const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}`;
 
       const response = await getRequest(url);
 
@@ -5011,48 +5001,29 @@ const GeneralMedicineWaitingList = () => {
   const handleSurgeryDateChange = async (dateValue) => {
     setSurgeryDate(dateValue);
 
-    if (dateValue && surgeryTime && selectedOT) {
+    if (dateValue && selectedOT) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         dateValue,
-        surgeryTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
-        setSurgeryTime("");
       }
     }
   };
 
-  const handleSurgeryTimeChange = async (timeValue) => {
-    setSurgeryTime(timeValue);
-
-    if (surgeryDate && timeValue && selectedOT) {
-      const isAvailable = await checkOTAvailability(
-        selectedOT,
-        surgeryDate,
-        timeValue,
-      );
-      if (!isAvailable) {
-        setSurgeryDate("");
-        setSurgeryTime("");
-      }
-    }
-  };
 
   const handleOTChange = async (otId) => {
     setSelectedOT(otId);
 
     // Check availability if both date and time are present
-    if (otId && surgeryDate && surgeryTime) {
+    if (otId && surgeryDate) {
       const isAvailable = await checkOTAvailability(
         otId,
         surgeryDate,
-        surgeryTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
-        setSurgeryTime("");
         setSelectedOT("");
       }
     }

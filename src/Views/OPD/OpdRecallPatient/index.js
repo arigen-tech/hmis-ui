@@ -2042,7 +2042,7 @@ const OpdRRecallPatient = () => {
             flag: flag,
           };
         })
-        .filter(Boolean); // This will keep items with flag: -1 since they have data
+        .filter(Boolean);
 
       const procedureCareList = procedureCareItems
         .filter((item) => item.procedureId)
@@ -2063,7 +2063,6 @@ const OpdRRecallPatient = () => {
           ...visionExaminationData,
         };
 
-        // Add the ID if it exists (for update)
         if (existingOpthalId) {
           ophthalmologyPayload.id = existingOpthalId;
         }
@@ -2642,25 +2641,13 @@ const OpdRRecallPatient = () => {
 
   const handleSurgeryDateChange = async (dateValue) => {
     setSurgeryDate(dateValue);
-
-    if (selectedOT && dateValue && surgeryStartTime && surgeryEndTime) {
-      if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
-        showPopup("End time must be after start time", "error");
-        return;
-      }
-    }
-
-    if (selectedOT && dateValue && surgeryStartTime && surgeryEndTime) {
+    if (selectedOT && dateValue) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         dateValue,
-        surgeryStartTime,
-        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
-        setSurgeryStartTime("");
-        setSurgeryEndTime("");
         showPopup(
           "The OT is not available for the selected date/time",
           "error",
@@ -2695,12 +2682,10 @@ const OpdRRecallPatient = () => {
       }
     }
 
-    if (surgeryDate && timeValue && selectedOT) {
+    if (surgeryDate && selectedOT) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         surgeryDate,
-        timeValue,
-        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryStartTime("");
@@ -2721,12 +2706,10 @@ const OpdRRecallPatient = () => {
       }
     }
 
-    if (surgeryDate && timeValue && selectedOT) {
+    if (surgeryDate && selectedOT) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         surgeryDate,
-        surgeryStartTime,
-        timeValue,
       );
       if (!isAvailable) {
         setSurgeryEndTime("");
@@ -2734,14 +2717,8 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const checkOTAvailability = async (otId, date, startTime, endTime) => {
-    if (!otId || !date || !startTime || !endTime) return true;
-
-    // Validate times before checking availability
-    if (!validateSurgeryTimes(startTime, endTime)) {
-      showPopup("End time must be after start time", "error");
-      return false;
-    }
+  const checkOTAvailability = async (otId, date) => {
+    if (!otId || !date) return true;
 
     try {
       const departmentId =
@@ -2750,20 +2727,12 @@ const OpdRRecallPatient = () => {
 
       if (!departmentId) return true;
 
-      const [hours, minutes] = startTime.split(":").map(Number);
-      const startTimeObj = new Date(0, 0, 0, hours, minutes);
-      const formattedStartTime = startTimeObj.toTimeString().slice(0, 5);
+      // const [hours, minutes] = startTime.split(":").map(Number);
+      // const startTimeObj = new Date(0, 0, 0, hours, minutes);
+      // const formattedStartTime = startTimeObj.toTimeString().slice(0, 5);
 
       // Build URL with all parameters
-      let url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${formattedStartTime}`;
-
-      // Add end time if provided
-      if (endTime) {
-        const [endHours, endMinutes] = endTime.split(":").map(Number);
-        const endTimeObj = new Date(0, 0, 0, endHours, endMinutes);
-        const formattedEndTime = endTimeObj.toTimeString().slice(0, 5);
-        url += `&endTime=${formattedEndTime}`;
-      }
+      let url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}`;
 
       const response = await getRequest(url);
 
@@ -2793,13 +2762,9 @@ const OpdRRecallPatient = () => {
       const isAvailable = await checkOTAvailability(
         otId,
         surgeryDate,
-        surgeryTime,
-        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
-        setSurgeryTime("");
-        setSurgeryEndTime("");
         setSelectedOT("");
       }
     }
