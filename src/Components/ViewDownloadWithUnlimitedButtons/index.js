@@ -120,6 +120,7 @@ const ViewDownloadWithUnlimitedButtons = () => {
     try {
       setLoadingKey(btn.key);
 
+      debugger;
       // Determine flag based on button type
       const flag = btn.type === "print" ? "p" : "d";
 

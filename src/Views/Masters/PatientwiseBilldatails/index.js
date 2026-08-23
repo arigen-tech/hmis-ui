@@ -92,6 +92,7 @@ const PatientwiseBilldatails = () => {
 
       // Determine API endpoint based on serviceCategoryId
       if (record.serviceCategoryId === 1 ){
+      if (record.serviceCategoryId === 1 || record.serviceCategoryId === 3) {
         // OPD Report
         apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 2) {
@@ -102,6 +103,7 @@ const PatientwiseBilldatails = () => {
       } else if(record.serviceCategoryId === 3) {
         apiUrl=`${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${record.prescriptionHeaderId}&flag=${flag}`;
       }
+      } 
       else{
         showPopup(
           "Report type not supported for this service category",
