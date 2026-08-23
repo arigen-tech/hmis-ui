@@ -3456,13 +3456,17 @@ const GeneralMedicineWaitingList = () => {
       }
     }
 
-    if (
-      surgeryStartTime &&
-      surgeryEndTime &&
-      !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)
-    ) {
-      addError("surgeryTime", "Surgery end time must be after start time.");
+  if (surgeryStartTime || surgeryEndTime) {
+    if (!surgeryStartTime || !surgeryEndTime) {
+      showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
+      return;
     }
+    
+    if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+      showPopup("Surgery end time must be after start time", "error");
+      return;
+    }
+  }
 
     if (referralData.isReferred === "Yes") {
       if (!hasValue(referralData.referralDate)) {
@@ -3557,7 +3561,7 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const validateSurgeryTimes = (startTime, endTime) => {
-    if (!startTime || !endTime) return true; // Don't validate if either is empty
+    if (!startTime || !endTime) return true; 
 
     const [startHours, startMinutes] = startTime.split(":").map(Number);
     const [endHours, endMinutes] = endTime.split(":").map(Number);

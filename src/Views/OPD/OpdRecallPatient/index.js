@@ -1902,9 +1902,16 @@ const OpdRRecallPatient = () => {
 
     if (isSubmitting) return;
 
-      if (surgeryStartTime && surgeryEndTime && !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
-    showPopup("Surgery end time must be after start time", "error");
-    return;
+  if (surgeryStartTime || surgeryEndTime) {
+    if (!surgeryStartTime || !surgeryEndTime) {
+      showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
+      return;
+    }
+    
+    if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+      showPopup("Surgery end time must be after start time", "error");
+      return;
+    }
   }
 
     if (!validateSubmitForm()) return;
