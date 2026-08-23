@@ -2,12 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import LoadingScreen from "../../../../Components/Loading";
 import { fetchPdfReportForViewAndPrint, getRequest } from "../../../../service/apiService";
-import { IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, STATUS_D, IP_INITIAL_ASSESSMENT_REPORT_URL, GET_NURSING_MEDICAL_ASSESSMENT, IP_VITALS_REPORT_URL, IP_DAILY_CASE_SHEET_REPORT_URL, GET_DISCHARGE_SUMMARY_REPORT_URL } from "../../../../config/apiConfig";
+import { IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, STATUS_D, IP_INITIAL_ASSESSMENT_REPORT_URL, GET_NURSING_MEDICAL_ASSESSMENT, IP_VITALS_REPORT_URL, IP_DAILY_CASE_SHEET_REPORT_URL, GET_DISCHARGE_SUMMARY_REPORT_URL, ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
-// No extra imports – all data is dummy
-
-// ---------- DUMMY DATA (with dischargeDate added) ----------
 const dummyAdmissions = [
   {
     admissionNo: "IPD-1001",
@@ -120,7 +117,6 @@ const dummyAdmissions = [
     dischargeSummary: "Discharged on 18-Jul-2026. Mother and baby healthy. Follow-up in 1 week."
   },
 ];
-
 // Sample investigation data for Lab/Radio order tracking
 const sampleInvestigations = [
   {
@@ -180,8 +176,6 @@ const sampleInvestigations = [
 const IPDDischargeRecords = () => {
   // ---------- STATE ----------
   const [searchMobileNo, setSearchMobileNo] = useState("");
-  const [admissionList, setAdmissionList] = useState(dummyAdmissions);
-  const [filteredList, setFilteredList] = useState(dummyAdmissions);
   const [displayData, setDisplayData] = useState([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -215,52 +209,53 @@ const IPDDischargeRecords = () => {
     });
   };
 
+  // ---------- API FETCH ----------
+  const fetchAdmissions = async (page = 1, mobile = "") => {
+    setIsLoading(true);
+    try {
+      const url = `${ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST}?page=${page - 1}&size=${DEFAULT_ITEMS_PER_PAGE}&admissionStatus=2${mobile ? `&mobileNo=${mobile}` : ""}`;
+      const res = await getRequest(url);
+      if (res?.status === 200 && res?.response) {
+        const content = res.response.content || [];
+        setDisplayData(content);
+        setTotalElements(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 1);
+      } else {
+        setDisplayData([]);
+        setTotalElements(0);
+        setTotalPages(1);
+      }
+    } catch (error) {
+      console.error("Error fetching admissions:", error);
+      setDisplayData([]);
+      setTotalElements(0);
+      setTotalPages(1);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ---------- SEARCH & FILTER ----------
   const handleSearch = () => {
-    setIsLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      let filtered = dummyAdmissions;
-      if (searchMobileNo.trim()) {
-        filtered = dummyAdmissions.filter((item) =>
-          item.mobileNo.includes(searchMobileNo.trim())
-        );
-      }
-      setFilteredList(filtered);
-      setTotalElements(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-      setCurrentPage(1);
-      // Paginate
-      const start = 0;
-      const end = DEFAULT_ITEMS_PER_PAGE;
-      setDisplayData(filtered.slice(start, end));
-      setIsLoading(false);
-    }, 300);
+    setCurrentPage(1);
+    fetchAdmissions(1, searchMobileNo.trim());
   };
 
   const handleClear = () => {
     setSearchMobileNo("");
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
     setCurrentPage(1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchAdmissions(1, "");
   };
 
   // Initial load
   useEffect(() => {
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchAdmissions(1, "");
   }, []);
 
   // Pagination change
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    const start = (page - 1) * DEFAULT_ITEMS_PER_PAGE;
-    const end = start + DEFAULT_ITEMS_PER_PAGE;
-    setDisplayData(filteredList.slice(start, end));
+    fetchAdmissions(page, searchMobileNo.trim());
   };
 
   // ---------- ROW CLICK (open details) ----------
@@ -332,26 +327,28 @@ const IPDDischargeRecords = () => {
   const handleInternalMedicalAssessmentClick = async () => {
     const inpatientId = Number(selectedAdmission?.inpatientId);
     if (!inpatientId) {
-      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+      alert("Patient ID not found");
       return;
     }
 
     try {
       setGeneratingReportType("internal_medical_assessment");
       const res = await getRequest(`${GET_NURSING_MEDICAL_ASSESSMENT}/${inpatientId}`);
-
+      console.log(res);
       if (res?.status === 200 && res?.response?.assessmentId) {
         const assessmentId = res.response.assessmentId;
         const reportUrl = `${IP_INITIAL_ASSESSMENT_REPORT_URL}?assessmentId=${assessmentId}`;
         const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
         const fileURL = window.URL.createObjectURL(blob);
         setReportPdfUrl(fileURL);
+      } else if (res?.status === 404) {
+        alert(res?.message || "Assessment data not found for this patient");
       } else {
-        showConfirmationPopup("Assessment data not found for this patient", "error", () => { }, null, "OK", "");
+        alert("Assessment data not found for this patient");
       }
     } catch (error) {
       console.error("Error generating report:", error);
-      showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      alert("Failed to generate report");
     } finally {
       setGeneratingReportType(null);
     }
@@ -368,12 +365,12 @@ const IPDDischargeRecords = () => {
         setReportPdfUrl(fileURL);
       } catch (error) {
         console.error("Error generating report:", error);
-        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
       } finally {
         setGeneratingReportType(null);
       }
     } else {
-      showConfirmationPopup("Patient ID not found", "error", () => {}, null, "OK", "");
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
     }
   };
 
@@ -388,12 +385,12 @@ const IPDDischargeRecords = () => {
         setReportPdfUrl(fileURL);
       } catch (error) {
         console.error("Error generating report:", error);
-        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
       } finally {
         setGeneratingReportType(null);
       }
     } else {
-      showConfirmationPopup("Patient ID not found", "error", () => {}, null, "OK", "");
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
     }
   };
 
@@ -408,12 +405,12 @@ const IPDDischargeRecords = () => {
         setReportPdfUrl(fileURL);
       } catch (error) {
         console.error("Error generating report:", error);
-        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
       } finally {
         setGeneratingReportType(null);
       }
     } else {
-      showConfirmationPopup("Patient ID not found", "error", () => {}, null, "OK", "");
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
     }
   };
 
@@ -664,7 +661,7 @@ const IPDDischargeRecords = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.attendingDoctor || "N/A"}
+                                value={selectedAdmission.doctorName || "N/A"}
                                 readOnly
                               />
                             </div>
@@ -763,8 +760,8 @@ const IPDDischargeRecords = () => {
                           {/* Clinical Nursing – buttons only */}
                           {activeReportTab === "clinicalNursing" && (
                             <div className="d-flex flex-wrap gap-2">
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary"
                                 onClick={handleIpdCaseSheetClick}
                                 disabled={generatingReportType !== null}
@@ -778,8 +775,8 @@ const IPDDischargeRecords = () => {
                                   "IPD Case Sheet"
                                 )}
                               </button>
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary"
                                 onClick={handleVitalsReportClick}
                                 disabled={generatingReportType !== null}
@@ -829,12 +826,12 @@ const IPDDischargeRecords = () => {
                                       <td>
                                         <span
                                           className={`badge ${inv.status === "Report Generated"
-                                              ? "bg-success"
-                                              : inv.status === "In Progress"
-                                                ? "bg-warning text-dark"
-                                                : inv.status === "Sample Collected"
-                                                  ? "bg-info"
-                                                  : "bg-secondary"
+                                            ? "bg-success"
+                                            : inv.status === "In Progress"
+                                              ? "bg-warning text-dark"
+                                              : inv.status === "Sample Collected"
+                                                ? "bg-info"
+                                                : "bg-secondary"
                                             }`}
                                         >
                                           {inv.status}
@@ -853,8 +850,8 @@ const IPDDischargeRecords = () => {
                           {/* Discharge – buttons only */}
                           {activeReportTab === "discharge" && (
                             <div className="d-flex flex-wrap gap-2">
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary"
                                 onClick={handleDischargeSummaryClick}
                                 disabled={generatingReportType !== null}

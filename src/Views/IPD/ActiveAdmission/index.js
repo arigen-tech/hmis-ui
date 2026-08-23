@@ -1,17 +1,8 @@
 import { useState, useEffect } from "react";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-// No extra imports – all data is dummy (UI only, not connected to any API)
-
-// ---------- DUMMY WARD LIST (for the Ward dropdown) ----------
-const wardOptions = [
-  "All Wards",
-  "Male Medical Ward",
-  "Female Medical Ward",
-  "Maternity Ward",
-  "Male Surgical Ward",
-  "Female Surgical Ward",
-  "ICU",
-];
+import { getRequest } from "../../../service/apiService";
+import { ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST, MAS_WARD_GET_ALL_ACTIVE, GET_ADMISSION_DETAILS_BY_INPATIENT } from "../../../config/apiConfig";
+import DocumentPreview from "../../../Components/DocumentPreview";
 
 // ---------- DUMMY ADMISSION DATA ----------
 const dummyAdmissions = [
@@ -111,12 +102,13 @@ const dummyAdmissions = [
 
 const ActiveAdmissionList = () => {
   // ---------- SEARCH STATE ----------
-  const [searchNameOrAdmissionNo, setSearchNameOrAdmissionNo] = useState("");
+  const [searchPatientName, setSearchPatientName] = useState("");
+  const [searchAdmissionNo, setSearchAdmissionNo] = useState("");
   const [searchMobileNo, setSearchMobileNo] = useState("");
-  const [searchWard, setSearchWard] = useState("All Wards");
+  const [searchWard, setSearchWard] = useState("");
+  const [wardOptions, setWardOptions] = useState([]);
 
   // ---------- LIST / PAGINATION STATE ----------
-  const [filteredList, setFilteredList] = useState(dummyAdmissions);
   const [displayData, setDisplayData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,6 +118,7 @@ const ActiveAdmissionList = () => {
   // ---------- DETAILS VIEW STATE ----------
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
+  const [previewFilePath, setPreviewFilePath] = useState(null);
 
   // ---------- FORMAT HELPER ----------
   const formatDate = (dateString) => {
@@ -141,72 +134,90 @@ const ActiveAdmissionList = () => {
     });
   };
 
+  // ---------- API FETCH ----------
+  const fetchAdmissions = async (page = 1, pName = "", aNo = "", mobile = "", wId = "") => {
+    setIsLoading(true);
+    try {
+      let url = `${ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST}?page=${page - 1}&size=${DEFAULT_ITEMS_PER_PAGE}&admissionStatus=1`;
+      if (pName) url += `&patientName=${pName}`;
+      if (aNo) url += `&admissionNo=${aNo}`;
+      if (mobile) url += `&mobileNo=${mobile}`;
+      if (wId) url += `&wardId=${wId}`;
+
+      const res = await getRequest(url);
+      if (res?.status === 200 && res?.response) {
+        const content = res.response.content || [];
+        setDisplayData(content);
+        setTotalElements(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 1);
+      } else {
+        setDisplayData([]);
+        setTotalElements(0);
+        setTotalPages(1);
+      }
+    } catch (error) {
+      console.error("Error fetching active admissions:", error);
+      setDisplayData([]);
+      setTotalElements(0);
+      setTotalPages(1);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchWards = async () => {
+    try {
+      const res = await getRequest(MAS_WARD_GET_ALL_ACTIVE);
+      if (res?.status === 200 && res?.response) {
+        setWardOptions(res.response);
+      }
+    } catch (error) {
+      console.error("Error fetching wards:", error);
+    }
+  };
+
   // ---------- INITIAL LOAD ----------
   useEffect(() => {
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchWards();
+    fetchAdmissions(1, "", "", "", "");
   }, []);
 
   // ---------- SEARCH ----------
   const handleSearch = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      let filtered = dummyAdmissions;
-
-      if (searchNameOrAdmissionNo.trim()) {
-        const term = searchNameOrAdmissionNo.trim().toLowerCase();
-        filtered = filtered.filter(
-          (item) =>
-            item.patientName.toLowerCase().includes(term) ||
-            item.admissionNo.toLowerCase().includes(term)
-        );
-      }
-
-      if (searchMobileNo.trim()) {
-        filtered = filtered.filter((item) =>
-          item.mobileNo.includes(searchMobileNo.trim())
-        );
-      }
-
-      if (searchWard && searchWard !== "All Wards") {
-        filtered = filtered.filter((item) => item.ward === searchWard);
-      }
-
-      setFilteredList(filtered);
-      setTotalElements(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-      setCurrentPage(1);
-      setDisplayData(filtered.slice(0, DEFAULT_ITEMS_PER_PAGE));
-      setIsLoading(false);
-    }, 300);
+    setCurrentPage(1);
+    fetchAdmissions(1, searchPatientName.trim(), searchAdmissionNo.trim(), searchMobileNo.trim(), searchWard);
   };
 
   // ---------- SHOW ALL ----------
   const handleShowAll = () => {
-    setSearchNameOrAdmissionNo("");
+    setSearchPatientName("");
+    setSearchAdmissionNo("");
     setSearchMobileNo("");
-    setSearchWard("All Wards");
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
+    setSearchWard("");
     setCurrentPage(1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchAdmissions(1, "", "", "", "");
   };
 
   // ---------- PAGINATION ----------
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    const start = (page - 1) * DEFAULT_ITEMS_PER_PAGE;
-    const end = start + DEFAULT_ITEMS_PER_PAGE;
-    setDisplayData(filteredList.slice(start, end));
+    fetchAdmissions(page, searchPatientName.trim(), searchAdmissionNo.trim(), searchMobileNo.trim(), searchWard);
   };
 
   // ---------- ROW / VIEW CLICK -> OPEN DETAILS ----------
-  const handleRowClick = (admission) => {
-    setSelectedAdmission(admission);
-    setShowDetails(true);
+  const handleRowClick = async (admission) => {
+    setIsLoading(true);
+    try {
+      const res = await getRequest(`${GET_ADMISSION_DETAILS_BY_INPATIENT}/${admission.inpatientId}`);
+      if (res?.status === 200 && res?.response) {
+        setSelectedAdmission(res.response);
+        setShowDetails(true);
+      }
+    } catch (error) {
+      console.error("Error fetching admission details:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ---------- BACK TO LIST ----------
@@ -243,20 +254,29 @@ const ActiveAdmissionList = () => {
                   <div className="mb-4">
                     <div className="card-body">
                       <div className="row g-3 align-items-end">
-                        <div className="col-md-3">
-                          <label className="form-label fw-semibold">
-                            Patient Name / Admission No.
-                          </label>
+                        <div className="col-md-2">
+                          <label className="form-label fw-semibold">Patient Name</label>
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Enter patient name or admission no."
-                            value={searchNameOrAdmissionNo}
-                            onChange={(e) => setSearchNameOrAdmissionNo(e.target.value)}
+                            placeholder="Enter patient name"
+                            value={searchPatientName}
+                            onChange={(e) => setSearchPatientName(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                           />
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-2">
+                          <label className="form-label fw-semibold">Admission No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter admission no."
+                            value={searchAdmissionNo}
+                            onChange={(e) => setSearchAdmissionNo(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                          />
+                        </div>
+                        <div className="col-md-2">
                           <label className="form-label fw-semibold">Mobile No.</label>
                           <input
                             type="text"
@@ -274,9 +294,10 @@ const ActiveAdmissionList = () => {
                             value={searchWard}
                             onChange={(e) => setSearchWard(e.target.value)}
                           >
+                            <option value="">All Wards</option>
                             {wardOptions.map((w) => (
-                              <option key={w} value={w}>
-                                {w}
+                              <option key={w.wardId} value={w.wardId}>
+                                {w.wardName}
                               </option>
                             ))}
                           </select>
@@ -355,10 +376,10 @@ const ActiveAdmissionList = () => {
                               <td>{item.admissionNo}</td>
                               <td>{item.patientName}</td>
                               <td>{item.age} / {item.gender}</td>
-                              <td>{item.patientContactNo || item.mobileNo}</td>
-                              <td>{item.emergencyContactNo || item.emergencyContact}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.emergencyMobileNo}</td>
                               <td>{formatDate(item.admissionDateTime)}</td>
-                              <td>{item.category}</td>
+                              <td>{item.categoryName}</td>
                               <td>{item.ward}</td>
                               <td>{item.room} / {item.bed}</td>
                               <td>{item.doctorName}</td>
@@ -420,7 +441,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.ageGender || `${selectedAdmission.age} Y / ${selectedAdmission.gender}`}
+                              value={`${selectedAdmission.age || ""} / ${selectedAdmission.gender || ""}`}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -430,7 +451,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.patientContactNo || selectedAdmission.mobileNo || ""}
+                              value={selectedAdmission.contactNo || selectedAdmission.mobileNo || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -440,7 +461,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.emergencyContactNo || selectedAdmission.emergencyContact || ""}
+                              value={selectedAdmission.emergencyContactNo || selectedAdmission.emergencyMobileNo || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -471,7 +492,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={formatDate(selectedAdmission.admissionDateTime)}
+                              value={selectedAdmission.admissionDate ? formatDate(`${selectedAdmission.admissionDate}T${selectedAdmission.admissionTime || "00:00:00"}`) : ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -481,7 +502,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.admissionCategory || ""}
+                              value={selectedAdmission.admissionCategory || selectedAdmission.categoryName || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -511,7 +532,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.status || ""}
+                              value={selectedAdmission.currentStatus || selectedAdmission.status || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -542,7 +563,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.doctorName || ""}
+                              value={selectedAdmission.admittingDoctor || selectedAdmission.doctorName || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -572,7 +593,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.ward || ""}
+                              value={selectedAdmission.currentWard || selectedAdmission.ward || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -673,7 +694,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.remarks || ""}
+                              value={selectedAdmission.remark || selectedAdmission.remarks || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -704,7 +725,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.nokRelationship || ""}
+                              value={selectedAdmission.relationship || selectedAdmission.nokRelationship || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -714,7 +735,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.nokContactNo || ""}
+                              value={selectedAdmission.contact || selectedAdmission.nokContactNo || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -724,7 +745,7 @@ const ActiveAdmissionList = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={selectedAdmission.nokAddress || ""}
+                              value={selectedAdmission.address || selectedAdmission.nokAddress || ""}
                               readOnly
                               style={{ backgroundColor: "#e9ecef" }}
                             />
@@ -794,14 +815,22 @@ const ActiveAdmissionList = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {selectedAdmission.documents?.map((doc, index) => (
-                                <tr key={doc.id}>
+                              {selectedAdmission.documentListList?.map((doc, index) => (
+                                <tr key={index}>
                                   <td>{index + 1}</td>
-                                  <td>{doc.name}</td>
-                                  <td>{doc.remarks}</td>
+                                  <td>{doc.documentName}</td>
+                                  <td>{doc.documentRemarks || ""}</td>
                                   <td>{doc.fileName}</td>
                                   <td>
-                                    <button className="btn btn-sm btn-outline-primary me-1" title="View">
+                                    <button 
+                                      className="btn btn-sm btn-outline-primary me-1" 
+                                      title="View"
+                                      onClick={() => {
+                                        if (doc.filePath) {
+                                          setPreviewFilePath(doc.filePath);
+                                        }
+                                      }}
+                                    >
                                       <i className="fa fa-eye"></i>
                                     </button>
                                   </td>
@@ -819,6 +848,9 @@ const ActiveAdmissionList = () => {
           </div>
         </div>
       </div>
+      {previewFilePath && (
+        <DocumentPreview filePath={previewFilePath} onClose={() => setPreviewFilePath(null)} />
+      )}
     </div>
   );
 };
