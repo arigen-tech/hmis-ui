@@ -1116,12 +1116,12 @@ const InpatientAdmission = () => {
       // Submit to API
       const response = await postRequestWithFormData(SAVE_IPD_PATIENT_DETAILS, formDataToSend);
       
-      if (response && response.status === 200 && response.message === "success") {
-        showPopup(response.response || IPD_ADMISSION_SAVE_SUCCESS, "success", () => {
+      if (response && (response.status === 200 || response.status === 201)) {
+        showPopup(response.message || IPD_ADMISSION_SAVE_SUCCESS, "success", () => {
           navigate(-1); // Go back to patient list
         });
       } else {
-        showPopup(response?.response || IPD_ADMISSION_SAVE_FAILURE, "error");
+        showPopup(response?.message || IPD_ADMISSION_SAVE_FAILURE, "error");
       }
       
     } catch (error) {

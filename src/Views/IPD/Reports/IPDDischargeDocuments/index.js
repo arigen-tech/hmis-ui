@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import LoadingScreen from "../../../../Components/Loading";
-// No extra imports – all data is dummy
-
-// ---------- DUMMY DATA (with dischargeDate added) ----------
+import { fetchPdfReportForViewAndPrint, getRequest } from "../../../../service/apiService";
+import { IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, STATUS_D, IP_INITIAL_ASSESSMENT_REPORT_URL, GET_NURSING_MEDICAL_ASSESSMENT, IP_VITALS_REPORT_URL, IP_DAILY_CASE_SHEET_REPORT_URL, GET_DISCHARGE_SUMMARY_REPORT_URL, ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST } from "../../../../config/apiConfig";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
 const dummyAdmissions = [
   {
     admissionNo: "IPD-1001",
+    inpatientId: 55,
+    assessmentId: 5,
     patientName: "Ravi Kumar",
     uhid: "UH-12345",
     age: 45,
@@ -27,6 +30,8 @@ const dummyAdmissions = [
   },
   {
     admissionNo: "IPD-1002",
+    inpatientId: 27,
+    assessmentId: 6,
     patientName: "Amit Sharma",
     uhid: "UH-12346",
     age: 38,
@@ -47,6 +52,8 @@ const dummyAdmissions = [
   },
   {
     admissionNo: "IPD-1003",
+    inpatientId: 28,
+    assessmentId: 7,
     patientName: "Sneha Verma",
     uhid: "UH-12347",
     age: 29,
@@ -67,6 +74,8 @@ const dummyAdmissions = [
   },
   {
     admissionNo: "IPD-1004",
+    inpatientId: 29,
+    assessmentId: 8,
     patientName: "Rajesh Singh",
     uhid: "UH-12348",
     age: 52,
@@ -87,6 +96,8 @@ const dummyAdmissions = [
   },
   {
     admissionNo: "IPD-1005",
+    inpatientId: 30,
+    assessmentId: 9,
     patientName: "Pooja Gupta",
     uhid: "UH-12349",
     age: 34,
@@ -106,7 +117,6 @@ const dummyAdmissions = [
     dischargeSummary: "Discharged on 18-Jul-2026. Mother and baby healthy. Follow-up in 1 week."
   },
 ];
-
 // Sample investigation data for Lab/Radio order tracking
 const sampleInvestigations = [
   {
@@ -166,8 +176,6 @@ const sampleInvestigations = [
 const IPDDischargeRecords = () => {
   // ---------- STATE ----------
   const [searchMobileNo, setSearchMobileNo] = useState("");
-  const [admissionList, setAdmissionList] = useState(dummyAdmissions);
-  const [filteredList, setFilteredList] = useState(dummyAdmissions);
   const [displayData, setDisplayData] = useState([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -178,6 +186,11 @@ const IPDDischargeRecords = () => {
   // Detail view state
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
+
+  // Report states
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [generatingReportType, setGeneratingReportType] = useState(null);
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
 
   // Report tab state (only main tabs)
   const [activeReportTab, setActiveReportTab] = useState("admission"); // admission | clinicalNursing | investigation | discharge | billing
@@ -196,52 +209,53 @@ const IPDDischargeRecords = () => {
     });
   };
 
+  // ---------- API FETCH ----------
+  const fetchAdmissions = async (page = 1, mobile = "") => {
+    setIsLoading(true);
+    try {
+      const url = `${ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST}?page=${page - 1}&size=${DEFAULT_ITEMS_PER_PAGE}&admissionStatus=2${mobile ? `&mobileNo=${mobile}` : ""}`;
+      const res = await getRequest(url);
+      if (res?.status === 200 && res?.response) {
+        const content = res.response.content || [];
+        setDisplayData(content);
+        setTotalElements(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 1);
+      } else {
+        setDisplayData([]);
+        setTotalElements(0);
+        setTotalPages(1);
+      }
+    } catch (error) {
+      console.error("Error fetching admissions:", error);
+      setDisplayData([]);
+      setTotalElements(0);
+      setTotalPages(1);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ---------- SEARCH & FILTER ----------
   const handleSearch = () => {
-    setIsLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      let filtered = dummyAdmissions;
-      if (searchMobileNo.trim()) {
-        filtered = dummyAdmissions.filter((item) =>
-          item.mobileNo.includes(searchMobileNo.trim())
-        );
-      }
-      setFilteredList(filtered);
-      setTotalElements(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-      setCurrentPage(1);
-      // Paginate
-      const start = 0;
-      const end = DEFAULT_ITEMS_PER_PAGE;
-      setDisplayData(filtered.slice(start, end));
-      setIsLoading(false);
-    }, 300);
+    setCurrentPage(1);
+    fetchAdmissions(1, searchMobileNo.trim());
   };
 
   const handleClear = () => {
     setSearchMobileNo("");
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
     setCurrentPage(1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchAdmissions(1, "");
   };
 
   // Initial load
   useEffect(() => {
-    setFilteredList(dummyAdmissions);
-    setTotalElements(dummyAdmissions.length);
-    setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-    setDisplayData(dummyAdmissions.slice(0, DEFAULT_ITEMS_PER_PAGE));
+    fetchAdmissions(1, "");
   }, []);
 
   // Pagination change
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    const start = (page - 1) * DEFAULT_ITEMS_PER_PAGE;
-    const end = start + DEFAULT_ITEMS_PER_PAGE;
-    setDisplayData(filteredList.slice(start, end));
+    fetchAdmissions(page, searchMobileNo.trim());
   };
 
   // ---------- ROW CLICK (open details) ----------
@@ -250,6 +264,154 @@ const IPDDischargeRecords = () => {
     setShowDetails(true);
     // Reset main report tab
     setActiveReportTab("admission");
+  };
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
+    setConfirmationPopup({
+      show: true,
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : null,
+      confirmText,
+      cancelText
+    });
+  };
+
+  const handleReportSummaryClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (inpatientId) {
+      try {
+        setGeneratingReportType("summary");
+        const reportUrl = `${IP_SUMMARY_BILL_REPORT_API}?inpatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
+  };
+
+  const handleDetailedReportClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (inpatientId) {
+      try {
+        setGeneratingReportType("detailed");
+        const reportUrl = `${IP_DETAILED_BILL_REPORT_API}?inpatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
+  };
+
+  const handleInternalMedicalAssessmentClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (!inpatientId) {
+      alert("Patient ID not found");
+      return;
+    }
+
+    try {
+      setGeneratingReportType("internal_medical_assessment");
+      const res = await getRequest(`${GET_NURSING_MEDICAL_ASSESSMENT}/${inpatientId}`);
+      console.log(res);
+      if (res?.status === 200 && res?.response?.assessmentId) {
+        const assessmentId = res.response.assessmentId;
+        const reportUrl = `${IP_INITIAL_ASSESSMENT_REPORT_URL}?assessmentId=${assessmentId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } else if (res?.status === 404) {
+        alert(res?.message || "Assessment data not found for this patient");
+      } else {
+        alert("Assessment data not found for this patient");
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("Failed to generate report");
+    } finally {
+      setGeneratingReportType(null);
+    }
+  };
+
+  const handleVitalsReportClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (inpatientId) {
+      try {
+        setGeneratingReportType("vitals");
+        const reportUrl = `${IP_VITALS_REPORT_URL}?inPatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
+  };
+
+  const handleIpdCaseSheetClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (inpatientId) {
+      try {
+        setGeneratingReportType("ipd_case_sheet");
+        const reportUrl = `${IP_DAILY_CASE_SHEET_REPORT_URL}?inPatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
+  };
+
+  const handleDischargeSummaryClick = async () => {
+    const inpatientId = Number(selectedAdmission?.inpatientId);
+    if (inpatientId) {
+      try {
+        setGeneratingReportType("discharge_summary");
+        const reportUrl = `${GET_DISCHARGE_SUMMARY_REPORT_URL}?inPatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
   };
 
   // ---------- BACK TO LIST ----------
@@ -261,6 +423,23 @@ const IPDDischargeRecords = () => {
   // ---------- RENDER ----------
   return (
     <div className="content-wrapper">
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          name="IPD Bill Report"
+          onClose={() => setReportPdfUrl(null)}
+        />
+      )}
+      {confirmationPopup && confirmationPopup.show && (
+        <ConfirmationPopup
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+        />
+      )}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -482,7 +661,7 @@ const IPDDischargeRecords = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.attendingDoctor || "N/A"}
+                                value={selectedAdmission.doctorName || "N/A"}
                                 readOnly
                               />
                             </div>
@@ -558,7 +737,21 @@ const IPDDischargeRecords = () => {
                           {activeReportTab === "admission" && (
                             <div className="d-flex flex-wrap gap-2">
                               <button type="button" className="btn btn-outline-primary">Admission Slip</button>
-                              <button type="button" className="btn btn-outline-primary">Internal Medical Assessment</button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleInternalMedicalAssessmentClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "internal_medical_assessment" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Internal Medical Assessment"
+                                )}
+                              </button>
                               <button type="button" className="btn btn-outline-primary">Consent Form</button>
                               <button type="button" className="btn btn-outline-primary">Patient Labels / Wristband</button>
                             </div>
@@ -567,8 +760,36 @@ const IPDDischargeRecords = () => {
                           {/* Clinical Nursing – buttons only */}
                           {activeReportTab === "clinicalNursing" && (
                             <div className="d-flex flex-wrap gap-2">
-                              <button type="button" className="btn btn-outline-primary">IPD Case Sheet</button>
-                              <button type="button" className="btn btn-outline-primary">Vital Chart</button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleIpdCaseSheetClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "ipd_case_sheet" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "IPD Case Sheet"
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleVitalsReportClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "vitals" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Vital Chart"
+                                )}
+                              </button>
                               <button type="button" className="btn btn-outline-primary">Intake / Outtake</button>
                             </div>
                           )}
@@ -604,15 +825,14 @@ const IPDDischargeRecords = () => {
                                       <td>{inv.testName}</td>
                                       <td>
                                         <span
-                                          className={`badge ${
-                                            inv.status === "Report Generated"
-                                              ? "bg-success"
-                                              : inv.status === "In Progress"
+                                          className={`badge ${inv.status === "Report Generated"
+                                            ? "bg-success"
+                                            : inv.status === "In Progress"
                                               ? "bg-warning text-dark"
                                               : inv.status === "Sample Collected"
-                                              ? "bg-info"
-                                              : "bg-secondary"
-                                          }`}
+                                                ? "bg-info"
+                                                : "bg-secondary"
+                                            }`}
                                         >
                                           {inv.status}
                                         </span>
@@ -623,14 +843,28 @@ const IPDDischargeRecords = () => {
                                 </tbody>
                               </table>
 
-                              
+
                             </div>
                           )}
 
                           {/* Discharge – buttons only */}
                           {activeReportTab === "discharge" && (
                             <div className="d-flex flex-wrap gap-2">
-                              <button type="button" className="btn btn-outline-primary">Discharge Summary</button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleDischargeSummaryClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "discharge_summary" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Discharge Summary"
+                                )}
+                              </button>
                               <button type="button" className="btn btn-outline-primary">Discharge Slip</button>
                             </div>
                           )}
@@ -638,8 +872,36 @@ const IPDDischargeRecords = () => {
                           {/* Billing – buttons only */}
                           {activeReportTab === "billing" && (
                             <div className="d-flex flex-wrap gap-2">
-                              <button type="button" className="btn btn-outline-primary">Bill Summary</button>
-                              <button type="button" className="btn btn-outline-primary">Detailed Billing Report</button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleReportSummaryClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "summary" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Bill Summary"
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={handleDetailedReportClick}
+                                disabled={generatingReportType !== null}
+                              >
+                                {generatingReportType === "detailed" ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Detailed Billing Report"
+                                )}
+                              </button>
                               <button type="button" className="btn btn-outline-primary">Advance Payment</button>
                               <button type="button" className="btn btn-outline-primary">Final Payment</button>
                               <button type="button" className="btn btn-outline-primary">Refund Receipt</button>
