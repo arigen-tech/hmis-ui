@@ -2527,8 +2527,7 @@ const UpdatePatientRegistration = () => {
         });
         return;
       }
-      debugger;
-      const params = new URLSearchParams({
+        const params = new URLSearchParams({
         deptId: targetAppointment.speciality,
         doctorId: targetAppointment.selDoctorId,
         appointmentDate: selectedDate,

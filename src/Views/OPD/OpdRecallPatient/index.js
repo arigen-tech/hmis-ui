@@ -70,10 +70,8 @@ import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryP
 import PregnancySection from "../Pregnancy";
 
 const OpdRRecallPatient = () => {
-   const currentDoctorId =
-    sessionStorage.getItem("userId") ||
-    localStorage.getItem("userId") ||
-    "";
+  const currentDoctorId =
+    sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const [showDetailView, setShowDetailView] = useState(false);
@@ -96,6 +94,8 @@ const OpdRRecallPatient = () => {
   const [allFrequencies, setAllFrequencies] = useState([]);
   const today = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false); // Separate loading for search
+  const [resetLoading, setResetLoading] = useState(false); // Separate loading for reset
   const [popup, setPopup] = useState("");
   const [masICDData, setMasICDData] = useState([]);
   const [popupMessage, setPopupMessage] = useState("");
@@ -245,10 +245,12 @@ const OpdRRecallPatient = () => {
   const [investigationSearch, setInvestigationSearch] = useState([]);
   const [investigationPage, setInvestigationPage] = useState(0);
   const [investigationLastPage, setInvestigationLastPage] = useState(true);
-  const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] =
+    useState(null);
 
   const debounceInvestigationRef = useRef([]);
   const dropdownInvestigationRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
   const [procedureDropdown, setProcedureDropdown] = useState([]);
   const [procedurePage, setProcedurePage] = useState(0);
@@ -256,7 +258,9 @@ const OpdRRecallPatient = () => {
   const [procedureSearch, setProcedureSearch] = useState([]);
   const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
   const procedureDropdownRef = useRef([]);
-
+  const [otBookingRequestHdId, setOtBookingRequestHdId] = useState(null);
+  const [surgeryStartTime, setSurgeryStartTime] = useState("");
+  const [surgeryEndTime, setSurgeryEndTime] = useState("");
   const [investigationItems, setInvestigationItems] = useState([
     {
       id: null,
@@ -267,7 +271,7 @@ const OpdRRecallPatient = () => {
       flag: 0,
     },
   ]);
-
+  const surgeryDataFetchedRef = useRef(false);
   const [procedureCareItems, setProcedureCareItems] = useState([
     {
       id: null,
@@ -379,30 +383,102 @@ const OpdRRecallPatient = () => {
     }
   };
 
-const handleRemoveTreatmentItem = (index) => {
-  const itemToRemove = treatmentItems[index];
+  const handleRemoveTreatmentItem = (index) => {
+    const itemToRemove = treatmentItems[index];
 
-  if (!itemToRemove) return;
+    if (!itemToRemove) return;
 
-  // Check if this is an existing DB treatment with an ID
-  const hasExistingTreatmentId = itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
+    // Check if this is an existing DB treatment with an ID
+    const hasExistingTreatmentId =
+      itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
 
-  // For existing DB treatments, mark with flag -1 (like investigation section)
-  if (hasExistingTreatmentId) {
-    // Only mark if not already marked for deletion
-    if (itemToRemove.flag !== -1) {
+    // For existing DB treatments, mark with flag -1 (like investigation section)
+    if (hasExistingTreatmentId) {
+      // Only mark if not already marked for deletion
+      if (itemToRemove.flag !== -1) {
+        setTreatmentItems((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            flag: -1,
+          };
+
+          // If marking this row deleted leaves no visible rows, add a blank one
+          const remainingVisible = updated.filter((row) => row.flag !== -1);
+
+          if (remainingVisible.length === 0) {
+            updated.push({
+              prescriptionHdId: null,
+              prescriptionDtId: null,
+              treatmentId: null,
+              drugId: "",
+              drugName: "",
+              dispUnit: "",
+              dosage: "",
+              frequency: "",
+              days: "",
+              total: "",
+              instruction: "",
+              stock: "",
+              requestedDeptStocks: "",
+              templateId: "",
+              flag: 1,
+            });
+          }
+
+          return updated;
+        });
+
+        // Add to removedTreatmentIds list
+        const treatmentIdToRemove =
+          itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
+        if (treatmentIdToRemove) {
+          setRemovedTreatmentIds((prev) => {
+            if (!prev.includes(treatmentIdToRemove)) {
+              return [...prev, treatmentIdToRemove];
+            }
+            return prev;
+          });
+        }
+      }
+      return;
+    }
+
+    // NEW ITEM (no DB ID) - unchanged from your existing logic below
+    const visibleItems = treatmentItems.filter((row) => row.flag !== -1);
+
+    if (
+      visibleItems.length === 1 &&
+      !visibleItems[0].treatmentId &&
+      !visibleItems[0].prescriptionDtId
+    ) {
       setTreatmentItems((prev) => {
         const updated = [...prev];
         updated[index] = {
           ...updated[index],
-          flag: -1,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+          requestedDeptStocks: "",
+          templateId: "",
+          flag: 1,
         };
+        return updated;
+      });
+      return;
+    }
 
-        // If marking this row deleted leaves no visible rows, add a blank one
-        const remainingVisible = updated.filter((row) => row.flag !== -1);
-
-        if (remainingVisible.length === 0) {
-          updated.push({
+    setTreatmentItems((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (updated.length === 0) {
+        return [
+          {
             prescriptionHdId: null,
             prescriptionDtId: null,
             treatmentId: null,
@@ -418,76 +494,12 @@ const handleRemoveTreatmentItem = (index) => {
             requestedDeptStocks: "",
             templateId: "",
             flag: 1,
-          });
-        }
-
-        return updated;
-      });
-
-      // Add to removedTreatmentIds list
-      const treatmentIdToRemove = itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
-      if (treatmentIdToRemove) {
-        setRemovedTreatmentIds((prev) => {
-          if (!prev.includes(treatmentIdToRemove)) {
-            return [...prev, treatmentIdToRemove];
-          }
-          return prev;
-        });
+          },
+        ];
       }
-    }
-    return;
-  }
-
-  // NEW ITEM (no DB ID) - unchanged from your existing logic below
-  const visibleItems = treatmentItems.filter(row => row.flag !== -1);
-
-  if (visibleItems.length === 1 && !visibleItems[0].treatmentId && !visibleItems[0].prescriptionDtId) {
-    setTreatmentItems((prev) => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        drugId: "",
-        drugName: "",
-        dispUnit: "",
-        dosage: "",
-        frequency: "",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-        requestedDeptStocks: "",
-        templateId: "",
-        flag: 1,
-      };
       return updated;
     });
-    return;
-  }
-
-  setTreatmentItems((prev) => {
-    const updated = prev.filter((_, i) => i !== index);
-    if (updated.length === 0) {
-      return [{
-        prescriptionHdId: null,
-        prescriptionDtId: null,
-        treatmentId: null,
-        drugId: "",
-        drugName: "",
-        dispUnit: "",
-        dosage: "",
-        frequency: "",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-        requestedDeptStocks: "",
-        templateId: "",
-        flag: 1,
-      }];
-    }
-    return updated;
-  });
-};
+  };
 
   const handleWardNameChange = async (deptId) => {
     setWardName(deptId);
@@ -1136,6 +1148,14 @@ const handleRemoveTreatmentItem = (index) => {
     }
   };
 
+  const handleSurgeryTypeChange = (type) => {
+    setSurgeryType(type);
+    surgeryMasterLoadedRef.current = false;
+    surgeryDataFetchedRef.current = false;
+    setSurgeryOptions([]);
+    resetSurgeryFields();
+  };
+
   const fetchDrugDetailsById = async (itemId) => {
     const hospitalId =
       selectedPatient?.hospitalId ||
@@ -1492,7 +1512,6 @@ const handleRemoveTreatmentItem = (index) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
   const fetchOpdTemplateData = async () => {
     try {
       const queryParams = new URLSearchParams();
@@ -1528,7 +1547,7 @@ const handleRemoveTreatmentItem = (index) => {
 
   const handleOk = () => {
     if (selectedItems.length === 0) {
-      alert("Please select at least one item.");
+      showPopup("Please select at least one item.", "info");
       return;
     }
 
@@ -1536,29 +1555,29 @@ const handleRemoveTreatmentItem = (index) => {
 
     const mergeValues = (oldValue, newValues) => {
       const oldArr = oldValue ? oldValue.split(",").map((x) => x.trim()) : [];
-      const merged = Array.from(new Set([...oldArr, ...newValues]));
-      return merged.join(", ");
+
+      return Array.from(new Set([...oldArr, ...newValues])).join(", ");
     };
 
     if (popupType === "symptoms") {
-      setFormData({
-        ...formData,
-        patientSymptoms: mergeValues(formData.patientSymptoms, newNames),
-      });
+      setFormData((prev) => ({
+        ...prev,
+        patientSymptoms: mergeValues(prev.patientSymptoms, newNames),
+      }));
     }
 
     if (popupType === "past") {
-      setFormData({
-        ...formData,
-        pastHistory: mergeValues(formData.pastHistory, newNames),
-      });
+      setFormData((prev) => ({
+        ...prev,
+        pastHistory: mergeValues(prev.pastHistory, newNames),
+      }));
     }
 
     if (popupType === "family") {
-      setFormData({
-        ...formData,
-        familyHistory: mergeValues(formData.familyHistory, newNames),
-      });
+      setFormData((prev) => ({
+        ...prev,
+        familyHistory: mergeValues(prev.familyHistory, newNames),
+      }));
     }
 
     if (popupType === "treatmentAdvice") {
@@ -1585,29 +1604,24 @@ const handleRemoveTreatmentItem = (index) => {
     });
   };
 
-  const handleSearch = async () => {
-    await fetchOpdPatientData();
-  };
-
-  useEffect(() => {
-    if (activeDrugNameDropdown !== null) {
-      const container = tableContainerRef.current;
-      const inputEl = document.getElementById(
-        `drug-name-${activeDrugNameDropdown}`,
-      );
-      const dropdownHeight = 200;
-
-      if (container && inputEl) {
-        const inputRect = inputEl.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        if (inputRect.bottom + dropdownHeight > containerRect.bottom) {
-          container.scrollTop +=
-            inputRect.bottom + dropdownHeight - containerRect.bottom + 10;
-        }
-      }
+  const handleSearch = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-  }, [activeDrugNameDropdown]);
+
+    if (searchLoading) return;
+
+    setSearchLoading(true);
+
+    try {
+      await fetchOpdPatientData();
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
@@ -1620,36 +1634,52 @@ const handleRemoveTreatmentItem = (index) => {
     });
   };
 
-  const handleReset = () => {
+  const handleReset = async (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    if (resetLoading || searchLoading) return;
+
     const today = new Date().toISOString().split("T")[0];
 
-    setSearchFilters({
+    const resetFilters = {
       mobileNumber: "",
       patientName: "",
       date: today,
-    });
+    };
 
-    fetchOpdPatientData();
+    setResetLoading(true);
+    setSearchFilters(resetFilters);
+    setCurrentPage(1);
+
+    try {
+      await fetchOpdPatientData(resetFilters);
+    } catch (error) {
+      console.error("Reset error:", error);
+    } finally {
+      setResetLoading(false);
+    }
   };
-
   useEffect(() => {
     console.log("All Frequencies loaded:", allFrequencies);
   }, [allFrequencies]);
 
-  const fetchOpdPatientData = async () => {
-    setLoading(true);
+  const fetchOpdPatientData = async (filters = searchFilters) => {
+    if (isFetchingRef.current) {
+      console.log("Fetch already in progress, skipping...");
+      return;
+    }
 
     try {
+      isFetchingRef.current = true; // Add this
       const params = new URLSearchParams();
 
-      if (searchFilters.mobileNumber)
-        params.append("mobile", searchFilters.mobileNumber);
+      if (filters.mobileNumber) params.append("mobile", filters.mobileNumber);
 
-      if (searchFilters.patientName)
-        params.append("name", searchFilters.patientName);
+      if (filters.patientName) params.append("name", filters.patientName);
 
-      if (searchFilters.date) {
-        params.append("visitDate", searchFilters.date);
+      if (filters.date) {
+        params.append("visitDate", filters.date);
       }
 
       const data = await getRequest(
@@ -1666,64 +1696,72 @@ const handleRemoveTreatmentItem = (index) => {
     } catch (error) {
       console.error("Error fetching OPD patient data:", error);
     } finally {
-      setLoading(false);
+      isFetchingRef.current = false; // Add this
     }
   };
 
   useEffect(() => {
-    fetchOpdPatientData();
-    fetchOpdTemplateData();
-    fetchAllFrequencies();
-    fetchDrugOptions();
-    fetchWardCategoryData();
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (!isMounted) return;
+      await fetchOpdPatientData();
+      await fetchOpdTemplateData();
+      await fetchAllFrequencies();
+      await fetchDrugOptions();
+      await fetchWardCategoryData();
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-const handleClearAllTreatmentTemplates = () => {
-  setSelectedTreatmentTemplateIds(new Set());
+  const handleClearAllTreatmentTemplates = () => {
+    setSelectedTreatmentTemplateIds(new Set());
 
-  setTreatmentItems((prev) => {
-    const updated = prev
-      .filter((item) => {
-        const tpl = (item.templateId ?? "").trim();
-        // Keep items that have a treatmentId (existing DB records)
-        if (item.treatmentId !== null) return true;
-        // Keep items that have drug data but no template
-        if (tpl === "" && item.drugId) return true;
-        // Remove template-only items
-        return false;
-      })
-      .map((item) => {
-        // Clear templateId from existing records
-        if (item.treatmentId !== null) {
-          return { ...item, templateId: "" };
-        }
-        return item;
-      });
+    setTreatmentItems((prev) => {
+      const updated = prev
+        .filter((item) => {
+          const tpl = (item.templateId ?? "").trim();
+          if (item.treatmentId !== null) return true;
+          if (tpl === "" && item.drugId) return true;
+          return false;
+        })
+        .map((item) => {
+          if (item.treatmentId !== null) {
+            return { ...item, templateId: "" };
+          }
+          return item;
+        });
 
-    // If no items left, add a default empty row
-    if (updated.length === 0) {
-      return [{
-        prescriptionHdId: null,
-        prescriptionDtId: null,
-        treatmentId: null,
-        drugId: "",
-        drugName: "",
-        dispUnit: "",
-        dosage: "",
-        frequency: "",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-        requestedDeptStocks: "",
-        templateId: "",
-        flag: 0,
-      }];
-    }
+      if (updated.length === 0) {
+        return [
+          {
+            prescriptionHdId: null,
+            prescriptionDtId: null,
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            requestedDeptStocks: "",
+            templateId: "",
+            flag: 0,
+          },
+        ];
+      }
 
-    return updated;
-  });
-};
+      return updated;
+    });
+  };
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
     setTreatmentItems((prev) => {
@@ -1864,6 +1902,11 @@ const handleClearAllTreatmentTemplates = () => {
 
     if (isSubmitting) return;
 
+      if (surgeryStartTime && surgeryEndTime && !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+    showPopup("Surgery end time must be after start time", "error");
+    return;
+  }
+
     if (!validateSubmitForm()) return;
 
     try {
@@ -1995,7 +2038,7 @@ const handleClearAllTreatmentTemplates = () => {
             adispQty: item.aDispQty || 1,
             total: calculateTotal(item),
             prescriptionDtId: item.treatmentId || null,
-            prescriptionHdId:item.prescriptionHdId||null,
+            prescriptionHdId: item.prescriptionHdId || null,
             flag: flag,
           };
         })
@@ -2024,6 +2067,16 @@ const handleClearAllTreatmentTemplates = () => {
         if (existingOpthalId) {
           ophthalmologyPayload.id = existingOpthalId;
         }
+        if (
+          surgeryStartTime &&
+          surgeryEndTime &&
+          !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)
+        ) {
+          showPopup("Surgery end time must be after start time", "error");
+          return;
+        }
+
+        if (!validateSubmitForm()) return;
       }
 
       const payload = {
@@ -2120,14 +2173,16 @@ const handleClearAllTreatmentTemplates = () => {
         surgeryAdvice:
           selectedOT ||
           surgeryDate ||
-          surgeryTime ||
+          surgeryStartTime ||surgeryEndTime ||
           surgeryItems.some(
             (item) => item.surgeryName && item.surgeryName.trim() !== "",
           )
             ? {
                 otId: selectedOT || null,
+                otHdId: otBookingRequestHdId || null,
                 surgeryDate: surgeryDate || null,
-                surgeryTime: surgeryTime || null,
+                surgeryStartTime: surgeryStartTime || null,
+                surgeryEndTime: surgeryEndTime || null,
                 surgeryDetails: surgeryItems
                   .filter(
                     (item) =>
@@ -2137,6 +2192,7 @@ const handleClearAllTreatmentTemplates = () => {
                   )
                   .map((item) => ({
                     surgeryId: item.surgeryId,
+                    otDtId: item.otBookingRequestDtId || null,
                     surgeryName: item.surgeryName,
                   })),
               }
@@ -2168,11 +2224,11 @@ const handleClearAllTreatmentTemplates = () => {
         "Final Payload with OBG Details:",
         JSON.stringify(payload, null, 2),
       );
-      debugger;
       const response = await putRequest(UPDATE_RECALL_PATIENT, payload);
       if (response?.status === 200 || response?.success === true) {
         showPopup("Patient updated successfully!", "success", () => {
-          handleBackWithFatch();
+          handleBackToList();
+          handleSearch();
         });
       } else {
         const errorMessage =
@@ -2378,6 +2434,7 @@ const handleClearAllTreatmentTemplates = () => {
 
   const [surgeryItems, setSurgeryItems] = useState([
     {
+      otBookingRequestDtId: null,
       surgeryId: null,
       surgeryName: "",
     },
@@ -2422,22 +2479,32 @@ const handleClearAllTreatmentTemplates = () => {
   };
 
   const fetchOperationTheatres = async () => {
+    if (otMasterLoadedRef.current) {
+      return otOptions.length > 0 ? otOptions : null;
+    }
+
     try {
       const response = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
 
       if (response?.status === 200 && Array.isArray(response.response)) {
         setOtOptions(response.response);
+        otMasterLoadedRef.current = true;
+        return response.response;
       } else {
         setOtOptions([]);
+        return null;
       }
     } catch (error) {
       console.error("Error fetching Operation Theatres:", error);
       setOtOptions([]);
+      return null;
     }
   };
 
   const fetchSurgeryMasterData = async () => {
-    if (surgeryMasterLoadedRef.current) return;
+    if (surgeryMasterLoadedRef.current) {
+      return surgeryOptions.length > 0 ? surgeryOptions : null;
+    }
 
     try {
       const level = surgeryType.toUpperCase();
@@ -2448,12 +2515,15 @@ const handleClearAllTreatmentTemplates = () => {
       if (response?.status === 200 && Array.isArray(response.response)) {
         setSurgeryOptions(response.response);
         surgeryMasterLoadedRef.current = true;
+        return response.response;
       } else {
         setSurgeryOptions([]);
+        return null;
       }
     } catch (error) {
       console.error("Error fetching Surgery Master:", error);
       setSurgeryOptions([]);
+      return null;
     }
   };
 
@@ -2463,56 +2533,34 @@ const handleClearAllTreatmentTemplates = () => {
 
     if (!willOpen) return;
 
-    surgeryMasterLoadedRef.current = false;
-    await fetchSurgeryMasterData();
+    if (!surgeryDataFetchedRef.current) {
+      surgeryMasterLoadedRef.current = false;
+      await fetchSurgeryMasterData();
 
-    if (!otMasterLoadedRef.current) {
-      await fetchOperationTheatres();
-      otMasterLoadedRef.current = true;
-    }
-  };
-
-  const checkOTAvailability = async (otId, date, time) => {
-    if (!otId || !date || !time) return true;
-
-    try {
-      const departmentId =
-        sessionStorage.getItem("departmentId") ||
-        localStorage.getItem("departmentId");
-
-      if (!departmentId) return true;
-
-      const [hours, minutes] = time.split(":").map(Number);
-      const startTimeObj = new Date(0, 0, 0, hours, minutes);
-      const startTime = startTimeObj.toTimeString().slice(0, 5);
-
-      const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${startTime}`;
-      const response = await getRequest(url);
-
-      if (response?.status === 404) {
-        showPopup("The OT is not configured for this day", "error");
-        setSurgeryTime("");
-        return false;
+      if (!otMasterLoadedRef.current) {
+        await fetchOperationTheatres();
+        otMasterLoadedRef.current = true;
       }
-
-      if (response?.status === 200 && response?.response) {
-        return true;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error checking OT availability:", error);
-      return true;
+      surgeryDataFetchedRef.current = true;
     }
   };
 
   const resetSurgeryFields = () => {
+    setOtBookingRequestHdId(null);
     setSelectedOT("");
     setSurgeryDate("");
-    setSurgeryTime("");
-    setSurgeryItems([{ surgeryId: null, surgeryName: "" }]);
+    setSurgeryStartTime("");
+    setSurgeryEndTime("");
+    setSurgeryItems([
+      {
+        otBookingRequestDtId: null,
+        surgeryId: null,
+        surgeryName: "",
+      },
+    ]);
     setSurgerySearchInput("");
     surgeryMasterLoadedRef.current = false;
+    surgeryDataFetchedRef.current = false;
   };
 
   const handleAddSurgeryItem = () => {
@@ -2543,11 +2591,13 @@ const handleClearAllTreatmentTemplates = () => {
     setSelectedSurgeryIndex(index);
 
     const newItems = [...surgeryItems];
+
     newItems[index] = {
       ...newItems[index],
       surgeryId: null,
       surgeryName: value,
     };
+
     setSurgeryItems(newItems);
   };
 
@@ -2566,7 +2616,10 @@ const handleClearAllTreatmentTemplates = () => {
 
     const newItems = [...surgeryItems];
     newItems[index] = {
+      otBookingRequestDtId: newItems[index].otBookingRequestDtId ?? null,
+
       surgeryId: surgery.surgeryId,
+
       surgeryName: `${surgery.surgeryCode} - ${surgery.surgeryName}`,
     };
     setSurgeryItems(newItems);
@@ -2590,47 +2643,163 @@ const handleClearAllTreatmentTemplates = () => {
   const handleSurgeryDateChange = async (dateValue) => {
     setSurgeryDate(dateValue);
 
-    if (dateValue && surgeryTime && selectedOT) {
+    if (selectedOT && dateValue && surgeryStartTime && surgeryEndTime) {
+      if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+        showPopup("End time must be after start time", "error");
+        return;
+      }
+    }
+
+    if (selectedOT && dateValue && surgeryStartTime && surgeryEndTime) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         dateValue,
-        surgeryTime,
+        surgeryStartTime,
+        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
-        setSurgeryTime("");
+        setSurgeryStartTime("");
+        setSurgeryEndTime("");
+        showPopup(
+          "The OT is not available for the selected date/time",
+          "error",
+        );
       }
     }
   };
 
-  const handleSurgeryTimeChange = async (timeValue) => {
-    setSurgeryTime(timeValue);
+  const validateSurgeryTimes = (startTime, endTime) => {
+    if (!startTime || !endTime) return true; // Don't validate if either is empty
+
+    // Convert times to comparable format (minutes since midnight)
+    const [startHours, startMinutes] = startTime.split(":").map(Number);
+    const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+
+    return endTotalMinutes > startTotalMinutes;
+  };
+
+  const handleSurgeryStartTimeChange = async (timeValue) => {
+    setSurgeryStartTime(timeValue);
+
+    // Validate that start time is before end time
+    if (surgeryEndTime && timeValue) {
+      const isValid = validateSurgeryTimes(timeValue, surgeryEndTime);
+      if (!isValid) {
+        showPopup("Start time must be before end time", "error");
+        setSurgeryStartTime("");
+        return;
+      }
+    }
 
     if (surgeryDate && timeValue && selectedOT) {
       const isAvailable = await checkOTAvailability(
         selectedOT,
         surgeryDate,
         timeValue,
+        surgeryEndTime,
       );
       if (!isAvailable) {
-        setSurgeryDate("");
-        setSurgeryTime("");
+        setSurgeryStartTime("");
       }
+    }
+  };
+
+  const handleSurgeryEndTimeChange = async (timeValue) => {
+    setSurgeryEndTime(timeValue);
+
+    // Validate that end time is after start time
+    if (surgeryStartTime && timeValue) {
+      const isValid = validateSurgeryTimes(surgeryStartTime, timeValue);
+      if (!isValid) {
+        showPopup("End time must be after start time", "error");
+        setSurgeryEndTime("");
+        return;
+      }
+    }
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+        surgeryStartTime,
+        timeValue,
+      );
+      if (!isAvailable) {
+        setSurgeryEndTime("");
+      }
+    }
+  };
+
+  const checkOTAvailability = async (otId, date, startTime, endTime) => {
+    if (!otId || !date || !startTime || !endTime) return true;
+
+    // Validate times before checking availability
+    if (!validateSurgeryTimes(startTime, endTime)) {
+      showPopup("End time must be after start time", "error");
+      return false;
+    }
+
+    try {
+      const departmentId =
+        sessionStorage.getItem("departmentId") ||
+        localStorage.getItem("departmentId");
+
+      if (!departmentId) return true;
+
+      const [hours, minutes] = startTime.split(":").map(Number);
+      const startTimeObj = new Date(0, 0, 0, hours, minutes);
+      const formattedStartTime = startTimeObj.toTimeString().slice(0, 5);
+
+      // Build URL with all parameters
+      let url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${formattedStartTime}`;
+
+      // Add end time if provided
+      if (endTime) {
+        const [endHours, endMinutes] = endTime.split(":").map(Number);
+        const endTimeObj = new Date(0, 0, 0, endHours, endMinutes);
+        const formattedEndTime = endTimeObj.toTimeString().slice(0, 5);
+        url += `&endTime=${formattedEndTime}`;
+      }
+
+      const response = await getRequest(url);
+
+      if (response?.status === 404) {
+        setPopupMessage({
+          message: "The OT is not configured for this day/time",
+          type: "error",
+        });
+        return false;
+      }
+
+      if (response?.status === 200 && response?.response) {
+        return true;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking OT availability:", error);
+      return true;
     }
   };
 
   const handleOTChange = async (otId) => {
     setSelectedOT(otId);
 
-    if (otId && surgeryDate && surgeryTime) {
+    if (otId && surgeryDate) {
       const isAvailable = await checkOTAvailability(
         otId,
         surgeryDate,
         surgeryTime,
+        surgeryEndTime,
       );
       if (!isAvailable) {
         setSurgeryDate("");
         setSurgeryTime("");
+        setSurgeryEndTime("");
         setSelectedOT("");
       }
     }
@@ -2659,11 +2828,17 @@ const handleClearAllTreatmentTemplates = () => {
 
   useEffect(() => {
     if (expandedSections.surgeryAdvice && surgeryType) {
-      surgeryMasterLoadedRef.current = false;
-      fetchSurgeryMasterData();
+      if (!surgeryDataFetchedRef.current) {
+        surgeryMasterLoadedRef.current = false;
+        fetchSurgeryMasterData();
+        if (!otMasterLoadedRef.current) {
+          fetchOperationTheatres();
+          otMasterLoadedRef.current = true;
+        }
+        surgeryDataFetchedRef.current = true;
+      }
     }
   }, [expandedSections.surgeryAdvice, surgeryType]);
-
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true);
@@ -2862,146 +3037,145 @@ const handleClearAllTreatmentTemplates = () => {
     return filtered;
   };
 
-const handleInvestigationTemplateSelect = (template) => {
-  const templateId = template.templateId;
+  const handleInvestigationTemplateSelect = (template) => {
+    const templateId = template.templateId;
 
-  if (selectedTemplateIds.has(templateId)) {
-    alert("This template is already selected");
-    setSelectedInvestigationTemplate("Select..");
-    return;
-  }
-
-  setSelectedTemplateIds((prev) => new Set([...prev, templateId]));
-  setSelectedInvestigationTemplate(templateId);
-
-  if (!template.investigationResponseList) {
-    setSelectedInvestigationTemplate("Select..");
-    return;
-  }
-
-  let duplicateItemsBuffer = [];
-
-  setInvestigationItems((prev) => {
-    // Check if the current list only has the default empty row
-    const hasOnlyEmptyRow = prev.length === 1 && 
-      !prev[0].investigationId && 
-      !prev[0].name &&
-      (!prev[0].templateIds || prev[0].templateIds.length === 0);
-
-    let updated = [...prev];
-
-    // If only empty row exists, start fresh
-    if (hasOnlyEmptyRow) {
-      updated = [];
+    if (selectedTemplateIds.has(templateId)) {
+      alert("This template is already selected");
+      setSelectedInvestigationTemplate("Select..");
+      return;
     }
 
-    const existingMap = new Map(
-      updated.map((item) => [item.investigationId, item])
-    );
+    setSelectedTemplateIds((prev) => new Set([...prev, templateId]));
+    setSelectedInvestigationTemplate(templateId);
 
-    template.investigationResponseList.forEach((item) => {
-      const existing = existingMap.get(item.investigationId);
+    if (!template.investigationResponseList) {
+      setSelectedInvestigationTemplate("Select..");
+      return;
+    }
 
-      if (existing) {
-        const templateIds = Array.isArray(existing.templateIds)
-          ? existing.templateIds
-          : [];
+    let duplicateItemsBuffer = [];
 
-        if (!templateIds.includes(templateId)) {
-          const index = updated.findIndex(
-            (i) => i.investigationId === item.investigationId
-          );
+    setInvestigationItems((prev) => {
+      // Check if the current list only has the default empty row
+      const hasOnlyEmptyRow =
+        prev.length === 1 &&
+        !prev[0].investigationId &&
+        !prev[0].name &&
+        (!prev[0].templateIds || prev[0].templateIds.length === 0);
 
-          updated[index] = {
-            ...existing,
-            templateIds: [...templateIds, templateId],
-          };
+      let updated = [...prev];
+
+      // If only empty row exists, start fresh
+      if (hasOnlyEmptyRow) {
+        updated = [];
+      }
+
+      const existingMap = new Map(
+        updated.map((item) => [item.investigationId, item]),
+      );
+
+      template.investigationResponseList.forEach((item) => {
+        const existing = existingMap.get(item.investigationId);
+
+        if (existing) {
+          const templateIds = Array.isArray(existing.templateIds)
+            ? existing.templateIds
+            : [];
+
+          if (!templateIds.includes(templateId)) {
+            const index = updated.findIndex(
+              (i) => i.investigationId === item.investigationId,
+            );
+
+            updated[index] = {
+              ...existing,
+              templateIds: [...templateIds, templateId],
+            };
+          }
+
+          duplicateItemsBuffer.push({
+            investigationId: item.investigationId,
+            investigationName: existing.name ?? item.investigationName,
+          });
+        } else {
+          updated.push({
+            id: null,
+            name:
+              item.investigationName ??
+              `Investigation #${item.investigationId}`,
+            date: getToday(),
+            investigationId: item.investigationId,
+            templateSource: template.opdTemplateName,
+            templateIds: [templateId],
+            flag: 1,
+          });
         }
+      });
 
-        duplicateItemsBuffer.push({
-          investigationId: item.investigationId,
-          investigationName: existing.name ?? item.investigationName,
-        });
-      } else {
-        updated.push({
-          id: null,
-          name: item.investigationName ?? `Investigation #${item.investigationId}`,
-          date: getToday(),
-          investigationId: item.investigationId,
-          templateSource: template.opdTemplateName,
-          templateIds: [templateId],
-          flag: 1,
-        });
+      if (updated.length === 0) {
+        return [
+          {
+            id: null,
+            investigationId: "",
+            templateIds: [],
+            name: "",
+            date: getToday(),
+            flag: 0,
+          },
+        ];
       }
+
+      return updated;
     });
 
-    // If no items were added (all duplicates), ensure we have at least one row
-    if (updated.length === 0) {
-      return [{
-        id: null,
-        investigationId: "",
-        templateIds: [],
-        name: "",
-        date: getToday(),
-        flag: 0,
-      }];
-    }
+    setTimeout(() => {
+      const unique = Array.from(
+        new Map(
+          duplicateItemsBuffer.map((d) => [d.investigationId, d]),
+        ).values(),
+      );
 
-    return updated;
-  });
-
-  setTimeout(() => {
-    const unique = Array.from(
-      new Map(
-        duplicateItemsBuffer.map((d) => [d.investigationId, d])
-      ).values()
-    );
-
-    if (unique.length > 0) {
-      setDuplicateItems(unique);
-      setShowDuplicatePopup(true);
-    }
-
-    setSelectedInvestigationTemplate("Select..");
-  }, 50);
-};
-
-const handleClearAllTemplates = () => {
-  setSelectedTemplateIds(new Set());
-
-  setInvestigationItems((prevItems) => {
-    const filteredItems = prevItems.filter((item) => {
-      const ids = item.templateIds ?? [];
-      
-      // Keep items that have a real ID (existing DB records)
-      if (item.id !== null && item.id !== undefined && item.id !== "") {
-        return true;
+      if (unique.length > 0) {
+        setDuplicateItems(unique);
+        setShowDuplicatePopup(true);
       }
-      
-      // Keep items that have no template associations and have a name
-      if (ids.length === 0 && item.name && item.name.trim()) {
-        return true;
+
+      setSelectedInvestigationTemplate("Select..");
+    }, 50);
+  };
+
+  const handleClearAllTemplates = () => {
+    setSelectedTemplateIds(new Set());
+
+    setInvestigationItems((prevItems) => {
+      const filteredItems = prevItems.filter((item) => {
+        const ids = item.templateIds ?? [];
+        if (item.id !== null && item.id !== undefined && item.id !== "") {
+          return true;
+        }
+        if (ids.length === 0 && item.name && item.name.trim()) {
+          return true;
+        }
+        return false;
+      });
+
+      if (filteredItems.length === 0) {
+        return [
+          {
+            id: null,
+            investigationId: "",
+            templateIds: [],
+            name: "",
+            date: getToday(),
+            flag: 0,
+          },
+        ];
       }
-      
-      // Remove items that only came from templates
-      return false;
+
+      return filteredItems;
     });
-
-    // If no items left, add a default empty row
-    if (filteredItems.length === 0) {
-      return [{
-        id: null,
-        investigationId: "",
-        templateIds: [],
-        name: "",
-        date: getToday(),
-        flag: 0,
-      }];
-    }
-
-    return filteredItems;
-  });
-};
+  };
 
   const handleRemoveTemplateItems = (templateId) => {
     setSelectedTemplateIds((prev) => {
@@ -3311,8 +3485,9 @@ const handleClearAllTemplates = () => {
         if (hasTreatmentData) sectionsToExpand.treatment = true;
         if (patientData.treatmentAdvice)
           sectionsToExpand.treatmentAdvice = true;
-debugger
-        setTreatmentItems(patientData.patientPrescriptionDts?.length? patientData.patientPrescriptionDts.map((item) => {
+        setTreatmentItems(
+          patientData.patientPrescriptionDts?.length
+            ? patientData.patientPrescriptionDts.map((item) => {
                 const frequencyId = item.frequencyId || item.frequency || "";
                 const matchedFrequency = allFrequencies.find(
                   (f) => String(f.frequencyId) === String(frequencyId),
@@ -3320,7 +3495,7 @@ debugger
 
                 const frequencyName =
                   matchedFrequency?.frequencyName || frequencyId;
-                
+
                 const obj = {
                   prescriptionHdId: item.prescriptionHdId ?? null,
                   prescriptionDtId: item.prescriptionDtId ?? null,
@@ -3400,33 +3575,79 @@ debugger
           isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
           referTo: patientData.referTo || "",
           referralDate: patientData.referralDate
-          ? patientData.referralDate.split("T")[0]
-          : getToday(),
+            ? patientData.referralDate.split("T")[0]
+            : getToday(),
           referredHospitalName: patientData.referredHospitalName || "",
         }));
         setReferralNotes(patientData.referralRemarks || "");
 
-        const surgeryAdviceData = patientData.surgeryAdvice || null;
+        const surgeryAdviceData = patientData.surgeryDetails || null;
+
         if (surgeryAdviceData) {
           sectionsToExpand.surgeryAdvice = true;
-          setSelectedOT(surgeryAdviceData.otId ? String(surgeryAdviceData.otId) : "");
+          let surgeryMasterData = null;
+          if (!surgeryMasterLoadedRef.current) {
+            surgeryMasterData = await fetchSurgeryMasterData();
+          } else {
+            surgeryMasterData =
+              surgeryOptions.length > 0 ? surgeryOptions : null;
+          }
+
+          if (!otMasterLoadedRef.current) {
+            await fetchOperationTheatres();
+          }
+
+          setOtBookingRequestHdId(
+            surgeryAdviceData.otBookingRequestHdId ?? null,
+          );
+
+          setSelectedOT(
+            surgeryAdviceData.otId ? String(surgeryAdviceData.otId) : "",
+          );
+
           setSurgeryDate(
             surgeryAdviceData.surgeryDate
               ? surgeryAdviceData.surgeryDate.split("T")[0]
               : "",
           );
-          setSurgeryTime(
-            formatTimeForInput(surgeryAdviceData.surgeryTime || ""),
+
+          setSurgeryStartTime(
+            formatTimeForInput(surgeryAdviceData.surgeryStartTime || ""),
           );
+
+          setSurgeryEndTime(
+            formatTimeForInput(surgeryAdviceData.surgeryEndTime || ""),
+          );
+
           setSurgeryItems(
             Array.isArray(surgeryAdviceData.surgeryDetails) &&
               surgeryAdviceData.surgeryDetails.length > 0
               ? surgeryAdviceData.surgeryDetails.map((item) => ({
+                  otBookingRequestDtId: item.otBookingRequestDtId ?? null,
+
                   surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
-                  surgeryName: item.surgeryName || "",
+
+                  surgeryName:
+                    item.surgeryName ||
+                    (() => {
+                      const surgery = surgeryMasterData.find(
+                        (s) => Number(s.surgeryId) === Number(item.surgeryId),
+                      );
+
+                      return surgery
+                        ? `${surgery.surgeryCode} - ${surgery.surgeryName}`
+                        : "";
+                    })(),
                 }))
-              : [{ surgeryId: null, surgeryName: "" }],
+              : [
+                  {
+                    otBookingRequestDtId: null,
+                    surgeryId: null,
+                    surgeryName: "",
+                  },
+                ],
           );
+          surgeryDataFetchedRef.current = true;
         } else {
           resetSurgeryFields();
         }
@@ -4177,14 +4398,50 @@ debugger
     setDiagnosisItems(newItems);
   };
 
-const handleAddTreatmentItem = () => {
-  setTreatmentItems((prev) => {
-    // Filter out items marked for deletion (flag -1) when checking for empty rows
-    const visibleItems = prev.filter(row => row.flag !== -1);
-    
-    // Check if there are any visible items
-    if (visibleItems.length === 0) {
-      // If no visible items, add a new empty row
+  const handleAddTreatmentItem = () => {
+    setTreatmentItems((prev) => {
+      // Filter out items marked for deletion (flag -1) when checking for empty rows
+      const visibleItems = prev.filter((row) => row.flag !== -1);
+
+      // Check if there are any visible items
+      if (visibleItems.length === 0) {
+        // If no visible items, add a new empty row
+        return [
+          ...prev,
+          {
+            prescriptionHdId: null,
+            prescriptionDtId: null,
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            requestedDeptStocks: "",
+            templateId: "",
+            flag: 1,
+          },
+        ];
+      }
+
+      const lastItem = visibleItems[visibleItems.length - 1];
+      const isLastRowEmpty =
+        !lastItem?.drugId &&
+        !lastItem?.drugName &&
+        !lastItem?.dosage &&
+        !lastItem?.frequency &&
+        !lastItem?.days;
+
+      // If the last row is empty, don't add a new row
+      if (isLastRowEmpty) {
+        return prev;
+      }
+
+      // Add a new empty row
       return [
         ...prev,
         {
@@ -4205,197 +4462,165 @@ const handleAddTreatmentItem = () => {
           flag: 1,
         },
       ];
-    }
-    
-    const lastItem = visibleItems[visibleItems.length - 1];
-    const isLastRowEmpty = !lastItem?.drugId && 
-                          !lastItem?.drugName && 
-                          !lastItem?.dosage && 
-                          !lastItem?.frequency && 
-                          !lastItem?.days;
-
-    // If the last row is empty, don't add a new row
-    if (isLastRowEmpty) {
-      return prev;
-    }
-
-    // Add a new empty row
-    return [
-      ...prev,
-      {
-        prescriptionHdId: null,
-        prescriptionDtId: null,
-        treatmentId: null,
-        drugId: "",
-        drugName: "",
-        dispUnit: "",
-        dosage: "",
-        frequency: "",
-        days: "",
-        total: "",
-        instruction: "",
-        stock: "",
-        requestedDeptStocks: "",
-        templateId: "",
-        flag: 1,
-      },
-    ];
-  });
-};
+    });
+  };
 
   const getFreqDetails = (feqId) => {
     return allFrequencies.find((d) => Number(d.frequencyId) === Number(feqId));
   };
 
-const handleTreatmentTemplateSelect = async (templateId) => {
-  if (!templateId || templateId === "Select..") return;
-  if (selectedTreatmentTemplateIds.has(templateId)) return;
+  const handleTreatmentTemplateSelect = async (templateId) => {
+    if (!templateId || templateId === "Select..") return;
+    if (selectedTreatmentTemplateIds.has(templateId)) return;
 
-  const template = opdTemplateData.find((t) => t.templateId == templateId);
-  if (!template || !template.treatments) return;
+    const template = opdTemplateData.find((t) => t.templateId == templateId);
+    if (!template || !template.treatments) return;
 
-  setTreatmentTemplateLoading(true);
-  try {
-    const hydratedTreatments = await Promise.all(
-      template.treatments.map(async (t) => {
-        const itemDetails = t.itemId
-          ? await fetchDrugDetailsById(t.itemId)
-          : null;
-        const resolvedDrug = itemDetails || t;
-        const resolvedDosageUnit =
-          resolvedDrug.dosageUnit || t.dosageUnit || "";
-        const resolvedDispUnit =
-          resolvedDrug.dispUnitName ||
-          resolvedDrug.unitAuName ||
-          resolvedDrug.dispUnit ||
-          resolvedDrug.dispU ||
-          t.dispUnit ||
-          "";
-        const resolvedStock =
-          resolvedDrug.requestedDeptStocks ??
-          resolvedDrug.currentDeptStocks ??
-          resolvedDrug.stock ??
-          t.requestedDeptStocks ??
-          t.currentDeptStocks ??
-          t.stocks ??
-          t.stock ??
-          "0";
+    setTreatmentTemplateLoading(true);
+    try {
+      const hydratedTreatments = await Promise.all(
+        template.treatments.map(async (t) => {
+          const itemDetails = t.itemId
+            ? await fetchDrugDetailsById(t.itemId)
+            : null;
+          const resolvedDrug = itemDetails || t;
+          const resolvedDosageUnit =
+            resolvedDrug.dosageUnit || t.dosageUnit || "";
+          const resolvedDispUnit =
+            resolvedDrug.dispUnitName ||
+            resolvedDrug.unitAuName ||
+            resolvedDrug.dispUnit ||
+            resolvedDrug.dispU ||
+            t.dispUnit ||
+            "";
+          const resolvedStock =
+            resolvedDrug.requestedDeptStocks ??
+            resolvedDrug.currentDeptStocks ??
+            resolvedDrug.stock ??
+            t.requestedDeptStocks ??
+            t.currentDeptStocks ??
+            t.stocks ??
+            t.stock ??
+            "0";
 
-        return {
-          ...t,
-          dosageUnit: resolvedDosageUnit,
-          dispUnit: resolvedDispUnit,
-          stocks: resolvedStock,
-          stock: resolvedStock,
-          itemName:
-            resolvedDrug.nomenclature ||
-            resolvedDrug.itemName ||
-            t.itemName ||
-            "",
-        };
-      }),
-    );
+          return {
+            ...t,
+            dosageUnit: resolvedDosageUnit,
+            dispUnit: resolvedDispUnit,
+            stocks: resolvedStock,
+            stock: resolvedStock,
+            itemName:
+              resolvedDrug.nomenclature ||
+              resolvedDrug.itemName ||
+              t.itemName ||
+              "",
+          };
+        }),
+      );
 
-    setTreatmentItems((prevList) => {
-      // Check if we only have the default empty row
-      const hasOnlyEmptyRow = prevList.length === 1 && 
-        !prevList[0].drugId && 
-        !prevList[0].drugName && 
-        !prevList[0].dosage && 
-        !prevList[0].frequency && 
-        !prevList[0].days;
+      setTreatmentItems((prevList) => {
+        // Check if we only have the default empty row
+        const hasOnlyEmptyRow =
+          prevList.length === 1 &&
+          !prevList[0].drugId &&
+          !prevList[0].drugName &&
+          !prevList[0].dosage &&
+          !prevList[0].frequency &&
+          !prevList[0].days;
 
-      let updatedList = [...prevList];
-      
-      // If only empty row exists, start fresh
-      if (hasOnlyEmptyRow) {
-        updatedList = [];
-      }
+        let updatedList = [...prevList];
 
-      const existingDrugIds = updatedList.map((i) => i.drugId);
-
-      const duplicateItems = [];
-      const newItemsToAdd = [];
-
-      hydratedTreatments.forEach((t) => {
-        if (existingDrugIds.includes(t.itemId)) {
-          duplicateItems.push(t);
-          updatedList.forEach((row) => {
-            if (row.drugId === t.itemId) {
-              const oldIds = row.templateId ? row.templateId.split(",") : [];
-              if (!oldIds.includes(String(templateId))) {
-                row.templateId = [...oldIds, String(templateId)].join(",");
-              }
-            }
-          });
-        } else {
-          newItemsToAdd.push(t);
+        // If only empty row exists, start fresh
+        if (hasOnlyEmptyRow) {
+          updatedList = [];
         }
+
+        const existingDrugIds = updatedList.map((i) => i.drugId);
+
+        const duplicateItems = [];
+        const newItemsToAdd = [];
+
+        hydratedTreatments.forEach((t) => {
+          if (existingDrugIds.includes(t.itemId)) {
+            duplicateItems.push(t);
+            updatedList.forEach((row) => {
+              if (row.drugId === t.itemId) {
+                const oldIds = row.templateId ? row.templateId.split(",") : [];
+                if (!oldIds.includes(String(templateId))) {
+                  row.templateId = [...oldIds, String(templateId)].join(",");
+                }
+              }
+            });
+          } else {
+            newItemsToAdd.push(t);
+          }
+        });
+
+        if (duplicateItems.length > 0) {
+          setDuplicateItems(duplicateItems);
+          setShowDuplicatePopup(true);
+        }
+
+        const formattedNew = newItemsToAdd.map((t) => {
+          const freName = getFreqDetails(t.frequencyId);
+          const drugStock = t.stock ?? t.stocks ?? "0";
+
+          const newItem = {
+            treatmentId: null,
+            drugId: t.itemId,
+            drugName: t.itemName,
+            dosageUnit: t?.dosageUnit ?? "",
+            dispUnit: t?.dispUnit ?? "",
+            dosage: t.dosage ?? "",
+            frequency: freName?.frequencyName ?? "",
+            days: t.noOfDays ?? "",
+            instruction: t.instruction ?? "",
+            stock: drugStock,
+            requestedDeptStocks: drugStock,
+            templateId: String(templateId),
+            itemClassId: t?.itemClassId ?? null,
+            aDispQty: t?.aDispQty ?? 1,
+            flag: 1, // New treatments from template should have flag 1
+          };
+
+          newItem.total = calculateTotal(newItem);
+          return newItem;
+        });
+
+        const result = [...updatedList, ...formattedNew];
+
+        // If no items were added, return a default empty row
+        if (result.length === 0) {
+          return [
+            {
+              prescriptionHdId: null,
+              prescriptionDtId: null,
+              treatmentId: null,
+              drugId: "",
+              drugName: "",
+              dispUnit: "",
+              dosage: "",
+              frequency: "",
+              days: "",
+              total: "",
+              instruction: "",
+              stock: "",
+              requestedDeptStocks: "",
+              templateId: "",
+              flag: 0,
+            },
+          ];
+        }
+
+        return result;
       });
 
-      if (duplicateItems.length > 0) {
-        setDuplicateItems(duplicateItems);
-        setShowDuplicatePopup(true);
-      }
-
-      const formattedNew = newItemsToAdd.map((t) => {
-        const freName = getFreqDetails(t.frequencyId);
-        const drugStock = t.stock ?? t.stocks ?? "0";
-
-        const newItem = {
-          treatmentId: null,
-          drugId: t.itemId,
-          drugName: t.itemName,
-          dosageUnit: t?.dosageUnit ?? "",
-          dispUnit: t?.dispUnit ?? "",
-          dosage: t.dosage ?? "",
-          frequency: freName?.frequencyName ?? "",
-          days: t.noOfDays ?? "",
-          instruction: t.instruction ?? "",
-          stock: drugStock,
-          requestedDeptStocks: drugStock,
-          templateId: String(templateId),
-          itemClassId: t?.itemClassId ?? null,
-          aDispQty: t?.aDispQty ?? 1,
-          flag: 1, // New treatments from template should have flag 1
-        };
-
-        newItem.total = calculateTotal(newItem);
-        return newItem;
-      });
-
-      const result = [...updatedList, ...formattedNew];
-
-      // If no items were added, return a default empty row
-      if (result.length === 0) {
-        return [{
-          prescriptionHdId: null,
-          prescriptionDtId: null,
-          treatmentId: null,
-          drugId: "",
-          drugName: "",
-          dispUnit: "",
-          dosage: "",
-          frequency: "",
-          days: "",
-          total: "",
-          instruction: "",
-          stock: "",
-          requestedDeptStocks: "",
-          templateId: "",
-          flag: 0,
-        }];
-      }
-
-      return result;
-    });
-
-    setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
-    setSelectedTreatmentTemplateId("Select..");
-  } finally {
-    setTreatmentTemplateLoading(false);
-  }
-};
+      setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
+      setSelectedTreatmentTemplateId("Select..");
+    } finally {
+      setTreatmentTemplateLoading(false);
+    }
+  };
 
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
@@ -4553,7 +4778,6 @@ const handleTreatmentTemplateSelect = async (templateId) => {
     newItems[index] = { ...newItems[index], [field]: value };
     setPhysiotherapyItems(newItems);
   };
-
 
   const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage);
 
@@ -5473,66 +5697,73 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                 </div>
 
                 {/* Investigation Section */}
-<div className="card mb-3" style={{ overflow: "visible" }}>
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("investigation")}
-  >
-    <h6 className="mb-0 fw-bold">Investigation</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.investigation ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.investigation && (
-    <div className="card-body" style={{ overflow: "visible" }}>
-      {/* Selected Templates Display - FIXED */}
-      {selectedTemplateIds.size > 0 && (
-        <div className="row mb-3">
-          <div className="col-12">
-            <div className="card">
-              <div className="card-header py-2">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={handleClearAllTemplates}
+                <div className="card mb-3" style={{ overflow: "visible" }}>
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("investigation")}
                   >
-                    Clear All Templates
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="d-flex flex-wrap gap-2">
-                  {Array.from(selectedTemplateIds).map((templateId) => {
-                    const template = investigationTemplates.find(
-                      (t) => t.templateId == templateId,
-                    );
-                    return template ? (
-                      <span
-                        key={templateId}
-                        className="badge bg-primary d-flex align-items-center gap-1"
-                      >
-                        {template.opdTemplateName}
-                        <button
-                          type="button"
-                          className="btn-close btn-close-white"
-                          style={{ fontSize: "0.7rem" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveTemplateItems(templateId);
-                          }}
-                          aria-label="Remove template"
-                        ></button>
-                      </span>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                    <h6 className="mb-0 fw-bold">Investigation</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.investigation ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.investigation && (
+                    <div className="card-body" style={{ overflow: "visible" }}>
+                      {/* Selected Templates Display - FIXED */}
+                      {selectedTemplateIds.size > 0 && (
+                        <div className="row mb-3">
+                          <div className="col-12">
+                            <div className="card">
+                              <div className="card-header py-2">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0 fw-bold">
+                                    Selected Templates
+                                  </h6>
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={handleClearAllTemplates}
+                                  >
+                                    Clear All Templates
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="card-body">
+                                <div className="d-flex flex-wrap gap-2">
+                                  {Array.from(selectedTemplateIds).map(
+                                    (templateId) => {
+                                      const template =
+                                        investigationTemplates.find(
+                                          (t) => t.templateId == templateId,
+                                        );
+                                      return template ? (
+                                        <span
+                                          key={templateId}
+                                          className="badge bg-primary d-flex align-items-center gap-1"
+                                        >
+                                          {template.opdTemplateName}
+                                          <button
+                                            type="button"
+                                            className="btn-close btn-close-white"
+                                            style={{ fontSize: "0.7rem" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveTemplateItems(
+                                                templateId,
+                                              );
+                                            }}
+                                            aria-label="Remove template"
+                                          ></button>
+                                        </span>
+                                      ) : null;
+                                    },
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
@@ -5778,11 +6009,12 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                         handleRemoveInvestigationItem(index)
                                       }
                                       disabled={
-                                        investigationItems.length === 1 &&
-                                        !investigationItems[0].name &&
-                                        (!investigationItems[0].templateIds ||
-                                          investigationItems[0].templateIds
-                                            .length === 0)||isOrderCompleted
+                                        (investigationItems.length === 1 &&
+                                          !investigationItems[0].name &&
+                                          (!investigationItems[0].templateIds ||
+                                            investigationItems[0].templateIds
+                                              .length === 0)) ||
+                                        isOrderCompleted
                                       }
                                     >
                                       −
@@ -6754,12 +6986,9 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                 name="surgeryType"
                                 id="major"
                                 checked={surgeryType === "major"}
-                                onChange={() => {
-                                  setSurgeryType("major");
-                                  surgeryMasterLoadedRef.current = false;
-                                  setSurgeryOptions([]);
-                                  resetSurgeryFields();
-                                }}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("major")
+                                }
                               />
                               <label
                                 className="form-check-label"
@@ -6775,12 +7004,9 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                                 name="surgeryType"
                                 id="minor"
                                 checked={surgeryType === "minor"}
-                                onChange={() => {
-                                  setSurgeryType("minor");
-                                  surgeryMasterLoadedRef.current = false;
-                                  setSurgeryOptions([]);
-                                  resetSurgeryFields();
-                                }}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("minor")
+                                }
                               />
                               <label
                                 className="form-check-label"
@@ -6794,7 +7020,7 @@ const handleTreatmentTemplateSelect = async (templateId) => {
 
                         <div className="col-auto" style={{ minWidth: "180px" }}>
                           <label className="form-label small fw-bold mb-1">
-                            OT
+                            OT <span className="text-danger">*</span>
                           </label>
                           <select
                             className="form-select form-select-sm"
@@ -6812,7 +7038,7 @@ const handleTreatmentTemplateSelect = async (templateId) => {
 
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1">
-                            Surgery Date
+                            Surgery Date <span className="text-danger">*</span>
                           </label>
                           <input
                             type="date"
@@ -6821,21 +7047,76 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                             onChange={(e) =>
                               handleSurgeryDateChange(e.target.value)
                             }
+                            min={getToday()}
                           />
                         </div>
 
+                        {/* Start Time Input */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1">
-                            Surgery Time
+                            Start Time <span className="text-danger">*</span>
                           </label>
                           <input
                             type="time"
-                            className="form-control form-control-sm"
-                            value={surgeryTime}
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryStartTime}
                             onChange={(e) =>
-                              handleSurgeryTimeChange(e.target.value)
+                              handleSurgeryStartTimeChange(e.target.value)
                             }
                           />
+                          {surgeryStartTime &&
+                            surgeryEndTime &&
+                            !validateSurgeryTimes(
+                              surgeryStartTime,
+                              surgeryEndTime,
+                            ) && (
+                              <div className="invalid-feedback d-block">
+                                End time must be after start time
+                              </div>
+                            )}
+                        </div>
+
+                        {/* End Time Input */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            End Time <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryEndTime}
+                            onChange={(e) =>
+                              handleSurgeryEndTimeChange(e.target.value)
+                            }
+                          />
+                          {surgeryStartTime &&
+                            surgeryEndTime &&
+                            !validateSurgeryTimes(
+                              surgeryStartTime,
+                              surgeryEndTime,
+                            ) && (
+                              <div className="invalid-feedback d-block">
+                                End time must be after start time
+                              </div>
+                            )}
                         </div>
 
                         <div className="col-auto">
@@ -6855,79 +7136,145 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                         </div>
                       </div>
 
-                      <div className="table-responsive">
+                      <div
+                        className="table-responsive"
+                        style={{ overflow: "visible" }}
+                      >
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
                               <th style={{ width: "10%" }}>S.No</th>
-                              <th style={{ width: "80%" }}>Surgery</th>
+                              <th style={{ width: "75%" }}>Surgery</th>
                               <th style={{ width: "5%" }}>Add</th>
                               <th style={{ width: "5%" }}>Delete</th>
                             </tr>
                           </thead>
+
                           <tbody>
                             {surgeryItems.map((item, index) => (
                               <tr key={index}>
                                 <td className="text-center">{index + 1}</td>
-                                <td className="position-relative">
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={item.surgeryName || ""}
-                                    onChange={(e) => {
-                                      handleSurgerySearchChange(
-                                        e.target.value,
-                                        index,
-                                      );
-                                    }}
-                                    placeholder="Search Surgery..."
-                                    autoComplete="off"
-                                  />
-                                  {isSurgeryDropdownVisible &&
-                                    selectedSurgeryIndex === index &&
-                                    surgerySearchInput && (
-                                      <ul
-                                        className="list-group position-absolute w-100 mt-1"
-                                        style={{ zIndex: 1000, top: "100%" }}
-                                      >
-                                        {surgeryOptions
-                                          .filter((surgery) => {
-                                            const query =
-                                              surgerySearchInput.toLowerCase();
-                                            const matchesSearch =
-                                              surgery.surgeryName
-                                                ?.toLowerCase()
-                                                .includes(query) ||
-                                              surgery.surgeryCode
-                                                ?.toLowerCase()
-                                                .includes(query);
-                                            const selectedIds =
-                                              getSelectedSurgeryIds(index);
-                                            return (
-                                              matchesSearch &&
-                                              !selectedIds.includes(
-                                                Number(surgery.surgeryId),
-                                              )
-                                            );
-                                          })
-                                          .map((surgery) => (
-                                            <li
-                                              key={surgery.surgeryId}
-                                              className="list-group-item list-group-item-action"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                handleSurgerySelect(
-                                                  surgery,
-                                                  index,
+                                <td>
+                                  {/* Surgery input with dropdown */}
+                                  <div
+                                    className="position-relative"
+                                    style={{ width: "100%" }}
+                                  >
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search Surgery..."
+                                      value={item.surgeryName || ""}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        setSurgeryItems((prev) => {
+                                          const newItems = [...prev];
+                                          newItems[index] = {
+                                            ...newItems[index],
+                                            surgeryId: null,
+                                            surgeryName: value,
+                                          };
+                                          return newItems;
+                                        });
+                                        setSurgerySearchInput(value);
+                                        setSelectedSurgeryIndex(index);
+                                        setIsSurgeryDropdownVisible(true);
+                                      }}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!surgeryMasterLoadedRef.current) {
+                                          await fetchSurgeryMasterData();
+                                        }
+                                        // Close other dropdowns and open this one
+                                        setIsSurgeryDropdownVisible(true);
+                                        setSelectedSurgeryIndex(index);
+                                      }}
+                                      onFocus={async () => {
+                                        if (!surgeryMasterLoadedRef.current) {
+                                          await fetchSurgeryMasterData();
+                                        }
+                                        setIsSurgeryDropdownVisible(true);
+                                        setSelectedSurgeryIndex(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          setIsSurgeryDropdownVisible(false);
+                                          setSelectedSurgeryIndex(null);
+                                        }, 200);
+                                      }}
+                                      autoComplete="off"
+                                    />
+
+                                    {isSurgeryDropdownVisible &&
+                                      selectedSurgeryIndex === index && (
+                                        <div
+                                          className="border rounded mt-1 bg-white position-absolute w-100"
+                                          style={{
+                                            maxHeight: "220px",
+                                            zIndex: 9999,
+                                            overflowY: "auto",
+                                            boxShadow:
+                                              "0 2px 8px rgba(0,0,0,0.15)",
+                                            top: "100%",
+                                            left: 0,
+                                          }}
+                                        >
+                                          {surgeryOptions.length > 0 ? (
+                                            surgeryOptions
+                                              .filter((surgery) => {
+                                                const query =
+                                                  surgerySearchInput?.toLowerCase() ||
+                                                  "";
+                                                const isSearchMatch =
+                                                  surgery.surgeryName
+                                                    ?.toLowerCase()
+                                                    .includes(query) ||
+                                                  surgery.surgeryCode
+                                                    ?.toLowerCase()
+                                                    .includes(query);
+                                                const selectedIds =
+                                                  getSelectedSurgeryIds(index);
+                                                return (
+                                                  isSearchMatch &&
+                                                  !selectedIds.includes(
+                                                    Number(surgery.surgeryId),
+                                                  )
                                                 );
-                                              }}
-                                            >
-                                              {surgery.surgeryCode} -{" "}
-                                              {surgery.surgeryName}
-                                            </li>
-                                          ))}
-                                      </ul>
-                                    )}
+                                              })
+                                              .map((surgery) => (
+                                                <div
+                                                  key={surgery.surgeryId}
+                                                  className="p-2 cursor-pointer hover:bg-light"
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    borderBottom:
+                                                      "1px solid #f0f0f0",
+                                                  }}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleSurgerySelect(
+                                                      surgery,
+                                                      index,
+                                                    );
+                                                  }}
+                                                >
+                                                  <strong>
+                                                    {surgery.surgeryCode}
+                                                  </strong>{" "}
+                                                  - {surgery.surgeryName}
+                                                </div>
+                                              ))
+                                          ) : (
+                                            <div className="p-2 text-muted text-center">
+                                              {surgeryMasterLoadedRef.current
+                                                ? "No surgeries found"
+                                                : "Loading surgeries..."}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                  </div>
                                 </td>
                                 <td className="text-center">
                                   <button
@@ -8037,7 +8384,8 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                 <h4 className="card-title p-2 mb-0">OPD Recall List</h4>
               </div>
             </div>
-            {loading && <LoadingScreen />}
+            {/* Show loading spinner during search or reset */}
+            {loading && <LoadingScreen />}{" "}
             <div className="card-body">
               <div className="card mb-3">
                 <div className="card-body">
@@ -8089,15 +8437,40 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                           type="button"
                           className="btn btn-primary"
                           onClick={handleSearch}
+                          disabled={searchLoading || resetLoading}
                         >
-                          Search
+                          {searchLoading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Searching...
+                            </>
+                          ) : (
+                            "Search"
+                          )}
                         </button>
+
                         <button
                           type="button"
                           className="btn btn-secondary"
                           onClick={handleReset}
+                          disabled={searchLoading || resetLoading}
                         >
-                          Reset
+                          {resetLoading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Resetting...
+                            </>
+                          ) : (
+                            "Reset"
+                          )}
                         </button>
                       </div>
                     </div>
@@ -8125,7 +8498,18 @@ const handleTreatmentTemplateSelect = async (templateId) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems && currentItems.length > 0 ? (
+                    {searchLoading || resetLoading ? (
+                      <tr>
+                        <td colSpan="7" className="text-center py-4">
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          />
+                          Loading records...
+                        </td>
+                      </tr>
+                    ) : currentItems && currentItems.length > 0 ? (
                       currentItems.map((item) => (
                         <tr
                           key={item.visitId}

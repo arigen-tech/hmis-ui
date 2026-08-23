@@ -2197,8 +2197,6 @@ const PatientRegistration = () => {
       try {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
-
-        debugger;
         if (data.status === 200) {
           const resp = data.response?.opdBillingPatientResponse;
           const patientResp = data.response?.patient || data.response;

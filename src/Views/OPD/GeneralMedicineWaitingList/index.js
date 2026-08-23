@@ -94,16 +94,15 @@ const INDENT_SAVE_TITLE = "OPD Case Sheet";
 const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 
 const GeneralMedicineWaitingList = () => {
-
-
-    const [searchFilters, setSearchFilters] = useState({
+  const [searchFilters, setSearchFilters] = useState({
     doctorList: "",
     session: "",
     mobileNo: "",
     patientName: "",
   });
-  
-  const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+  const userId =
+    localStorage.getItem("userId") || sessionStorage.getItem("userId");
   const currentDoctorId = searchFilters.doctorList || userId || "";
 
   const [waitingList, setWaitingList] = useState([]);
@@ -150,6 +149,10 @@ const GeneralMedicineWaitingList = () => {
   const [popupType, setPopupType] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const dropdownRef = useRef(null);
+  const surgeryDataFetchedRef = useRef(false);
+  const [surgeryStartTime, setSurgeryStartTime] = useState("");
+  const [surgeryEndTime, setSurgeryEndTime] = useState("");
+
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [labFlag, setLabFlag] = useState("");
   const [radioFlag, setRadioFlag] = useState("");
@@ -867,6 +870,58 @@ const GeneralMedicineWaitingList = () => {
     }));
   };
 
+  const handleSurgeryStartTimeChange = async (timeValue) => {
+    setSurgeryStartTime(timeValue);
+
+    // Validate that start time is before end time
+    if (surgeryEndTime && timeValue) {
+      const isValid = validateSurgeryTimes(timeValue, surgeryEndTime);
+      if (!isValid) {
+        showPopupMessage("Start time must be before end time", "error");
+        setSurgeryStartTime("");
+        return;
+      }
+    }
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+        timeValue,
+        surgeryEndTime,
+      );
+      if (!isAvailable) {
+        setSurgeryStartTime("");
+      }
+    }
+  };
+
+  const handleSurgeryEndTimeChange = async (timeValue) => {
+    setSurgeryEndTime(timeValue);
+
+    // Validate that end time is after start time
+    if (surgeryStartTime && timeValue) {
+      const isValid = validateSurgeryTimes(surgeryStartTime, timeValue);
+      if (!isValid) {
+        showPopupMessage("End time must be after start time", "error");
+        setSurgeryEndTime("");
+        return;
+      }
+    }
+
+    if (surgeryDate && timeValue && selectedOT) {
+      const isAvailable = await checkOTAvailability(
+        selectedOT,
+        surgeryDate,
+        surgeryStartTime,
+        timeValue,
+      );
+      if (!isAvailable) {
+        setSurgeryEndTime("");
+      }
+    }
+  };
+
   // Add these state declarations inside the GeneralMedicineWaitingList component
   const [visionFormData, setVisionFormData] = useState({
     fundusGlow: {
@@ -1472,7 +1527,8 @@ const GeneralMedicineWaitingList = () => {
       queryParams.append("page", "0");
       queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
 
-      const doctorId = filters.doctorId || searchFilters.doctorList || userId || "";
+      const doctorId =
+        filters.doctorId || searchFilters.doctorList || userId || "";
 
       if (doctorId) {
         queryParams.append("doctorId", doctorId);
@@ -1606,8 +1662,6 @@ const GeneralMedicineWaitingList = () => {
   const handleTemplateOpen = () => {
     fetchOpdTemplateData();
   };
-
-
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
@@ -2068,7 +2122,7 @@ const GeneralMedicineWaitingList = () => {
       setInvestigationTemplateLoading(true);
       const queryParams = new URLSearchParams();
 
-    const doctorId =
+      const doctorId =
         searchFilters.doctorList ||
         localStorage.getItem("userId") ||
         sessionStorage.getItem("userId") ||
@@ -2137,6 +2191,14 @@ const GeneralMedicineWaitingList = () => {
     setInvestigationDropdown(result.list);
     setInvestigationLastPage(result.last);
     setInvestigationPage(0);
+  };
+
+  const handleSurgeryTypeChange = (type) => {
+    setSurgeryType(type);
+    surgeryMasterLoadedRef.current = false;
+    surgeryDataFetchedRef.current = false;
+    setSurgeryOptions([]);
+    resetSurgeryFields();
   };
 
   const handleInvestigationSearch = (value, index) => {
@@ -2218,10 +2280,7 @@ const GeneralMedicineWaitingList = () => {
       const activeDropdownRef =
         dropdownInvestigationRefs.current[openInvestigationDropdown];
 
-      if (
-        activeDropdownRef &&
-        !activeDropdownRef.contains(e.target)
-      ) {
+      if (activeDropdownRef && !activeDropdownRef.contains(e.target)) {
         setOpenInvestigationDropdown(null);
       }
     };
@@ -3402,6 +3461,14 @@ const GeneralMedicineWaitingList = () => {
       }
     }
 
+    if (
+      surgeryStartTime &&
+      surgeryEndTime &&
+      !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)
+    ) {
+      addError("surgeryTime", "Surgery end time must be after start time.");
+    }
+
     if (referralData.isReferred === "Yes") {
       if (!hasValue(referralData.referralDate)) {
         addError("referralDate", "Referral date is required.");
@@ -3492,6 +3559,18 @@ const GeneralMedicineWaitingList = () => {
     }
 
     return true;
+  };
+
+  const validateSurgeryTimes = (startTime, endTime) => {
+    if (!startTime || !endTime) return true; // Don't validate if either is empty
+
+    const [startHours, startMinutes] = startTime.split(":").map(Number);
+    const [endHours, endMinutes] = endTime.split(":").map(Number);
+
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+
+    return endTotalMinutes > startTotalMinutes;
   };
 
   const handleWardNameChange = async (deptId) => {
@@ -3591,7 +3670,8 @@ const GeneralMedicineWaitingList = () => {
       const surgeryAdvicePayload = {
         otId: selectedOT || null,
         surgeryDate: surgeryDate || null,
-        surgeryTime: surgeryTime || null,
+        surgeryStartTime: surgeryStartTime || null,
+        surgeryEndTime: surgeryEndTime || null,
         surgeryDetails: surgeryItems
           .filter((item) => item.surgery && item.surgery.trim() !== "")
           .map((item) => ({
@@ -3603,7 +3683,8 @@ const GeneralMedicineWaitingList = () => {
       const hasSurgeryData =
         selectedOT ||
         surgeryDate ||
-        surgeryTime ||
+        surgeryStartTime ||
+        surgeryEndTime ||
         surgeryItems.some((item) => item.surgery && item.surgery.trim() !== "");
 
       const treatmentList = treatmentItems
@@ -3782,7 +3863,8 @@ const GeneralMedicineWaitingList = () => {
           ? {
               otId: selectedOT || null,
               surgeryDate: surgeryDate || null,
-              surgeryTime: surgeryTime || null,
+              surgeryStartTime: surgeryStartTime || null,
+              surgeryEndTime: surgeryEndTime || null,
               surgeryDetails: surgeryItems
                 .filter(
                   (item) =>
@@ -3868,41 +3950,36 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const checkOTAvailability = async (otId, date, time) => {
-    if (!otId || !date || !time) return true; // Don't check if any field is missing
+  const checkOTAvailability = async (otId, date, startTime, endTime) => {
+    if (!otId || !date || !startTime || !endTime) return true;
+
+    // Validate times before checking availability
+    if (!validateSurgeryTimes(startTime, endTime)) {
+      showPopupMessage("End time must be after start time", "error");
+      return false;
+    }
 
     try {
-      // Get department ID from localStorage/sessionStorage
-      const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+      const departmentId =
+        sessionStorage.getItem("departmentId") ||
+        localStorage.getItem("departmentId");
 
       if (!departmentId) {
         console.warn("Department ID not found");
         return true;
       }
 
-      // Parse time to determine end time (you can adjust the duration as needed)
-      const [hours, minutes] = time.split(":").map(Number);
-      const startTimeObj = new Date(0, 0, 0, hours, minutes);
-      const endTimeObj = new Date(0, 0, 0, hours + 1, minutes); // Default 1 hour duration
-
-      const startTime = startTimeObj.toTimeString().slice(0, 5);
-      const endTime = endTimeObj.toTimeString().slice(0, 5);
-
-      // Build the API URL
       const url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}&startTime=${startTime}`;
 
       const response = await getRequest(url);
 
       if (response?.status === 404) {
-        // Show popup message and reset date/time
         showPopupMessage("The OT is not configured for this day", "error");
-        // setSurgeryDate("");
         setSurgeryTime("");
         return false;
       }
 
       if (response?.status === 200 && response?.response) {
-        // OT is available - do nothing
         return true;
       }
 
@@ -7235,16 +7312,9 @@ const GeneralMedicineWaitingList = () => {
                                 name="surgeryType"
                                 id="major"
                                 checked={surgeryType === "major"}
-                                onChange={() => {
-                                  setSurgeryType("major");
-                                  surgeryMasterLoadedRef.current = false;
-                                  setSurgeryOptions([]);
-                                  // Clear the search input and surgery items when changing type
-                                  setSurgerySearchInput("");
-                                  setSurgeryItems([
-                                    { surgery: "", selected: false },
-                                  ]);
-                                }}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("major")
+                                }
                               />
                               <label
                                 className="form-check-label"
@@ -7260,16 +7330,9 @@ const GeneralMedicineWaitingList = () => {
                                 name="surgeryType"
                                 id="minor"
                                 checked={surgeryType === "minor"}
-                                onChange={() => {
-                                  setSurgeryType("minor");
-                                  surgeryMasterLoadedRef.current = false;
-                                  setSurgeryOptions([]);
-                                  // Clear the search input and surgery items when changing type
-                                  setSurgerySearchInput("");
-                                  setSurgeryItems([
-                                    { surgery: "", selected: false },
-                                  ]);
-                                }}
+                                onChange={() =>
+                                  handleSurgeryTypeChange("minor")
+                                }
                               />
                               <label
                                 className="form-check-label"
@@ -7282,43 +7345,87 @@ const GeneralMedicineWaitingList = () => {
                         </div>
 
                         {/* OT */}
-<div className="col-auto" style={{ minWidth: "180px" }}>
-  <label className="form-label small fw-bold mb-1">OT</label>
-  <select
-    className="form-select form-select-sm"
-    value={selectedOT}
-    onChange={(e) => handleOTChange(e.target.value)}
-  >
-    <option value="">Select OT</option>
-    {otOptions.map((ot) => (
-      <option key={ot.otId} value={ot.otId}>
-        {ot.otCode} - {ot.otName}
-      </option>
-    ))}
-  </select>
-</div>
+                        <div className="col-auto" style={{ minWidth: "180px" }}>
+                          <label className="form-label small fw-bold mb-1">
+                            OT <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={selectedOT}
+                            onChange={(e) => handleOTChange(e.target.value)}
+                          >
+                            <option value="">Select OT</option>
+                            {otOptions.map((ot) => (
+                              <option key={ot.otId} value={ot.otId}>
+                                {ot.otCode} - {ot.otName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
                         {/* Surgery Date */}
-<div className="col-auto">
-  <label className="form-label small fw-bold mb-1">Surgery Date</label>
-  <input
-    type="date"
-    className="form-control form-control-sm"
-    value={surgeryDate}
-    onChange={(e) => handleSurgeryDateChange(e.target.value)}
-  />
-</div>
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Surgery Date <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            className="form-control form-control-sm"
+                            value={surgeryDate}
+                            onChange={(e) =>
+                              handleSurgeryDateChange(e.target.value)
+                            }
+                            min={getToday()}
+                          />
+                        </div>
 
-                        {/* Surgery Time */}
-<div className="col-auto">
-  <label className="form-label small fw-bold mb-1">Surgery Time</label>
-  <input
-    type="time"
-    className="form-control form-control-sm"
-    value={surgeryTime}
-    onChange={(e) => handleSurgeryTimeChange(e.target.value)}
-  />
-</div>
+                        {/* Start Time */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            Start Time <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryStartTime}
+                            onChange={(e) =>
+                              handleSurgeryStartTimeChange(e.target.value)
+                            }
+                          />
+                        </div>
+
+                        {/* End Time */}
+                        <div className="col-auto">
+                          <label className="form-label small fw-bold mb-1">
+                            End Time <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            className={`form-control form-control-sm ${
+                              surgeryStartTime &&
+                              surgeryEndTime &&
+                              !validateSurgeryTimes(
+                                surgeryStartTime,
+                                surgeryEndTime,
+                              )
+                                ? "is-invalid"
+                                : ""
+                            }`}
+                            value={surgeryEndTime}
+                            onChange={(e) =>
+                              handleSurgeryEndTimeChange(e.target.value)
+                            }
+                          />
+                        </div>
 
                         {/* OTCalendar Button */}
                         <div className="col-auto">
@@ -7346,7 +7453,7 @@ const GeneralMedicineWaitingList = () => {
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
                               <th style={{ width: "10%" }}>S.No</th>
-                              <th style={{ width: "80%" }}>Surgery</th>
+                              <th style={{ width: "75%" }}>Surgery</th>
                               <th style={{ width: "5%" }}>Add</th>
                               <th style={{ width: "5%" }}>Delete</th>
                             </tr>
@@ -7367,11 +7474,10 @@ const GeneralMedicineWaitingList = () => {
                                       value={item.surgeryName || ""}
                                       onChange={(e) => {
                                         const value = e.target.value;
-                                        // Update the surgery item value
                                         const newItems = [...surgeryItems];
                                         newItems[index] = {
                                           ...newItems[index],
-                                          surgeryId: null, // Clear ID when user types
+                                          surgeryId: null,
                                           surgeryName: value,
                                         };
                                         setSurgeryItems(newItems);
@@ -7379,16 +7485,17 @@ const GeneralMedicineWaitingList = () => {
                                         setSelectedSurgeryIndex(index);
                                         setIsSurgeryDropdownVisible(true);
                                       }}
-                                      onClick={() => {
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
                                         if (!surgeryMasterLoadedRef.current) {
-                                          fetchSurgeryMasterData();
+                                          await fetchSurgeryMasterData();
                                         }
                                         setIsSurgeryDropdownVisible(true);
                                         setSelectedSurgeryIndex(index);
                                       }}
-                                      onFocus={() => {
+                                      onFocus={async () => {
                                         if (!surgeryMasterLoadedRef.current) {
-                                          fetchSurgeryMasterData();
+                                          await fetchSurgeryMasterData();
                                         }
                                         setIsSurgeryDropdownVisible(true);
                                         setSelectedSurgeryIndex(index);
@@ -7411,6 +7518,10 @@ const GeneralMedicineWaitingList = () => {
                                             maxHeight: "220px",
                                             zIndex: 9999,
                                             overflowY: "auto",
+                                            boxShadow:
+                                              "0 2px 8px rgba(0,0,0,0.15)",
+                                            top: "100%",
+                                            left: 0,
                                           }}
                                         >
                                           {surgeryOptions.length > 0 ? (
@@ -7428,7 +7539,6 @@ const GeneralMedicineWaitingList = () => {
                                                     .includes(query);
                                                 const selectedIds =
                                                   getSelectedSurgeryIds(index);
-
                                                 return (
                                                   isSearchMatch &&
                                                   !selectedIds.includes(
@@ -7440,24 +7550,31 @@ const GeneralMedicineWaitingList = () => {
                                                 <div
                                                   key={surgery.surgeryId}
                                                   className="p-2 cursor-pointer hover:bg-light"
-                                                  style={{ cursor: "pointer" }}
+                                                  style={{
+                                                    cursor: "pointer",
+                                                    borderBottom:
+                                                      "1px solid #f0f0f0",
+                                                  }}
                                                   onMouseDown={(e) => {
                                                     e.preventDefault();
+                                                    e.stopPropagation();
                                                     handleSurgerySelect(
                                                       surgery,
                                                       index,
                                                     );
                                                   }}
                                                 >
-                                                  {surgery.surgeryCode} -{" "}
-                                                  {surgery.surgeryName}
+                                                  <strong>
+                                                    {surgery.surgeryCode}
+                                                  </strong>{" "}
+                                                  - {surgery.surgeryName}
                                                 </div>
                                               ))
                                           ) : (
-                                            <div className="p-2 text-muted">
-                                              {surgeryOptions.length === 0
-                                                ? "Loading surgeries..."
-                                                : "No results found"}
+                                            <div className="p-2 text-muted text-center">
+                                              {surgeryMasterLoadedRef.current
+                                                ? "No surgeries found"
+                                                : "Loading surgeries..."}
                                             </div>
                                           )}
                                         </div>
@@ -7475,14 +7592,9 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
-                                    onClick={() => {
-                                      if (surgeryItems.length > 1) {
-                                        const newItems = surgeryItems.filter(
-                                          (_, i) => i !== index,
-                                        );
-                                        setSurgeryItems(newItems);
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      handleRemoveSurgeryItem(index)
+                                    }
                                     disabled={surgeryItems.length === 1}
                                   >
                                     −
