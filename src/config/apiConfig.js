@@ -758,6 +758,7 @@ export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
 export const IPD_PATIENT_WAITING_LIST = `/ipd/pendingAdmissionList`;
+export const ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST = `/ipd/activeAdmissionAndDischargeAdmissionList`;
 export const GET_WARD_BY_CATEGORY = `/ipd/getWardDetailsByCategory`;
 export const GET_ROOM_BY_WARD = `/ipd/getRoomDetailsByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedDetailsByRoom';
