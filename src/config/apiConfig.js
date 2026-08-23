@@ -283,6 +283,9 @@ export const GET_RECALL_PATIENT_DETAILS = `/opd/recallPatientDetailsByVisit`;
 export const UPDATE_RECALL_PATIENT = `/opd/update-recall-patient`;
 export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic`;
 
+export const MAS_OPERATION_THEATRE_GET_ALL = `${MASTERS}/operationTheatre/getAll`;
+export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailability`
+export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
 export const MAS_ROOM = `${MASTERS}/mas-room`;
@@ -470,7 +473,6 @@ export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 export const INVENTORY = `/inventory`;
 export const GET_STORE_ISSUE_LIST = `${INVENTORY}/storeIssueM/list`;
 
-export const SECTION_ID_FOR_DRUGS = 18;
 export const SECTION_CODE_FOR_DRUGS = "DRUG";
 export const SECTION_CODE_FOR_NON_DRUGS = "NON_DRUG";
 
@@ -592,8 +594,8 @@ export const SAVE_OPENING_BALANCE_ENTRY = `${INVENTORY}/openingBalanceEntry/save
 export const SUBMIT_OPENING_BALANCE_ENTRY = `${INVENTORY}/openingBalanceEntry/submit`;
 export const GET_DEPARTMENT_BY_ID = `${MAS_DEPARTMENT}/getById`;
 export const GET_CURRENT_USER_PROFILE_BY_NAME = `/authController/getUsersForProfile`;
-export const GET_ALL_BRANDS_FOR_DROPDOWN = `${MAS_BRAND}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
-export const GET_ALL_MANUFACTURER_FOR_DROPDOWN = `${MAS_MANUFACTURE}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
+export const GET_ALL_BRANDS_FOR_DROPDOWN = `${MASTERS}/brands`;
+export const GET_ALL_MANUFACTURER_FOR_DROPDOWN = `${MASTERS}/manufacturers`;
 export const REQUEST_PARAM_SECTION_ID = "sectionId";
 export const REQUEST_PARAM_SECTION_CODE = "sectionCode";
 export const REQUEST_PARAM_KEYWORD = "keyword";
@@ -831,3 +833,5 @@ export const GET_ITEM_BATCHES_EXCEPT_STOCK = "/inventory/item/batchesExceptGiven
 export const IP_SUMMARY_BILL_REPORT_API = `${ALL_REPORTS}/ipSummaryBill`;
 export const IP_DETAILED_BILL_REPORT_API = `${ALL_REPORTS}/ipDetailedBill`;
 export const ADVANCE_RECEIPT_REPORT_API = `${ALL_REPORTS}/advanceReceipt`;
+
+export const MAS_SURGERY_GET_BY_LEVEL = `${MASTERS}/masSurgery/getBySurgeryLevel`;

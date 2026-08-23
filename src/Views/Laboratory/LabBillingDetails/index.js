@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import LoadingScreen from "../../../Components/Loading";
@@ -46,6 +46,7 @@ const LabBillingDetails = () => {
   const [patientList, setPatientList] = useState([]);
   const [filteredPatientList, setFilteredPatientList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isShowingAll, setIsShowingAll] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchData, setSearchData] = useState({
     patientName: "",
@@ -80,19 +81,27 @@ const LabBillingDetails = () => {
   });
 
   const [gstConfigLoaded, setGstConfigLoaded] = useState(false);
+  const skipNextPageFetchRef = useRef(false);
+  const isFirstListLoadRef = useRef(true);
 
   // Fetch pending lab billing list
-  const fetchPendingLabBilling = async (page = 0) => {
+  const fetchPendingLabBilling = async (
+    page = 0,
+    filters = searchData,
+    { showFullPageLoader = false } = {},
+  ) => {
     try {
-      setIsLoading(true);
+      if (showFullPageLoader) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const params = new URLSearchParams({
         page,
         size: DEFAULT_ITEMS_PER_PAGE,
-        patientName: searchData.patientName,
-        mobileNo: searchData.mobileNo,
-        registrationNo: searchData.registrationNo,
+        patientName: filters.patientName,
+        mobileNo: filters.mobileNo,
+        registrationNo: filters.registrationNo,
       });
 
       const response = await getRequest(
@@ -127,7 +136,9 @@ const LabBillingDetails = () => {
       console.error("Error fetching pending lab billing data:", error);
       setError(error.message);
     } finally {
-      setIsLoading(false);
+      if (showFullPageLoader) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -170,7 +181,15 @@ const LabBillingDetails = () => {
   }
 
   useEffect(() => {
-    fetchPendingLabBilling(currentPage - 1);
+    if (skipNextPageFetchRef.current) {
+      skipNextPageFetchRef.current = false;
+      return;
+    }
+
+    fetchPendingLabBilling(currentPage - 1, searchData, {
+      showFullPageLoader: isFirstListLoadRef.current,
+    });
+    isFirstListLoadRef.current = false;
   }, [currentPage]);
 
   useEffect(() => {
@@ -183,41 +202,56 @@ const LabBillingDetails = () => {
     setCurrentPage(1);
   };
 
-const handleSearch = async () => {
-  if (
-    !searchData.patientName.trim() &&
-    !searchData.mobileNo.trim() &&
-    !searchData.registrationNo.trim()
-  ) {
-    setIsSearchMode(false);
-    setCurrentPage(1);
-    await fetchPendingLabBilling(0);
-    return;
-  }
+  const handleSearch = async (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
 
-  try {
-    setIsSearching(true);
-    setIsSearchMode(true);
-    setCurrentPage(1);
+    const filters = {
+      patientName: searchData.patientName.trim(),
+      mobileNo: searchData.mobileNo.trim(),
+      registrationNo: searchData.registrationNo.trim(),
+    };
 
-    await fetchPendingLabBilling(0);
-  } catch (error) {
-    console.error("Search error:", error);
-  } finally {
-    setIsSearching(false);
-  }
-};
+    try {
+      setIsSearching(true);
+      skipNextPageFetchRef.current = true;
+      setIsSearchMode(Boolean(filters.patientName || filters.mobileNo || filters.registrationNo));
+      setCurrentPage(1);
 
-  const handleReset = () => {
-    setSearchData({
+      await fetchPendingLabBilling(0, filters, { showFullPageLoader: false });
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleReset = async (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    const clearedFilters = {
       patientName: "",
       mobileNo: "",
       registrationNo: "",
-    });
+    };
 
-    setFilteredPatientList(patientList);
-    setIsSearchMode(false); // return to API pagination
-    setCurrentPage(1);
+    try {
+      setIsShowingAll(true);
+      skipNextPageFetchRef.current = true;
+      setSearchData(clearedFilters);
+      setIsSearchMode(false);
+      setCurrentPage(1);
+      setFilteredPatientList([]);
+
+      await fetchPendingLabBilling(0, clearedFilters, {
+        showFullPageLoader: false,
+      });
+    } catch (error) {
+      console.error("Reset error:", error);
+    } finally {
+      setIsShowingAll(false);
+    }
   };
 
   const handleRowClick = async (patient) => {
@@ -760,12 +794,12 @@ const handleSearch = async () => {
                               type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
-                              disabled={isSearching}
+                              disabled={isSearching || isShowingAll}
                             >
                               {isSearching ? (
                                 <>
                                   <span
-                                    className="spinner-border spinner-border-sm me-2"
+                                    className="spinner-border spinner-border-sm text-primary me-2"
                                     role="status"
                                     aria-hidden="true"
                                   ></span>
@@ -781,8 +815,20 @@ const handleSearch = async () => {
                               type="button"
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
+                              disabled={isSearching || isShowingAll}
                             >
-                              Show All
+                              {isShowingAll ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm text-secondary me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Loading...
+                                </>
+                              ) : (
+                                "Show All"
+                              )}
                             </button>
                           </div>
                         </div>
@@ -793,13 +839,17 @@ const handleSearch = async () => {
                   {error && (
                     <div className="alert alert-danger" role="alert">
                       <strong>Error:</strong> {error}
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger ms-2"
-                        onClick={fetchPendingLabBilling}
-                      >
-                        Retry
-                      </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={() =>
+                          fetchPendingLabBilling(currentPage - 1, searchData, {
+                            showFullPageLoader: false,
+                          })
+                        }
+                        >
+                          Retry
+                        </button>
                     </div>
                   )}
 

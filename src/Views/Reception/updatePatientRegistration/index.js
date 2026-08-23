@@ -680,7 +680,8 @@ const UpdatePatientRegistration = () => {
       try {
         const searchPayload = {
           mobileNo: searchOverride?.mobileNo ?? formData.mobileNo ?? null,
-          patientName: searchOverride?.patientName ?? formData.patientName ?? null,
+          patientName:
+            searchOverride?.patientName ?? formData.patientName ?? null,
         };
 
         const payload = {
@@ -746,10 +747,14 @@ const UpdatePatientRegistration = () => {
     setSearchQuery(patientName);
     setMobileQuery(mobileNo);
 
-    handleSearch(0, {
-      patientName,
-      mobileNo,
-    }, false);
+    handleSearch(
+      0,
+      {
+        patientName,
+        mobileNo,
+      },
+      false,
+    );
   }, [location.key, location.pathname, location.state]);
 
   const handleReset = () => {
@@ -1527,8 +1532,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1546,8 +1550,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1572,8 +1575,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1615,8 +1617,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1641,8 +1642,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1658,8 +1658,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1704,8 +1703,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1753,8 +1751,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -2141,61 +2138,62 @@ const UpdatePatientRegistration = () => {
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
         const visits = response.response?.visits || [];
-        const hasBillingStatusY = visits.length > 0 && visits[0]?.billingStatus === "y";
+        const hasBillingStatusY =
+          visits.length > 0 && visits[0]?.billingStatus === "y";
         const details = resp?.details;
         const hasVisits = Array.isArray(visits) && visits.length > 0;
-const isDetailsBlank =
-  details === null ||
-  details === undefined ||
-  (Array.isArray(details) && details.length === 0) ||
-  (typeof details === "object" && !Array.isArray(details) && Object.keys(details).length === 0);
+        const isDetailsBlank =
+          details === null ||
+          details === undefined ||
+          (Array.isArray(details) && details.length === 0) ||
+          (typeof details === "object" &&
+            !Array.isArray(details) &&
+            Object.keys(details).length === 0);
 
-  if (hasVisits && isDetailsBlank) {
-  const visit = visits;
+        if (hasVisits && isDetailsBlank) {
+          const visit = visits;
 
-  Swal.fire({
-    title: "Success",
-    html: `
+          Swal.fire({
+            title: "Success",
+            html: `
       <p>Patient updated and appointment booked successfully.</p>
       <p>Proceed to the token slip page?</p>
     `,
-    icon: "success",
-    showCancelButton: true,
-    confirmButtonText: "Proceed",
-    cancelButtonText: "Close",
-    allowOutsideClick: false,
-  }).then((result) => {
-    if (result.isConfirmed) {
-navigate("/opd_payment_success", {
-  replace: true,
-  state: {
-    source: "followup-update",
-    billingType: "Consultation Services",
-    hasBillingData: false,
-    amount: 0,
-    patientId: patientResp?.id || patientDetailForm.id,
-    patientName:
-      patientResp?.patientName ||
-      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
-    visits: visits.map((visit) => ({
-      visitId: visit.id,
-      tokenNo: visit.tokenNo,
-      doctorName: visit.doctorName,
-      patientName:
-        visit.patientName ||
-        patientResp?.patientName ||
-        `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
-      patientId: visit.patientId,
-    })),
-  },
-});
-    } else if (result.dismiss === Swal.DismissReason.cancel) {
-      handleReset();
-    }
-  });
-
-}
-  else if (hasBillingStatusY && !isDetailsBlank) {
+            icon: "success",
+            showCancelButton: true,
+            confirmButtonText: "Proceed",
+            cancelButtonText: "Close",
+            allowOutsideClick: false,
+          }).then((result) => {
+            if (result.isConfirmed) {
+              navigate("/opd_payment_success", {
+                replace: true,
+                state: {
+                  source: "followup-update",
+                  billingType: "Consultation Services",
+                  hasBillingData: false,
+                  amount: 0,
+                  patientId: patientResp?.id || patientDetailForm.id,
+                  patientName:
+                    patientResp?.patientName ||
+                    `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+                  visits: visits.map((visit) => ({
+                    visitId: visit.id,
+                    tokenNo: visit.tokenNo,
+                    doctorName: visit.doctorName,
+                    patientName:
+                      visit.patientName ||
+                      patientResp?.patientName ||
+                      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+                    patientId: visit.patientId,
+                  })),
+                },
+              });
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+              handleReset();
+            }
+          });
+        } else if (hasBillingStatusY && !isDetailsBlank) {
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
@@ -2210,15 +2208,13 @@ navigate("/opd_payment_success", {
         } else if (resp) {
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
-            html: `
-            <p><strong>${resp.patientName}</strong> has been updated successfully.</p>
-            ${appointmentFlag ? `<p>Appointments have been scheduled.</p>` : ""}
-            <p>Do you want to proceed to billing?</p>
-          `,
+            html: `<p>Patient has been updated successfully.</p>
+           <p>Do you want to proceed to pending billing?</p>`,
             icon: "success",
+            showConfirmButton: true,
             showCancelButton: true,
             confirmButtonText: "Proceed to Billing",
-            cancelButtonText: "Close",
+            cancelButtonText: "Cancel",
             allowOutsideClick: false,
           }).then((result) => {
             if (result.isConfirmed) {
@@ -2306,7 +2302,6 @@ navigate("/opd_payment_success", {
     e.preventDefault();
   };
 
-
   // UPDATE YOUR renderPagination METHOD - Change all buttons to type="button"
   const renderPagination = () => {
     const pageNumbers = [];
@@ -2354,36 +2349,36 @@ navigate("/opd_payment_success", {
   };
 
   const handleBackToSearch = () => {
-  setShowPatientDetails(false);
-  setShowDetails(false);
-  setLoading(false);
-  // Keep the existing search results
-  // Do not clear patients/searchPerformed
+    setShowPatientDetails(false);
+    setShowDetails(false);
+    setLoading(false);
+    // Keep the existing search results
+    // Do not clear patients/searchPerformed
 
-  setPatientDetailForm({
-    patientGender: "",
-    patientRelation: "",
-  });
+    setPatientDetailForm({
+      patientGender: "",
+      patientRelation: "",
+    });
 
-  setAppointments([
-    {
-      id: 0,
-      speciality: "",
-      selDoctorId: "",
-      selSession: "",
-      departmentName: "",
-      doctorName: "",
-      sessionName: "",
-      visitId: null,
-      tokenNo: null,
-      tokenStartTime: "",
-      tokenEndTime: "",
-      selectedTimeSlot: "",
-    },
-  ]);
+    setAppointments([
+      {
+        id: 0,
+        speciality: "",
+        selDoctorId: "",
+        selSession: "",
+        departmentName: "",
+        doctorName: "",
+        sessionName: "",
+        visitId: null,
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: "",
+      },
+    ]);
 
-  setAppointmentFlag(false);
-};
+    setAppointmentFlag(false);
+  };
 
   const selectToken = async (
     appointmentIndex,
@@ -2532,8 +2527,7 @@ navigate("/opd_payment_success", {
         });
         return;
       }
-      debugger;
-      const params = new URLSearchParams({
+        const params = new URLSearchParams({
         deptId: targetAppointment.speciality,
         doctorId: targetAppointment.selDoctorId,
         appointmentDate: selectedDate,
@@ -2977,7 +2971,10 @@ navigate("/opd_payment_success", {
               mobileNo: patientDetailForm.patientMobileNumber,
               aadhaarNo: abhaData.aadhaarNo,
               email: patientDetailForm.patientEmailId,
-              patientAbhaId: patientDetailForm.abhaNumber || patientDetailForm.patientAbhaId || "",
+              patientAbhaId:
+                patientDetailForm.abhaNumber ||
+                patientDetailForm.patientAbhaId ||
+                "",
             }}
             genderData={genderData}
             stateData={stateData}
@@ -3192,7 +3189,11 @@ navigate("/opd_payment_success", {
                               id="abhaNumber"
                               name="abhaNumber"
                               className="form-control"
-                              value={patientDetailForm.abhaNumber ||patientDetailForm.patientAbhaId|| ""}
+                              value={
+                                patientDetailForm.abhaNumber ||
+                                patientDetailForm.patientAbhaId ||
+                                ""
+                              }
                               readOnly
                               placeholder="Not linked"
                               style={{ backgroundColor: "#f8f9fa" }}
@@ -3229,20 +3230,20 @@ navigate("/opd_payment_success", {
                               height="150"
                               style={{ display: "none" }}
                             ></canvas>
-                          <div className="mt-2">
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary me-2 mb-2"
-                              onClick={() =>
-                                profilePhotoInputRef.current?.click()
-                              }
-                            >
-                              Upload Photo
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-primary me-2 mb-2"
-                              onClick={startCamera}
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary me-2 mb-2"
+                                onClick={() =>
+                                  profilePhotoInputRef.current?.click()
+                                }
+                              >
+                                Upload Photo
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary me-2 mb-2"
+                                onClick={startCamera}
                                 disabled={isCameraOn}
                               >
                                 Start Camera
@@ -3256,24 +3257,24 @@ navigate("/opd_payment_success", {
                                   Take Photo
                                 </button>
                               )}
-                            <button
-                              type="button"
-                              className="btn btn-danger mb-2"
-                              onClick={clearPhoto}
-                            >
-                              Clear Photo
-                            </button>
+                              <button
+                                type="button"
+                                className="btn btn-danger mb-2"
+                                onClick={clearPhoto}
+                              >
+                                Clear Photo
+                              </button>
+                            </div>
+                            <input
+                              ref={profilePhotoInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="d-none"
+                              onChange={handlePhotoFileChange}
+                            />
                           </div>
-                          <input
-                            ref={profilePhotoInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="d-none"
-                            onChange={handlePhotoFileChange}
-                          />
                         </div>
                       </div>
-                    </div>
                     </div>
                   </form>
                 </div>
@@ -4144,7 +4145,9 @@ navigate("/opd_payment_success", {
                         className="btn btn-primary me-2"
                         disabled={!isFormValid()}
                       >
-                        {appointmentFlag ? "Book Appointment" : "Update Registration"}
+                        {appointmentFlag
+                          ? "Book Appointment"
+                          : "Update Registration"}
                       </button>
                       <button
                         type="button"
@@ -4273,11 +4276,19 @@ navigate("/opd_payment_success", {
                         {tableLoading && (
                           <div
                             className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                            style={{ backgroundColor: "rgba(255,255,255,0.72)", zIndex: 2 }}
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.72)",
+                              zIndex: 2,
+                            }}
                           >
                             <div className="text-center">
-                              <div className="spinner-border text-primary" role="status" />
-                              <div className="mt-2 text-muted">Searching...</div>
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
+                              />
+                              <div className="mt-2 text-muted">
+                                Searching...
+                              </div>
                             </div>
                           </div>
                         )}

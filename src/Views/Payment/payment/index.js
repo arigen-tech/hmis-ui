@@ -194,7 +194,6 @@ const PaymentPage = () => {
   const proceedWithPayment = async (paymentRequest) => {
     try {
       setLoading(true);
-      debugger;
       const finalData = {
         ...paymentRequest,
         timestamp: new Date().toISOString(),

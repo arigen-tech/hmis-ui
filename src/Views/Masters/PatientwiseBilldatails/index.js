@@ -6,6 +6,7 @@ import {
   INVOICE_REPORTS,
   LAB_INVOICE_API,
   OPD_INVOICE_API,
+  PRESCRIPTION_INVOICE_REPORT,
   RADIOLOGY_INVOICE_API,
 } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
@@ -86,11 +87,11 @@ const PatientwiseBilldatails = () => {
 
     setPdfUrl(null);
     setSelectedRecord(record);
-
     try {
       let apiUrl = "";
 
       // Determine API endpoint based on serviceCategoryId
+      if (record.serviceCategoryId === 1 ){
       if (record.serviceCategoryId === 1 || record.serviceCategoryId === 3) {
         // OPD Report
         apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
@@ -99,6 +100,9 @@ const PatientwiseBilldatails = () => {
         apiUrl = `${LAB_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
       } else if(record.serviceCategoryId === 4){
         apiUrl = `${RADIOLOGY_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
+      } else if(record.serviceCategoryId === 3) {
+        apiUrl=`${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${record.prescriptionHeaderId}&flag=${flag}`;
+      }
       } 
       else{
         showPopup(
@@ -186,6 +190,7 @@ const PatientwiseBilldatails = () => {
         const mappedData = pageData.content.map((item) => ({
           id: item.headerId,
           visitId: item.visitId,
+          prescriptionHeaderId:item.prescriptionHeaderId,
           patientName: item.patientName || "",
           mobileNo: item.phoneNo || "",
           age: item.age || "",
