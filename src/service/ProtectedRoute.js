@@ -278,6 +278,8 @@ const validRoutes = [
   "/OTTeamRoleMaster",
   "/OTPriorityMaster",
   "/OTComplicationMaster",
+  "/BrandMaster",
+  "/ManufacturerMaster",
 ];
 
 // Routes that should bypass authorization
