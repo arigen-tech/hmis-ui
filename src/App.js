@@ -280,6 +280,7 @@ import OTPriorityMaster from './Views/Masters/OTPriorityMaster';
 import OTComplicationMaster from './Views/Masters/OTComplicationMaster';
 import BrandMaster from './Views/Masters/BrandMaster';
 import ManufacturerMaster from './Views/Masters/ManufacturerMaster';
+import ProcedureWorklist from './Views/ProcedureManagement/ProcedureWorklist';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -593,6 +594,8 @@ function App() {
                 <Route path="/OTComplicationMaster" element={<OTComplicationMaster/>} />
                 <Route path="/BrandMaster" element={<BrandMaster/>} />
                 <Route path="/ManufacturerMaster" element={<ManufacturerMaster/>} />
+                <Route path="/ProcedureWorklist" element={<ProcedureWorklist/>} />
+
 
                 
 
