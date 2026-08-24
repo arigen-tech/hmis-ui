@@ -666,6 +666,12 @@ export const RECEIVING_REPORT_URL = `${ALL_REPORTS}/indentReceiving`;
 export const RETURN_REPORT_URL = `${ALL_REPORTS}/indentReturn`;
 export const REQUEST_PARAM_RECEIVED_M_ID = "receiveMId";
 
+//Indent return
+
+export const GET_UNVERIFIED_RETURNS_HEADER = "/inventory/getUnverifiedReturns";
+export const GET_UNVERIFIED_RETURN_DETAILS = "/inventory/getUnverifiedReturnDetails";
+export const VERIFY_RETURN_INDENT = "/inventory/verifyReturnIndent";
+
 //Track Indent
 export const INDENT_TRACKING = `${INVENTORY}/indent/tracking`;
 export const INDENT_TRACKING_STATUS_MAP = `${INVENTORY}/indent/tracking/statusMap`;
