@@ -1,51 +1,6 @@
-import React, { useState } from 'react';
-
-// Sample diet order history data - ALL VALUES CHANGED
-const dietOrderHistoryData = [
-  {
-    id: 1,
-    dietCategory: 'Low Sodium',
-    fromDateTime: '05-Jan-2026 07:30',
-    toDateTime: '07-Jan-2026 18:00',
-    specialInstruction: 'Restrict salt, no processed food',
-    orderedBy: 'Dietician – Mr. Amit Sharma',
-    status: 'Completed',
-    completedOn: '07-Jan-2026 18:00'
-  },
-  {
-    id: 2,
-    dietCategory: 'High Fiber',
-    fromDateTime: '08-Jan-2026 08:00',
-    toDateTime: '10-Jan-2026 20:00',
-    specialInstruction: 'Whole grains, fruits, vegetables',
-    orderedBy: 'Doctor – Dr. Priya Nair',
-    status: 'Completed',
-    completedOn: '10-Jan-2026 20:00'
-  },
-  {
-    id: 3,
-    dietCategory: 'Renal',
-    fromDateTime: '11-Jan-2026 09:00',
-    toDateTime: '14-Jan-2026 12:00',
-    specialInstruction: 'Low protein, low potassium',
-    orderedBy: 'Dietician – Ms. Sunita Reddy',
-    status: 'Completed',
-    completedOn: '14-Jan-2026 12:00'
-  },
-  {
-    id: 4,
-    dietCategory: 'Gluten Free',
-    fromDateTime: '15-Jan-2026 13:00',
-    toDateTime: null,
-    specialInstruction: 'No wheat, barley, rye',
-    orderedBy: 'Dietician – Mr. Amit Sharma',
-    status: 'Active',
-    completedOn: '—'
-  }
-];
-
-// Get the active diet order (the one with status 'Active')
-const activeDietOrder = dietOrderHistoryData.find(order => order.status === 'Active') || dietOrderHistoryData[0];
+import React, { useState, useEffect } from 'react';
+import { getRequest } from '../../../service/apiService';
+import { GET_PREVIOUS_DIET_ORDER_HISTORY } from '../../../config/apiConfig';
 
 // Helper to get current date in YYYY-MM-DD format
 const getCurrentDate = () => {
@@ -79,8 +34,8 @@ const mealOptions = ['Breakfast', 'Lunch', 'Evening Snack', 'Dinner'];
 // Status options
 const statusOptions = ['Given', 'Not Taken', 'Partial', 'Refused'];
 
-// Auto Given By value (can be from context/state)
-const AUTO_GIVEN_BY = 'Nurse Station';
+// Auto Given By value
+const AUTO_GIVEN_BY = sessionStorage.getItem("username") || "System";
 
 // Empty meal entry row template
 const emptyMealEntry = () => ({
@@ -95,10 +50,38 @@ const emptyMealEntry = () => ({
   givenBy: AUTO_GIVEN_BY
 });
 
-const DietOrderHistory = () => {
+const DietOrderHistory = ({ selectedPatient }) => {
   const [showModal, setShowModal] = useState(false);
+  const [dietHistory, setDietHistory] = useState([]);
+  const [loadingDietHistory, setLoadingDietHistory] = useState(false);
 
-  // State for meal entries (Diet history and new entry table) - ALL VALUES CHANGED
+  useEffect(() => {
+    if (selectedPatient?.inpatientId) {
+      fetchDietHistory(selectedPatient.inpatientId);
+    }
+  }, [selectedPatient]);
+
+  const fetchDietHistory = async (inpatientId) => {
+    setLoadingDietHistory(true);
+    try {
+      const res = await getRequest(`${GET_PREVIOUS_DIET_ORDER_HISTORY}?inpatientId=${inpatientId}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setDietHistory(res.response);
+      } else {
+        setDietHistory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching diet history:", err);
+      setDietHistory([]);
+    } finally {
+      setLoadingDietHistory(false);
+    }
+  };
+
+  // Get the active diet order (the one with status 'A')
+  const activeDietOrder = dietHistory.find(order => order.status === 'A') || dietHistory[0] || {};
+
+  // State for meal entries
   const [mealEntries, setMealEntries] = useState([
     {
       id: 1,
@@ -144,7 +127,6 @@ const DietOrderHistory = () => {
     setMealEntries(prev => prev.map(entry => {
       if (entry.id === id) {
         const updated = { ...entry, [field]: value };
-        // Auto-set planned time when meal type changes
         if (field === 'mealType') {
           updated.plannedTime = getPlannedTimeForMeal(value);
         }
@@ -157,18 +139,14 @@ const DietOrderHistory = () => {
   // Save the current input row (last row)
   const handleSaveMealEntry = () => {
     const lastRow = mealEntries[mealEntries.length - 1];
-    // Validation: at least mealType should be selected
     if (!lastRow.mealType) {
       alert('Please select a meal type before saving.');
       return;
     }
-    // Create a new row with the current values (without modifying the last row directly)
     const savedEntry = { ...lastRow };
-    // Ensure consumedPercent has % sign if number
     if (savedEntry.consumedPercent && !isNaN(Number(savedEntry.consumedPercent)) && !savedEntry.consumedPercent.includes('%')) {
       savedEntry.consumedPercent = `${savedEntry.consumedPercent}%`;
     }
-    // Replace the last row with the saved entry and add a new empty row
     const newEmpty = emptyMealEntry();
     setMealEntries(prev => [
       ...prev.slice(0, -1),
@@ -177,20 +155,9 @@ const DietOrderHistory = () => {
     ]);
   };
 
-  // Delete a meal entry (non-last rows only)
-  const handleDeleteMealEntry = (id) => {
-    const isLast = mealEntries[mealEntries.length - 1].id === id;
-    if (isLast) return;
-    if (window.confirm('Are you sure you want to delete this meal entry?')) {
-      setMealEntries(prev => prev.filter(entry => entry.id !== id));
-    }
-  };
-
   return (
     <>
-      {/* Main Page Content */}
       <div>
-        {/* Current Active Diet Order Details with Button inside */}
         <div className="card mb-3">
           <div className="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center">
             <strong>Current Active Diet Order</strong>
@@ -203,14 +170,14 @@ const DietOrderHistory = () => {
           </div>
           <div className="card-body py-1">
             <div className="row">
-              <div className="col-md-3">
-                <strong>Diet Category:</strong> {activeDietOrder.dietCategory}
+              <div className="col-12 col-md-6 d-flex justify-content-start align-items-center">
+                <h6 className="mb-0 text-success fw-bold">Active Diet: {activeDietOrder.dietTypeName || '-'}</h6>
               </div>
               <div className="col-md-4">
-                <strong>Special Instruction:</strong> {activeDietOrder.specialInstruction}
+                <strong>Special Instruction:</strong> {activeDietOrder.specialInstruction || '-'}
               </div>
               <div className="col-md-3">
-                <strong>Effective From:</strong> {activeDietOrder.fromDateTime}
+                <strong>Effective From:</strong> {activeDietOrder.fromDate || '-'}
               </div>
               <div className="col-md-2">
                 <strong>Ordered By:</strong> {activeDietOrder.orderedBy}
@@ -439,21 +406,31 @@ const DietOrderHistory = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {dietOrderHistoryData.map(order => (
-                              <tr key={order.id} className={order.status === 'Active' ? 'table-success' : ''}>
-                                <td>{order.dietCategory}</td>
-                                <td>{order.fromDateTime}</td>
-                                <td>{order.toDateTime || 'Present'}</td>
-                                <td>{order.specialInstruction}</td>
-                                <td>{order.orderedBy}</td>
-                                <td>
-                                  <span className={`badge ${order.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
-                                    {order.status}
-                                  </span>
-                                </td>
-                                <td>{order.completedOn}</td>
+                            {loadingDietHistory ? (
+                              <tr>
+                                <td colSpan="7" className="text-center py-4">Loading diet history...</td>
                               </tr>
-                            ))}
+                            ) : dietHistory.length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="text-center py-4 text-muted">No past diet orders found.</td>
+                              </tr>
+                            ) : (
+                              dietHistory.map(order => (
+                                <tr key={order.dietOrderId} className={order.status === 'A' ? 'table-success' : ''}>
+                                  <td>{order.dietTypeName || '-'}</td>
+                                  <td>{order.fromDate || '-'}</td>
+                                  <td>{order.toDate || '-'}</td>
+                                  <td>{order.specialInstruction || '-'}</td>
+                                  <td>{order.orderedBy || '-'}</td>
+                                  <td>
+                                    <span className={`badge ${order.status === 'A' ? 'bg-success' : 'bg-secondary'}`}>
+                                      {order.status === 'A' ? 'Active' : 'Completed'}
+                                    </span>
+                                  </td>
+                                  <td>{order.status !== 'A' ? (order.toDate || '-') : '-'}</td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>

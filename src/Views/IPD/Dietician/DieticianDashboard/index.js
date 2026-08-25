@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
+import { getRequest, postRequest } from "../../../../service/apiService";
+import { MAS_WARD_GET_ALL_ACTIVE, ACTIVE_DIET_BY_INPATIENT, GET_PREVIOUS_DIET_ORDER_HISTORY, SAVE_DIET_ORDER_BY_INPATIENT, MAS_DIET_TYPE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME } from "../../../../config/apiConfig";
+import Swal from "sweetalert2";
 
 const DieticianDashboard = () => {
   // ---------- View switching: "list" | "dietEntry" | "tracking" ----------
@@ -28,59 +31,91 @@ const DieticianDashboard = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Dashboard grid data - Updated with new patients
-  const [dietData, setDietData] = useState([
-    {
-      uhid: "UHID-000512",
-      patientName: "Sunita Reddy",
-      mobileNo: "98XXXX6789",
-      admissionNo: "ADM-2025-000789",
-      wardBed: "General Ward-C / Bed-02",
-      currentDietCategory: "Diabetic",
-      dietStatus: "Active",
-      specialInstruction: "Low sugar, no sweets",
-    },
-    {
-      uhid: "UHID-000623",
-      patientName: "Vikram Singh",
-      mobileNo: "97XXXX2345",
-      admissionNo: "ADM-2025-000812",
-      wardBed: "ICU-2 / Bed-04",
-      currentDietCategory: "Liquid",
-      dietStatus: "Active",
-      specialInstruction: "NPO, only clear fluids",
-    },
-    {
-      uhid: "UHID-000734",
-      patientName: "Kavita Nair",
-      mobileNo: "99XXXX8765",
-      admissionNo: "ADM-2025-000901",
-      wardBed: "HDU-1 / Bed-03",
-      currentDietCategory: "Cardiac",
-      dietStatus: "Active",
-      specialInstruction: "Low sodium, low fat",
-    },
-    {
-      uhid: "UHID-000845",
-      patientName: "Arjun Mehta",
-      mobileNo: "96XXXX4321",
-      admissionNo: "ADM-2025-001023",
-      wardBed: "Maternity Ward / Bed-05",
-      currentDietCategory: "Normal",
-      dietStatus: "Active",
-      specialInstruction: "High protein, lactation diet",
-    },
-    {
-      uhid: "UHID-000956",
-      patientName: "Lakshmi Iyer",
-      mobileNo: "95XXXX7890",
-      admissionNo: "ADM-2025-001145",
-      wardBed: "General Ward-D / Bed-01",
-      currentDietCategory: "-",
-      dietStatus: "Not Assigned",
-      specialInstruction: "-",
-    },
-  ]);
+  const [dietData, setDietData] = useState([]);
+  
+  // Wards and Diet Categories data for dropdowns
+  const [wards, setWards] = useState([]);
+  const [dietCategoryOptions, setDietCategoryOptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState(sessionStorage.getItem("username") || "System");
+
+  // Fetch Wards and Diet Categories on component mount
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      setIsLoading(true);
+      try {
+        const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+        let userProfilePromise = null;
+        if (username) {
+          userProfilePromise = getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        }
+
+        const [wardsRes, categoriesRes, userProfileRes] = await Promise.all([
+          getRequest(MAS_WARD_GET_ALL_ACTIVE),
+          getRequest(MAS_DIET_TYPE_GET_ALL),
+          userProfilePromise
+        ]);
+        
+        if (wardsRes?.status === 200 && wardsRes.response) {
+          setWards(wardsRes.response);
+        }
+        
+        if (categoriesRes?.status === 200 && categoriesRes.response) {
+          setDietCategoryOptions(categoriesRes.response.map(cat => ({
+            value: cat.dietTypeId,
+            label: cat.dietTypeName
+          })));
+        }
+
+        if (userProfileRes?.status === 200 && userProfileRes.response) {
+          const docName = userProfileRes.response.firstName
+            ? [userProfileRes.response.firstName, userProfileRes.response.middleName, userProfileRes.response.lastName].filter(Boolean).join(" ")
+            : (userProfileRes.response.name || userProfileRes.response.userName || username);
+          
+          setCurrentUserName(docName);
+          setNewDietEntry(prev => ({ ...prev, orderedBy: docName }));
+        }
+
+      } catch (err) {
+        console.error("Error fetching dropdowns:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDropdowns();
+    fetchDieticianDashboard(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchDieticianDashboard = async (page = 0) => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+      });
+
+      if (searchPatientName) queryParams.append("patientName", searchPatientName);
+      if (searchMobile) queryParams.append("mobileNo", searchMobile);
+      if (searchWard) queryParams.append("wardId", searchWard);
+
+      const res = await getRequest(`${ACTIVE_DIET_BY_INPATIENT}?${queryParams.toString()}`);
+      if (res?.status === 200 && res.response) {
+        setDietData(res.response.content || []);
+        setTotalElements(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 0);
+      } else {
+        setDietData([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      }
+    } catch (error) {
+      console.error("Error fetching dietician dashboard:", error);
+      setDietData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getDietStatusColor = (status) => {
     switch (status) {
@@ -98,14 +133,14 @@ const DieticianDashboard = () => {
   // Handle page change
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    // fetchDieticianDashboard(page - 1)
+    fetchDieticianDashboard(page - 1)
   };
 
   // Handle search
   const handleSearch = async () => {
     setIsSearching(true);
     setCurrentPage(1);
-    // await fetchDieticianDashboard(0)
+    await fetchDieticianDashboard(0);
     setIsSearching(false);
   };
 
@@ -117,13 +152,28 @@ const DieticianDashboard = () => {
     setSearchWard("");
     setCurrentPage(1);
 
-    // await fetchDieticianDashboard(0)
+    // Call API with empty filters
+    setLoading(true);
+    try {
+      const res = await getRequest(`${ACTIVE_DIET_BY_INPATIENT}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`);
+      if (res?.status === 200 && res.response) {
+        setDietData(res.response.content || []);
+        setTotalElements(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 0);
+      } else {
+        setDietData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching dietician dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
     setIsShowingAll(false);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // await fetchDieticianDashboard(currentPage - 1)
+    await fetchDieticianDashboard(currentPage - 1)
     setIsRefreshing(false);
   };
 
@@ -131,7 +181,39 @@ const DieticianDashboard = () => {
   const handleDietAction = (item, e) => {
     e.stopPropagation();
     setSelectedPatient(item);
+
+    // Auto-fill patient profile
+    setPatientProfile({
+      patientId: item.uhid,
+      patientName: item.patientName,
+      gender: item.gender,
+      age: item.age,
+    });
+
+    // Auto-fill ward details
+    setWardDetails({
+      wardBed: (item.ward && item.bed) ? `${item.ward} / ${item.bed}` : '-',
+      admissionNo: item.admissionNo,
+      admissionDate: item.admissionDateTime ? new Date(item.admissionDateTime).toLocaleDateString('en-GB') : '-',
+      attendingDoctor: item.doctorName || '-',
+    });
+
+    fetchDietHistory(item.inpatientId);
     setCurrentView("dietEntry");
+  };
+
+  const fetchDietHistory = async (inpatientId) => {
+    try {
+      const res = await getRequest(`${GET_PREVIOUS_DIET_ORDER_HISTORY}?inpatientId=${inpatientId}`);
+      if (res?.status === 200 && res.response) {
+        setDietHistory(res.response);
+      } else {
+        setDietHistory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching diet history:", err);
+      setDietHistory([]);
+    }
   };
 
   /* =========================================================================
@@ -141,9 +223,7 @@ const DieticianDashboard = () => {
   // ---------- Patient Profile (Auto-Populated, Read-Only) ----------
   const [patientProfile, setPatientProfile] = useState({
     patientId: "P00042",
-    title: "Ms.",
-    firstName: "Ananya",
-    lastName: "Sharma",
+    patientName: "Ananya Sharma",
     gender: "Female",
     age: "42",
   });
@@ -173,70 +253,20 @@ const DieticianDashboard = () => {
   });
 
   // ---------- Diet History (Previous diet entries) ----------
-  const [dietHistory, setDietHistory] = useState([
-    {
-      id: 1,
-      dietCategory: "Normal",
-      fromDateTime: "15-Sep-2025 10:00",
-      toDateTime: "17-Sep-2025 08:00",
-      specialInstruction: "Regular diet",
-      orderedBy: "Dietician - Dr. Anjali Kulkarni",
-      status: "Completed",
-      completedOn: "17-Sep-2025 08:00",
-    },
-    {
-      id: 2,
-      dietCategory: "Liquid",
-      fromDateTime: "17-Sep-2025 08:01",
-      toDateTime: "19-Sep-2025 09:00",
-      specialInstruction: "Clear liquids, avoid dairy",
-      orderedBy: "Doctor - Dr. S. Deshmukh",
-      status: "Completed",
-      completedOn: "19-Sep-2025 09:00",
-    },
-    {
-      id: 3,
-      dietCategory: "Diabetic",
-      fromDateTime: "19-Sep-2025 09:01",
-      toDateTime: "22-Sep-2025 07:30",
-      specialInstruction: "Low carb, sugar-free",
-      orderedBy: "Dietician - Ms. Kavita Rao",
-      status: "Completed",
-      completedOn: "22-Sep-2025 07:30",
-    },
-    {
-      id: 4,
-      dietCategory: "Cardiac",
-      fromDateTime: "22-Sep-2025 07:31",
-      toDateTime: null,
-      specialInstruction: "Low sodium, low fat",
-      orderedBy: "Dietician - Ms. Kavita Rao",
-      status: "Active",
-      completedOn: null,
-    },
-  ]);
+  const [dietHistory, setDietHistory] = useState([]);
 
   // ---------- New Diet Entry ----------
   const [newDietEntry, setNewDietEntry] = useState({
     dietCategory: "",
     specialInstruction: "",
     effectiveFrom: "",
-    orderedBy: "Dietician - Ms. Kavita Rao",
+    orderedBy: currentUserName,
     remarks: "",
   });
 
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isStopping, setIsStopping] = useState(null);
-
-  const dietCategoryOptions = [
-    { value: "Normal", label: "Normal" },
-    { value: "Liquid", label: "Liquid" },
-    { value: "Soft", label: "Soft" },
-    { value: "Diabetic", label: "Diabetic" },
-    { value: "Renal", label: "Renal" },
-    { value: "Cardiac", label: "Cardiac" },
-  ];
 
   const hasError = (field) => (errors[field] ? "is-invalid" : "");
   const getErrorMessage = (field) => errors[field] || "";
@@ -271,13 +301,89 @@ const DieticianDashboard = () => {
     setIsStopping(null);
   };
 
-  const handleSaveNewDiet = () => {
+  const validateNewEntry = () => {
+    const newErrors = {};
+    if (!newDietEntry.dietCategory) newErrors.dietCategory = "Diet category is required";
+    if (!newDietEntry.effectiveFrom) newErrors.effectiveFrom = "Date is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveNewDiet = async (e) => {
+    e.preventDefault();
+    if (!validateNewEntry()) return;
+    
     setIsSaving(true);
-    console.log("Saving new diet entry:", newDietEntry);
-    setIsSaving(false);
+    try {
+      const payload = {
+        dietTypeId: parseInt(newDietEntry.dietCategory),
+        specialInstruction: newDietEntry.specialInstruction,
+        effectiveFrom: newDietEntry.effectiveFrom.split("T")[0],
+        orderedBy: parseInt(localStorage.getItem("userId") || "0", 10),
+        remark: newDietEntry.remarks,
+        inpatientId: selectedPatient?.inpatientId || 0
+      };
+
+      const res = await postRequest(SAVE_DIET_ORDER_BY_INPATIENT, payload);
+      
+      if (res?.status === 200) {
+        
+        // Reset form
+        setNewDietEntry({
+          ...newDietEntry,
+          dietCategory: "",
+          specialInstruction: "",
+          effectiveFrom: "",
+          remarks: "",
+          orderedBy: currentUserName,
+        });
+        setErrors({});
+        
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Diet order saved successfully!",
+        });
+
+        // Refresh diet history after OK is clicked
+        if (selectedPatient?.inpatientId) {
+          fetchDietHistory(selectedPatient.inpatientId);
+        }
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to save diet order: " + (res?.message || "Unknown error"),
+        });
+      }
+    } catch (err) {
+      console.error("Error saving new diet:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error saving new diet order.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleViewFullDietHistory = () => {
+    if (selectedPatient) {
+      setPatientDetails({
+        patientName: selectedPatient.patientName || "Unknown",
+        admissionNo: selectedPatient.admissionNo || "Unknown",
+      });
+    }
+
+    const activeDiet = dietHistory.find(d => d.status === 'A') || dietHistory[0] || {};
+    setDietOrder({
+      dietCategory: activeDiet.dietTypeName || "-",
+      specialInstruction: activeDiet.specialInstruction || "-",
+      effectiveFrom: activeDiet.fromDate || "-",
+      orderedBy: activeDiet.orderedBy || "-",
+    });
+
     setCurrentView("tracking");
   };
 
@@ -586,8 +692,8 @@ const DieticianDashboard = () => {
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
-                          <div className="col-md-4">
-                            <label className="form-label">Patient ID</label>
+                          <div className="col-md-3">
+                            <label className="form-label">Patient ID (UHID)</label>
                             <input
                               type="text"
                               className="form-control"
@@ -596,37 +702,17 @@ const DieticianDashboard = () => {
                               disabled
                             />
                           </div>
-                          <div className="col-md-4">
-                            <label className="form-label">Title</label>
+                          <div className="col-md-3">
+                            <label className="form-label">Patient Name</label>
                             <input
                               type="text"
                               className="form-control"
-                              value={patientProfile.title}
+                              value={patientProfile.patientName}
                               readOnly
                               disabled
                             />
                           </div>
-                          <div className="col-md-4">
-                            <label className="form-label">First Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={patientProfile.firstName}
-                              readOnly
-                              disabled
-                            />
-                          </div>
-                          <div className="col-md-4">
-                            <label className="form-label">Last Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={patientProfile.lastName}
-                              readOnly
-                              disabled
-                            />
-                          </div>
-                          <div className="col-md-4">
+                          <div className="col-md-3">
                             <label className="form-label">Gender</label>
                             <input
                               type="text"
@@ -636,7 +722,7 @@ const DieticianDashboard = () => {
                               disabled
                             />
                           </div>
-                          <div className="col-md-4">
+                          <div className="col-md-3">
                             <label className="form-label">Age</label>
                             <input
                               type="text"
@@ -862,51 +948,29 @@ const DieticianDashboard = () => {
                                   <th>Special Instruction</th>
                                   <th>Ordered By</th>
                                   <th>Status</th>
-                                  <th>Completed On</th>
-                                  <th className="text-center">Action</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {dietHistory.map((entry) => (
-                                  <tr key={entry.id}>
-                                    <td>{entry.dietCategory}</td>
-                                    <td>{entry.fromDateTime}</td>
-                                    <td>{entry.toDateTime || "-"}</td>
-                                    <td>{entry.specialInstruction}</td>
-                                    <td>{entry.orderedBy}</td>
-                                    <td>
-                                      <span
-                                        className="badge"
-                                        style={getStatusColor(entry.status)}
-                                      >
-                                        {entry.status}
-                                      </span>
-                                    </td>
-                                    <td>{entry.completedOn || "-"}</td>
-                                    <td className="text-center">
-                                      {entry.status === "Active" ? (
-                                        <button
-                                          type="button"
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => handleStopDiet(entry.id)}
-                                          disabled={isStopping === entry.id}
+                                {dietHistory.map((entry) => {
+                                  const displayStatus = entry.status === 'A' ? 'Active' : entry.status === 'C' ? 'Completed' : entry.status;
+                                  return (
+                                    <tr key={entry.dietOrderId || Math.random()}>
+                                      <td>{entry.dietTypeName}</td>
+                                      <td>{entry.fromDate}</td>
+                                      <td>{entry.toDate || "-"}</td>
+                                      <td>{entry.specialInstruction}</td>
+                                      <td>{entry.orderedBy}</td>
+                                      <td>
+                                        <span
+                                          className="badge"
+                                          style={getStatusColor(displayStatus)}
                                         >
-                                          {isStopping === entry.id ? (
-                                            <span
-                                              className="spinner-border spinner-border-sm"
-                                              role="status"
-                                              aria-hidden="true"
-                                            />
-                                          ) : (
-                                            "Stop"
-                                          )}
-                                        </button>
-                                      ) : (
-                                        <span className="text-muted">-</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
+                                          {displayStatus}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -1071,13 +1135,18 @@ const DieticianDashboard = () => {
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Ward</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Ward"
+                  <select
+                    className="form-select form-select-sm shadow-sm"
                     value={searchWard}
                     onChange={(e) => setSearchWard(e.target.value)}
-                  />
+                  >
+                    <option value="">Select Ward</option>
+                    {wards.map((ward) => (
+                      <option key={ward.wardId} value={ward.wardId}>
+                        {ward.wardName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-md-3 d-flex align-items-end">
                   <button
@@ -1151,48 +1220,51 @@ const DieticianDashboard = () => {
                         </td>
                       </tr>
                     ) : (
-                      dietData.map((item) => (
-                        <tr key={item.uhid}>
-                          <td>
-                            {item.patientName}
-                            <br />
-                            <small className="text-muted">{item.uhid}</small>
-                          </td>
-                          <td>{item.mobileNo}</td>
-                          <td>{item.admissionNo}</td>
-                          <td>{item.wardBed}</td>
-                          <td>{item.currentDietCategory}</td>
-                          <td>
-                            <span
-                              className="badge"
-                              style={getDietStatusColor(item.dietStatus)}
-                            >
-                              {item.dietStatus}
-                            </span>
-                          </td>
-                          <td>{item.specialInstruction}</td>
-                          <td className="text-center">
-                            {item.dietStatus === "Not Assigned" ? (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-success"
-                                onClick={(e) => handleDietAction(item, e)}
+                      dietData.map((item) => {
+                        const displayStatus = item.dietStatus === 'A' ? 'Active' : item.dietStatus === 'C' ? 'Complete' : 'Not Assigned';
+                        return (
+                          <tr key={item.uhid || Math.random()}>
+                            <td>
+                              {item.patientName}
+                              <br />
+                              <small className="text-muted">{item.uhid}</small>
+                            </td>
+                            <td>{item.mobileNo}</td>
+                            <td>{item.admissionNo}</td>
+                            <td>{item.ward && item.bed ? `${item.ward} / ${item.bed}` : '-'}</td>
+                            <td>{item.dietTypeName || '-'}</td>
+                            <td>
+                              <span
+                                className="badge"
+                                style={getDietStatusColor(displayStatus)}
                               >
-                                <i className="fa fa-plus me-1"></i>
-                                New Diet Entry
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-primary"
-                                onClick={(e) => handleDietAction(item, e)}
-                              >
-                                Change Diet
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                                {displayStatus}
+                              </span>
+                            </td>
+                            <td>{item.specialInstruction || "-"}</td>
+                            <td className="text-center">
+                              {displayStatus === "Not Assigned" ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-success"
+                                  onClick={(e) => handleDietAction(item, e)}
+                                >
+                                  <i className="fa fa-plus me-1"></i>
+                                  New Diet Entry
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-primary"
+                                  onClick={(e) => handleDietAction(item, e)}
+                                >
+                                  Change Diet
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
