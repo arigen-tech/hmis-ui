@@ -273,6 +273,15 @@ const validRoutes = [
   "/AnaesthesiaTypeMaster",
   "/AnaesthesiaInstructionMaster",
   "/DepartmentIndentReturn",
+  "/OTScheduleChangeReason",
+  "/OTChecklistMaster",
+  "/OTTeamRoleMaster",
+  "/OTPriorityMaster",
+  "/OTComplicationMaster",
+  "/BrandMaster",
+  "/ManufacturerMaster",
+  "/ProcedureWorklist",
+  "/OTRequestFromIPD",
 ];
 
 // Routes that should bypass authorization

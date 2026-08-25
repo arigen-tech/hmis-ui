@@ -430,9 +430,9 @@ export const PRESCRIPTION_INVOICE_REPORT = `${ALL_REPORTS}/prescriptionInvoice`
 
 
 //billing
-export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
-export const OPD_SERVICE_CATAGORY = "SC001";
-export const LAB_SERVICE_CATAGORY = "SC002";
+export const RADIOLOGY_SERVICE_CATAGORY = "RAD_SC";
+export const OPD_SERVICE_CATAGORY = "OPD_SC";
+export const LAB_SERVICE_CATAGORY = "LAB_SC";
 export const SAC_CODE_REGISTRATION = "REG110";
 
 //ENT
@@ -665,6 +665,12 @@ export const SAVE_INDENT_RECEIVING = `${INVENTORY}/indent/receive`;
 export const RECEIVING_REPORT_URL = `${ALL_REPORTS}/indentReceiving`;
 export const RETURN_REPORT_URL = `${ALL_REPORTS}/indentReturn`;
 export const REQUEST_PARAM_RECEIVED_M_ID = "receiveMId";
+
+//Indent return
+
+export const GET_UNVERIFIED_RETURNS_HEADER = "/inventory/getUnverifiedReturns";
+export const GET_UNVERIFIED_RETURN_DETAILS = "/inventory/getUnverifiedReturnDetails";
+export const VERIFY_RETURN_INDENT = "/inventory/verifyReturnIndent";
 
 //Track Indent
 export const INDENT_TRACKING = `${INVENTORY}/indent/tracking`;
