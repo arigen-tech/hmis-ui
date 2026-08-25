@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest } from "../../../service/apiService";
 import {
-  BILLING,
   INVOICE_REPORTS,
   LAB_INVOICE_API,
   OPD_INVOICE_API,
@@ -15,48 +14,87 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 
+const SERVICE_CATEGORY_API = "/master/masServiceCategory/getAll/1";
+
 const PatientwiseBilldatails = () => {
   const [patientList, setPatientList] = useState([]);
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
     registrationNo: "",
+    serviceCategoryId: "",
   });
+  const [serviceCategories, setServiceCategories] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageInput, setPageInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false); // Add this line
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  // Add state variables for PDF handling
+  // PDF handling states
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
-
-  // Track loading states for individual records
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
+
+  // Custom dropdown state
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const serviceDropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        serviceDropdownRef.current &&
+        !serviceDropdownRef.current.contains(event.target)
+      ) {
+        setIsServiceDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-                setPopupMessage(null);
-                if (onCloseCallback) onCloseCallback();
-            },
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
     });
   };
 
+  // Fetch service categories on mount
+  useEffect(() => {
+    const fetchServiceCategories = async () => {
+      try {
+        const response = await getRequest(SERVICE_CATEGORY_API);
+        if (response && response.response) {
+          setServiceCategories(response.response);
+        }
+      } catch (error) {
+        console.error("Failed to fetch service categories", error);
+      }
+    };
+    fetchServiceCategories();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchData.patientName, searchData.mobileNo, searchData.registrationNo]);
+  }, [
+    searchData.patientName,
+    searchData.mobileNo,
+    searchData.registrationNo,
+    searchData.serviceCategoryId,
+  ]);
 
   useEffect(() => {
     if (hasSearched) {
@@ -64,21 +102,13 @@ const PatientwiseBilldatails = () => {
     }
   }, [currentPage]);
 
-  // Helper function to check if a record is generating PDF
-  const isGeneratingPdf = (recordId) => {
-    return generatingPdfIds.has(recordId);
-  };
+  const isGeneratingPdf = (recordId) => generatingPdfIds.has(recordId);
+  const isPrinting = (recordId) => printingIds.has(recordId);
 
-  // Helper function to check if a record is printing
-  const isPrinting = (recordId) => {
-    return printingIds.has(recordId);
-  };
-
-  // Generate PDF report based on serviceCategoryId
   const generateReport = async (record, flag = "D") => {
     const recordId = record.id;
+    debugger;
 
-    // Add this record to generating set
     if (flag === "D") {
       setGeneratingPdfIds((prev) => new Set(prev).add(recordId));
     } else {
@@ -90,24 +120,18 @@ const PatientwiseBilldatails = () => {
     try {
       let apiUrl = "";
 
-      // Determine API endpoint based on serviceCategoryId
-      if (record.serviceCategoryId === 1 ){
-      if (record.serviceCategoryId === 1 || record.serviceCategoryId === 3) {
-        // OPD Report
+      if (record.serviceCategoryId === 1) {
         apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 2) {
-        // Lab Report
         apiUrl = `${LAB_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
-      } else if(record.serviceCategoryId === 4){
+      } else if (record.serviceCategoryId === 4) {
         apiUrl = `${RADIOLOGY_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
-      } else if(record.serviceCategoryId === 3) {
-        apiUrl=`${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${record.prescriptionHeaderId}&flag=${flag}`;
-      }
-      } 
-      else{
+      } else if (record.serviceCategoryId === 3) {
+        apiUrl = `${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${record.prescriptionHeaderId}&flag=${flag}`;
+      } else {
         showPopup(
           "Report type not supported for this service category",
-          "error",
+          "error"
         );
         return;
       }
@@ -124,12 +148,10 @@ const PatientwiseBilldatails = () => {
       }
 
       if (flag === "D") {
-        // For download/view - create blob and URL
         const blob = await response.blob();
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
       } else {
-        // For print - just send to printer, no need to display
         showPopup("Report sent to printer successfully!", "success");
       }
     } catch (error) {
@@ -140,7 +162,6 @@ const PatientwiseBilldatails = () => {
         showPopup("Failed to print report", "error");
       }
     } finally {
-      // Remove this record from loading sets
       if (flag === "D") {
         setGeneratingPdfIds((prev) => {
           const newSet = new Set(prev);
@@ -161,7 +182,8 @@ const PatientwiseBilldatails = () => {
     if (
       !searchData.patientName &&
       !searchData.mobileNo &&
-      !searchData.registrationNo
+      !searchData.registrationNo &&
+      !searchData.serviceCategoryId
     ) {
       showPopup("Please enter at least one search field", "info");
       return;
@@ -177,11 +199,13 @@ const PatientwiseBilldatails = () => {
       if (searchData.mobileNo) params.phoneNo = searchData.mobileNo;
       if (searchData.registrationNo)
         params.registrationNo = searchData.registrationNo;
+      if (searchData.serviceCategoryId)
+        params.serviceCategoryId = searchData.serviceCategoryId;
 
       const queryParams = new URLSearchParams(params);
 
       const response = await getRequest(
-        `${INVOICE_REPORTS}?${queryParams.toString()}&page=${page}&size=${itemsPerPage}`,
+        `${INVOICE_REPORTS}?${queryParams.toString()}&page=${page}&size=${itemsPerPage}`
       );
 
       if (response && response.response) {
@@ -190,7 +214,7 @@ const PatientwiseBilldatails = () => {
         const mappedData = pageData.content.map((item) => ({
           id: item.headerId,
           visitId: item.visitId,
-          prescriptionHeaderId:item.prescriptionHeaderId,
+          prescriptionHeaderId: item.prescriptionHeaderId,
           patientName: item.patientName || "",
           mobileNo: item.phoneNo || "",
           age: item.age || "",
@@ -218,13 +242,11 @@ const PatientwiseBilldatails = () => {
     }
   };
 
-  // View report handler
   const handleViewReport = (record) => {
     console.log("View report for:", record);
     generateReport(record, "D");
   };
 
-  // Print report handler
   const handlePrintReport = (record) => {
     console.log("Print report for:", record);
     generateReport(record, "P");
@@ -232,11 +254,19 @@ const PatientwiseBilldatails = () => {
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target;
-
     setSearchData((prev) => ({
       ...prev,
       [id]: value,
     }));
+  };
+
+  // Custom dropdown selection handler
+  const handleServiceSelect = (serviceCategoryId) => {
+    setSearchData((prev) => ({
+      ...prev,
+      serviceCategoryId: serviceCategoryId,
+    }));
+    setIsServiceDropdownOpen(false);
   };
 
   const handleSearchReset = () => {
@@ -244,13 +274,13 @@ const PatientwiseBilldatails = () => {
       patientName: "",
       mobileNo: "",
       registrationNo: "",
+      serviceCategoryId: "",
     });
-
     setPatientList([]);
     setHasSearched(false);
-    setCurrentPage(0); 
-    setTotalElements(0); 
-    setTotalPages(0); 
+    setCurrentPage(0);
+    setTotalElements(0);
+    setTotalPages(0);
   };
 
   const currentItems = patientList;
@@ -258,7 +288,7 @@ const PatientwiseBilldatails = () => {
   const handlePageChange = (page) => {
     setCurrentPage(page - 1);
   };
-  // Format date for better display
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -269,7 +299,6 @@ const PatientwiseBilldatails = () => {
     }
   };
 
-  // Get status badge color
   const getStatusBadgeColor = (status) => {
     switch (status?.toLowerCase()) {
       case "paid":
@@ -283,7 +312,6 @@ const PatientwiseBilldatails = () => {
     }
   };
 
-  // Format billing type badge
   const getBillingTypeBadge = (type) => {
     switch (type?.toLowerCase()) {
       case "op":
@@ -293,6 +321,24 @@ const PatientwiseBilldatails = () => {
       default:
         return "bg-secondary";
     }
+  };
+
+  // Helper to get selected service display text
+  const getSelectedServiceText = () => {
+    if (!searchData.serviceCategoryId) return "All";
+    const selected = serviceCategories.find(
+      (cat) => String(cat.id) === String(searchData.serviceCategoryId)
+    );
+    return selected ? selected.serviceCatName : "All";
+  };
+
+  // Helper to get service category code for PDF file name
+  const getServiceCategoryCode = (serviceCategoryId) => {
+    if (!serviceCategoryId) return "";
+    const category = serviceCategories.find(
+      (cat) => String(cat.id) === String(serviceCategoryId)
+    );
+    return category ? category.serviceCateCode : "";
   };
 
   if (isLoading) {
@@ -318,7 +364,7 @@ const PatientwiseBilldatails = () => {
             setPdfUrl(null);
             setSelectedRecord(null);
           }}
-          name={`${selectedRecord?.serviceCategoryId === 1 ? "OPD" : "LAB"} Invoice - ${selectedRecord?.patientName || "Patient"}`}
+          name={`${getServiceCategoryCode(selectedRecord?.serviceCategoryId)} Invoice - ${selectedRecord?.patientName || "Patient"}`}
         />
       )}
 
@@ -332,12 +378,10 @@ const PatientwiseBilldatails = () => {
             </div>
 
             <div className="card-body">
-              {/* Patient Search Section - Similar to SampleValidation */}
-
               <div className="card-body">
                 <form>
                   <div className="row g-4 align-items-end">
-                    <div className="col-md-3">
+                    <div className="col-md-4">
                       <label className="form-label">Patient Name</label>
                       <input
                         type="text"
@@ -348,7 +392,7 @@ const PatientwiseBilldatails = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className="col-md-4">
                       <label className="form-label">Mobile No.</label>
                       <input
                         type="text"
@@ -359,7 +403,7 @@ const PatientwiseBilldatails = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className="col-md-4">
                       <label className="form-label">Registration No</label>
                       <input
                         type="text"
@@ -370,7 +414,56 @@ const PatientwiseBilldatails = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    <div className="col-md-3 d-flex">
+                    {/* Custom Service Dropdown */}
+                    <div className="col-md-4" ref={serviceDropdownRef}>
+                      <label className="form-label">Service</label>
+                      <div className="dropdown">
+                        <button
+                          className="form-select text-start dropdown-toggle"
+                          type="button"
+                          onClick={() =>
+                            setIsServiceDropdownOpen(!isServiceDropdownOpen)
+                          }
+                        >
+                          {getSelectedServiceText()}
+                        </button>
+                        {isServiceDropdownOpen && (
+                          <ul
+                            className="dropdown-menu show w-100"
+                            style={{ maxHeight: "300px", overflowY: "auto" }}
+                          >
+                            <li>
+                              <button
+                                className="dropdown-item"
+                                type="button"
+                                onClick={() => handleServiceSelect("")}
+                              >
+                                All
+                              </button>
+                            </li>
+                            {serviceCategories.map((cat) => (
+                              <li key={cat.id}>
+                                <button
+                                  className="dropdown-item"
+                                  type="button"
+                                  onClick={() =>
+                                    handleServiceSelect(String(cat.id))
+                                  }
+                                >
+                                  <span className="d-block fw-bold">
+                                    {cat.serviceCatName}
+                                  </span>
+                                  <span className="d-block text-muted small">
+                                    {cat.serviceCateCode.replace(/_/g, " ")}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-md-4 d-flex">
                       <button
                         type="button"
                         className="btn btn-primary me-2"
@@ -519,7 +612,7 @@ const PatientwiseBilldatails = () => {
                       totalItems={totalElements}
                       itemsPerPage={itemsPerPage}
                       currentPage={currentPage + 1}
-                      totalPages={totalPages} // if supported
+                      totalPages={totalPages}
                       onPageChange={handlePageChange}
                     />
                   )}
