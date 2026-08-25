@@ -689,6 +689,7 @@ const OpeningBalanceApproval = () => {
   };
 
   const formatToDate = (dateStr) => {
+    if (!dateStr) return null;
     const date = new Date(dateStr);
     return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
   };
@@ -766,6 +767,7 @@ const OpeningBalanceApproval = () => {
       } else if (status === "p") {
         setIsSubmitting(true);
       }
+      debugger;
 
       const response = await putRequest(
         `${UPDATE_OPENING_BALANCE_ENTRY_BY_ID}/${selectedRecord.balanceMId}`,
@@ -778,7 +780,10 @@ const OpeningBalanceApproval = () => {
 
     } catch (error) {
       console.error("Error submitting data:", error);
-      return { success: false, message: "Failed to update entries!" };
+      return {
+        success: false,
+        message: error?.message || "Failed to update entries!" 
+    };
     } finally {
       setIsUpdating(false);
       setIsSubmitting(false);
@@ -1244,7 +1249,7 @@ const OpeningBalanceApproval = () => {
                               <input
                                 type="date"
                                 className="form-control form-control-sm"
-                                value={entry.dom || entry.manufactureDate}
+                                value={entry.dom || ""}
                                 max={entry.doe ? new Date(new Date(entry.doe).getTime() - 86400000).toISOString().split("T")[0] : undefined}
                                 onChange={(e) => updateEntry(entry.id, "dom", e.target.value)}
                                 style={{ minWidth: "120px" }}
@@ -1255,7 +1260,7 @@ const OpeningBalanceApproval = () => {
                               <input
                                 type="date"
                                 className="form-control form-control-sm"
-                                value={entry.doe || entry.expiryDate}
+                                value={entry.doe || ""}
                                 min={entry.dom ? new Date(new Date(entry.dom).getTime() + 86400000).toISOString().split("T")[0] : undefined}
                                 onChange={(e) => updateEntry(entry.id, "doe", e.target.value)}
                                 style={{ minWidth: "120px" }}

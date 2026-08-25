@@ -249,11 +249,17 @@ export const putRequestWithFormData = async (endpoint, formData) => {
 export const putRequest = async (endpoint, data, headers = {}) => {
   try {
     let token;
+
     if (localStorage.token) {
-      token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+      token = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      };
     } else {
-      token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
+      token = {
+        Authorization: `Bearer ${sessionStorage.getItem("token")}`
+      };
     }
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "PUT",
       headers: {
@@ -263,13 +269,36 @@ export const putRequest = async (endpoint, data, headers = {}) => {
       },
       body: JSON.stringify(data),
     });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+
+    const responseData = isJsonResponse
+      ? await response.json()
+      : await response.text();
+
     if (!response.ok) {
-      throw new Error(`PUT request failed: ${response.status}`);
+      const message =
+        (responseData &&
+          typeof responseData === "object" &&
+          responseData.message) ||
+        (typeof responseData === "string" && responseData) ||
+        response.statusText ||
+        `PUT request failed: ${response.status}`;
+
+      throw {
+        status: response.status,
+        message,
+        response: responseData,
+      };
     }
+
     return {
       status: response.status,
-      data: await response.json(),
+      data: responseData,
     };
+
   } catch (error) {
     console.error("PUT Error:", error);
     throw error;
