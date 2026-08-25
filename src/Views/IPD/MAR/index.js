@@ -647,7 +647,7 @@ const MedicationModule = ({ selectedPatient }) => {
               updated[itemIndex].expiry = defaultExpiry;
               updated[itemIndex].availableStock = fetchedBatches.length > 0 ? (fetchedBatches[0].availableStock ?? null) : null;
               updated[itemIndex].loadingBatches = false;
-              updated[itemIndex].selected = !!(defaultBatch || updated[itemIndex].availableStock != null);
+              updated[itemIndex].selected = true; // Select by default if they opened it
             }
             return updated;
           });
@@ -686,7 +686,15 @@ const MedicationModule = ({ selectedPatient }) => {
     }
 
     for (let item of itemsToSave) {
-      if (!item.batch || !item.expiry || !item.givenBy) {
+      if (!item.batch) {
+        if (!item.batches || item.batches.length === 0) {
+          alert('Batch stock not available');
+        } else {
+          alert('Auto-Selection is required');
+        }
+        return;
+      }
+      if (!item.expiry || !item.givenBy) {
         alert('Please fill Batch, Expiry, and Given By for all selected medications.');
         return;
       }
@@ -1490,10 +1498,10 @@ const MedicationModule = ({ selectedPatient }) => {
                                 const checked = e.target.checked;
                                 setMarEntryItems(prev => prev.map(item => ({
                                   ...item,
-                                  selected: (item.batch || item.availableStock != null) ? checked : false
+                                  selected: checked
                                 })));
                               }}
-                              checked={marEntryItems.length > 0 && marEntryItems.every(item => item.selected || (!item.batch && item.availableStock == null))}
+                              checked={marEntryItems.length > 0 && marEntryItems.every(item => item.selected)}
                             />
                           </th>
                           <th>Medicine</th><th>Route</th><th>Dose</th>
@@ -1506,9 +1514,7 @@ const MedicationModule = ({ selectedPatient }) => {
                         {marEntryItems.map((item, idx) => (
                           <tr key={idx}>
                             <td>
-                              {(item.batch || item.availableStock != null) ? (
-                                <input type="checkbox" checked={item.selected} onChange={e => handleMarEntryChange(idx, 'selected', e.target.checked)} />
-                              ) : null}
+                              <input type="checkbox" checked={item.selected} onChange={e => handleMarEntryChange(idx, 'selected', e.target.checked)} />
                             </td>
                             <td>{item.medicineName}</td><td>{item.route}</td><td>{item.dose}</td>
                             <td><input type="datetime-local" className="form-control form-control-sm" value={item.dateTime} onChange={e => handleMarEntryChange(idx, 'dateTime', e.target.value)} /></td>
@@ -1521,7 +1527,7 @@ const MedicationModule = ({ selectedPatient }) => {
                                 </div>
                               ) : item.batches && item.batches.length > 0 ? (
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${!item.batch ? 'border-danger' : ''}`}
                                   value={item.batch}
                                   onChange={e => {
                                     const selectedBatch = e.target.value;
@@ -1532,17 +1538,18 @@ const MedicationModule = ({ selectedPatient }) => {
                                       batch: selectedBatch,
                                       expiry: expiryDate,
                                       availableStock: availStock,
-                                      selected: !!(selectedBatch || availStock != null)
+                                      selected: true
                                     });
                                   }}
                                 >
+                                  <option value="">Select Batch</option>
                                   {item.batches.map((b, bIdx) => (
                                     <option key={bIdx} value={b.batchName}>{b.batchName}</option>
                                   ))}
                                 </select>
                               ) : (
-                                <select className="form-select form-select-sm" disabled>
-                                  <option value="">No Batch Available</option>
+                                <select className="form-select form-select-sm border-danger text-danger" disabled>
+                                  <option value="">Stock not available</option>
                                 </select>
                               )}
                             </td>

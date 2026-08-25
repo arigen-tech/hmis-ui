@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD, GET_IP_DIAGNOSIS_ENTRY } from "../../../config/apiConfig"
+import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD, GET_IP_DIAGNOSIS_ENTRY, GET_NURSING_MEDICAL_ASSESSMENT } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
@@ -31,6 +31,8 @@ const WardManagement = () => {
   const [loadingBeds, setLoadingBeds] = useState(false)
   const [loadingWards, setLoadingWards] = useState(false)
   const [deptView, setDeptView] = useState(null) // null | "critical" | "transfer" | "worklist"
+  const [isAssessmentSubmitted, setIsAssessmentSubmitted] = useState(false)
+  const [loadingAssessment, setLoadingAssessment] = useState(false)
 
   useEffect(() => {
     const fetchDiagnoses = async () => {
@@ -186,6 +188,27 @@ const WardManagement = () => {
     totalBeds: patientData.length
   }
 
+  const checkAssessmentAndSetPatient = async (patient) => {
+    setSelectedPatient(patient)
+    setLoadingAssessment(true)
+    try {
+      const response = await getRequest(`${GET_NURSING_MEDICAL_ASSESSMENT}/${patient.inpatientId}`)
+      if (response?.status === 200 && response?.response) {
+        setIsAssessmentSubmitted(true)
+        setActiveTab("Clinical Dashboard")
+      } else {
+        setIsAssessmentSubmitted(false)
+        setActiveTab("IPD Initial Assessment")
+      }
+    } catch (error) {
+      console.error("Error fetching assessment:", error)
+      setIsAssessmentSubmitted(false)
+      setActiveTab("IPD Initial Assessment")
+    } finally {
+      setLoadingAssessment(false)
+    }
+  }
+
   const handlePatientSelect = (patient) => {
     if (patient.status === "VACANT") {
       return
@@ -219,8 +242,7 @@ const WardManagement = () => {
                 icon: "success"
               }).then(() => {
                 const updatedPatient = { ...patient, status: "RW" }
-                setSelectedPatient(updatedPatient)
-                setActiveTab("Clinical Dashboard")
+                checkAssessmentAndSetPatient(updatedPatient)
                 fetchBeds()
               })
             } else {
@@ -242,8 +264,7 @@ const WardManagement = () => {
       })
       return
     }
-    setSelectedPatient(patient)
-    setActiveTab("Clinical Dashboard")
+    checkAssessmentAndSetPatient(patient)
   }
 
   const handleBackToCards = () => {
@@ -753,22 +774,41 @@ const WardManagement = () => {
 
                       <div className="">
                         {/* Case Sheet Tabs Bar */}
-                        <div className="card mb-1">
-                          <div className="card-body p-2">
-                            <div className="d-flex flex-wrap gap-1">
-                              {caseSheetTabs.map((tab) => (
-                                <button
-                                  key={tab}
-                                  className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary' : 'btn-outline-warning'}`}
-                                  onClick={() => setActiveTab(tab)}
-                                  style={{ fontSize: "0.55rem", whiteSpace: "nowrap" }}
-                                >
-                                  {tab}
-                                </button>
-                              ))}
+                        {loadingAssessment ? (
+                          <div className="d-flex justify-content-center align-items-center py-5 w-100" style={{ minHeight: "200px" }}>
+                            <div className="text-center">
+                              <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              <div className="mt-2 text-muted fw-bold">Loading assessment status...</div>
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="card mb-1">
+                              <div className="card-body p-2">
+                                <div className="d-flex flex-wrap gap-1">
+                                  {caseSheetTabs.map((tab) => {
+                                    const isTabDisabled = !isAssessmentSubmitted && tab !== "Admission Details" && tab !== "IPD Initial Assessment";
+                                    return (
+                                    <button
+                                      key={tab}
+                                      className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary' : 'btn-outline-warning'}`}
+                                      onClick={() => !isTabDisabled && setActiveTab(tab)}
+                                      disabled={isTabDisabled}
+                                      style={{ 
+                                        fontSize: "0.55rem", 
+                                        whiteSpace: "nowrap",
+                                        opacity: isTabDisabled ? 0.5 : 1,
+                                        cursor: isTabDisabled ? "not-allowed" : "pointer"
+                                      }}
+                                    >
+                                      {tab}
+                                    </button>
+                                  )})}
+                                </div>
+                              </div>
+                            </div>
 
                         {/* Tab Content */}
                         <div className="">
@@ -802,7 +842,10 @@ const WardManagement = () => {
 
 
                             {activeTab === "IPD Initial Assessment" && (
-                              <IPDInitialAssessment selectedPatient={selectedPatient} />
+                              <IPDInitialAssessment 
+                                selectedPatient={selectedPatient} 
+                                onAssessmentSubmit={() => setIsAssessmentSubmitted(true)}
+                              />
                             )}
 
                             {activeTab === "Medication / MAR" && (
@@ -853,6 +896,8 @@ const WardManagement = () => {
                             )}
                           </div>
                         </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
