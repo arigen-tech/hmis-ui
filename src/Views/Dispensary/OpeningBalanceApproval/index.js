@@ -165,7 +165,10 @@ const OpeningBalanceApproval = () => {
       return { success: true, response, balanceMId: selectedRecord.balanceMId };
     } catch (error) {
       console.error("Error submitting data:", error);
-      return { success: false, message: "Failed to process the request. Please try again." };
+      return {
+        success: false,
+        message: error?.message || "Failed to process the request. Please try again."
+    };
     } finally {
       setIsProcessing(false);
     }

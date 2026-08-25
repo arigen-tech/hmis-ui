@@ -490,7 +490,7 @@ const OpeningBalanceEntry = () => {
       if (!entry.unit) errors.unit = "unit is required";
       if (!entry.batchNoSerialNo) errors.batchNoSerialNo = "batchNoSerialNo is required";
       if (!entry.dom) errors.dom = "dom is required";
-      if (!entry.doe) errors.doe = "doe is required";
+      // if (!entry.doe) errors.doe = "doe is required";
 
       if (entry.dom && entry.doe) {
         const domDate = new Date(entry.dom);
@@ -596,17 +596,20 @@ const OpeningBalanceEntry = () => {
       const endpoint = isSave ? `${SAVE_OPENING_BALANCE_ENTRY}` : `${SUBMIT_OPENING_BALANCE_ENTRY}`;
       const response = await postRequest(endpoint, payload);
 
-      if (response?.status === 200 || response?.success) {
+      if (response?.status === 200 ) {
         return { success: true, response, action: isSave ? "save" : "submit" };
       } else {
         return {
           success: false,
-          message: response?.message || `Failed to ${isSave ? "save" : "submit"} data. Please try again.`,
+          message: response.message,
         };
       }
     } catch (error) {
       console.error(`${isSave ? "Save" : "Submit"} Error:`, error);
-      return { success: false, message: "Something went wrong. Please try again." };
+       return {
+        success: false,
+        message: error?.message || "Something went wrong. Please try again."
+    };
     } finally {
       if (isSave) setIsSaving(false);
       else setIsSubmitting(false);
