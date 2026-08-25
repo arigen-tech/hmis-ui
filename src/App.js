@@ -278,9 +278,12 @@ import OTChecklistMaster from './Views/Masters/OTChecklistMaster';
 import OTTeamRoleMaster from './Views/Masters/OTTeamRoleMaster';
 import OTPriorityMaster from './Views/Masters/OTPriorityMaster';
 import OTComplicationMaster from './Views/Masters/OTComplicationMaster';
+import AnaesthesiaTypeMaster from './Views/Masters/AnaesthesiaTypeMaster';
+import AnaesthesiaInstructionMaster from './Views/Masters/AnaesthesiaInstructionMaster';
 import BrandMaster from './Views/Masters/BrandMaster';
 import ManufacturerMaster from './Views/Masters/ManufacturerMaster';
 import ProcedureWorklist from './Views/ProcedureManagement/ProcedureWorklist';
+import OTRequestFromIPD from './Views/OperationTheatre/OTRequestForIPD';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -585,8 +588,8 @@ function App() {
                 <Route path="/OperationTheatre" element={<OperationTheatre />} />
                 <Route path="/OTDaysAllocation" element={<OTDaysAllocation />} />
                 <Route path="/DepartmentIndentReturn" element={<DepartmentIndentReturn/>} />
-                {/* <Route path="/AnaesthesiaTypeMaster" element={<AnaesthesiaTypeMaster/>} /> */}
-                {/* <Route path="/AnaesthesiaInstructionMaster" element={<AnaesthesiaInstructionMaster/>} /> */}
+                <Route path="/AnaesthesiaTypeMaster" element={<AnaesthesiaTypeMaster/>} />
+                <Route path="/AnaesthesiaInstructionMaster" element={<AnaesthesiaInstructionMaster/>} />
                 <Route path="/OTScheduleChangeReason" element={<OTScheduleChangeReasonMaster/>} />
                 <Route path="/OTChecklistMaster" element={<OTChecklistMaster/>} />
                 <Route path="/OTTeamRoleMaster" element={<OTTeamRoleMaster/>} />
@@ -595,12 +598,7 @@ function App() {
                 <Route path="/BrandMaster" element={<BrandMaster/>} />
                 <Route path="/ManufacturerMaster" element={<ManufacturerMaster/>} />
                 <Route path="/ProcedureWorklist" element={<ProcedureWorklist/>} />
-
-
-                
-
-
-
+                <Route path="/OTRequestFromIPD" element={<OTRequestFromIPD/>} />
                 </Route>
             </Route>
 
