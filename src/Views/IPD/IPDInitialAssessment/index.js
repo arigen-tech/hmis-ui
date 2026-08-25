@@ -105,7 +105,7 @@ const YesNoRadio = ({ name, value, onChange }) => (
   </div>
 );
 
-const IPDInitialAssessment = ({ selectedPatient }) => {
+const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
   // ---------- FORM STATE ----------
   const [nursing, setNursing] = useState(initialNursing);
   const [medical, setMedical] = useState(initialMedical);
@@ -316,6 +316,7 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
       const response = await postRequest(SAVE_NURSING_MEDICAL_ASSESSMENT, payload);
       if (response && (response.status === 200 || response.status === 201)) {
         alert("Assessment submitted successfully!");
+        if (onAssessmentSubmit) onAssessmentSubmit();
       } else {
         alert(response?.message || "Failed to submit assessment.");
       }

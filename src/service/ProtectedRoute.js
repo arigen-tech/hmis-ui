@@ -281,6 +281,7 @@ const validRoutes = [
   "/BrandMaster",
   "/ManufacturerMaster",
   "/ProcedureWorklist",
+  "/OTRequestFromIPD",
 ];
 
 // Routes that should bypass authorization
