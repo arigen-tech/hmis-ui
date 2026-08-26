@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { getRequest } from '../../../service/apiService';
-import { GET_PREVIOUS_DIET_ORDER_HISTORY } from '../../../config/apiConfig';
+import React, { useState, useEffect, useRef } from 'react';
+import { getRequest, postRequest } from '../../../service/apiService';
+import { GET_PREVIOUS_DIET_ORDER_HISTORY, GET_CURRENT_ACTIVE_DIET_SCHEDULE, SAVE_CURRENT_ACTIVE_DIET_SCHEDULE, GET_CURRENT_USER_PROFILE_BY_NAME, MAS_MEAL_TYPE, MAS_DIET_SCHEDULE } from '../../../config/apiConfig';
+import Swal from 'sweetalert2';
 
 // Helper to get current date in YYYY-MM-DD format
 const getCurrentDate = () => {
@@ -10,6 +11,14 @@ const getCurrentDate = () => {
 // Helper to get current time in HH:MM format
 const getCurrentTime = () => {
   return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatTimeToString = (timeStr) => {
+  if (!timeStr) return "00:00:00";
+  // If time already contains seconds, return as is
+  if (timeStr.split(':').length === 3) return timeStr;
+  // Otherwise append seconds
+  return `${timeStr}:00`;
 };
 
 // Get planned time based on meal type
@@ -28,18 +37,13 @@ const getPlannedTimeForMeal = (mealType) => {
   }
 };
 
-// Meal type options
-const mealOptions = ['Breakfast', 'Lunch', 'Evening Snack', 'Dinner'];
-
-// Status options
-const statusOptions = ['Given', 'Not Taken', 'Partial', 'Refused'];
-
 // Auto Given By value
 const AUTO_GIVEN_BY = sessionStorage.getItem("username") || "System";
+const NEW_RECORD_ID = 'NEW_ROW';
 
 // Empty meal entry row template
-const emptyMealEntry = () => ({
-  id: Date.now(),
+const emptyMealEntry = (givenBy = AUTO_GIVEN_BY) => ({
+  id: NEW_RECORD_ID,
   date: getCurrentDate(),
   mealType: '',
   plannedTime: '',
@@ -47,13 +51,65 @@ const emptyMealEntry = () => ({
   status: '',
   consumedPercent: '',
   remarks: '',
-  givenBy: AUTO_GIVEN_BY
+  givenBy: givenBy
 });
 
 const DietOrderHistory = ({ selectedPatient }) => {
   const [showModal, setShowModal] = useState(false);
   const [dietHistory, setDietHistory] = useState([]);
   const [loadingDietHistory, setLoadingDietHistory] = useState(false);
+  
+  const [currentUserName, setCurrentUserName] = useState(AUTO_GIVEN_BY);
+  const userNameRef = useRef(AUTO_GIVEN_BY);
+  const [mealTypeOptions, setMealTypeOptions] = useState([]);
+  const [statusOptions, setStatusOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        const [mealRes, statusRes] = await Promise.all([
+          getRequest(`${MAS_MEAL_TYPE}/getAll/1`),
+          getRequest(`${MAS_DIET_SCHEDULE}/getAll/1`)
+        ]);
+        if (mealRes?.status === 200 && mealRes.response) {
+          setMealTypeOptions(mealRes.response);
+        }
+        if (statusRes?.status === 200 && statusRes.response) {
+          setStatusOptions(statusRes.response);
+        }
+      } catch (err) {
+        console.error("Error fetching diet masters", err);
+      }
+    };
+    fetchDropdowns();
+
+    const fetchUser = async () => {
+      const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+      if (!username) return;
+      try {
+        const res = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        if (res?.status === 200 && res.response) {
+          const docName = res.response.firstName
+            ? [res.response.firstName, res.response.middleName, res.response.lastName].filter(Boolean).join(" ")
+            : (res.response.name || res.response.userName || username);
+          userNameRef.current = docName;
+          setCurrentUserName(docName);
+          
+          // Update the empty row's givenBy if it's the last row
+          setMealEntries(prev => {
+            const lastRow = prev[prev.length - 1];
+            if (lastRow && lastRow.id === NEW_RECORD_ID) {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...lastRow, givenBy: docName };
+              return updated;
+            }
+            return prev;
+          });
+        }
+      } catch (err) { }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     if (selectedPatient?.inpatientId) {
@@ -82,42 +138,44 @@ const DietOrderHistory = ({ selectedPatient }) => {
   const activeDietOrder = dietHistory.find(order => order.status === 'A') || dietHistory[0] || {};
 
   // State for meal entries
-  const [mealEntries, setMealEntries] = useState([
-    {
-      id: 1,
-      date: '15-Jan-2026',
-      mealType: 'Breakfast',
-      plannedTime: '08:00',
-      actualTime: '08:15',
-      status: 'Given',
-      consumedPercent: '100%',
-      remarks: 'Finished completely',
-      givenBy: 'Nurse C'
-    },
-    {
-      id: 2,
-      date: '15-Jan-2026',
-      mealType: 'Lunch',
-      plannedTime: '13:00',
-      actualTime: '13:30',
-      status: 'Partial',
-      consumedPercent: '50%',
-      remarks: 'Ate half portion',
-      givenBy: 'Nurse D'
-    },
-    {
-      id: 3,
-      date: '15-Jan-2026',
-      mealType: 'Evening Snack',
-      plannedTime: '16:00',
-      actualTime: '16:20',
-      status: 'Given',
-      consumedPercent: '90%',
-      remarks: 'Enjoyed snack',
-      givenBy: 'Nurse E'
-    },
-    emptyMealEntry()
-  ]);
+  const [mealEntries, setMealEntries] = useState([emptyMealEntry()]);
+  const [loadingSchedule, setLoadingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (selectedPatient?.inpatientId && activeDietOrder?.dietOrderId) {
+      fetchActiveDietSchedule(selectedPatient.inpatientId, activeDietOrder.dietOrderId);
+    } else {
+      setMealEntries([emptyMealEntry(userNameRef.current)]);
+    }
+  }, [selectedPatient?.inpatientId, activeDietOrder?.dietOrderId]);
+
+  const fetchActiveDietSchedule = async (inpatientId, dietOrderId) => {
+    setLoadingSchedule(true);
+    try {
+      const res = await getRequest(`${GET_CURRENT_ACTIVE_DIET_SCHEDULE}?inpatientId=${inpatientId}&dietOrderId=${dietOrderId}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        const formattedEntries = res.response.map(entry => ({
+          id: entry.dietScheduleId,
+          date: entry.date || '',
+          mealType: entry.mealType || '',
+          plannedTime: entry.planedTime || '',
+          actualTime: entry.actualTime || '',
+          status: entry.status || '',
+          consumedPercent: entry.consumed !== null ? `${entry.consumed}%` : '',
+          remarks: entry.remark || '',
+          givenBy: entry.givenBy || AUTO_GIVEN_BY
+        }));
+        setMealEntries([...formattedEntries, emptyMealEntry(userNameRef.current)]);
+      } else {
+        setMealEntries([emptyMealEntry(userNameRef.current)]);
+      }
+    } catch (err) {
+      console.error("Error fetching active diet schedule:", err);
+      setMealEntries([emptyMealEntry()]);
+    } finally {
+      setLoadingSchedule(false);
+    }
+  };
 
   // Helper to check if a row is the last (input) row
   const isLastRow = (index, array) => index === array.length - 1;
@@ -137,22 +195,64 @@ const DietOrderHistory = ({ selectedPatient }) => {
   };
 
   // Save the current input row (last row)
-  const handleSaveMealEntry = () => {
+  const handleSaveMealEntry = async () => {
     const lastRow = mealEntries[mealEntries.length - 1];
     if (!lastRow.mealType) {
       alert('Please select a meal type before saving.');
       return;
     }
+    
+    if (!activeDietOrder?.dietOrderId || !selectedPatient?.inpatientId) {
+      alert('No active diet order or patient selected to attach this entry to.');
+      return;
+    }
+
     const savedEntry = { ...lastRow };
     if (savedEntry.consumedPercent && !isNaN(Number(savedEntry.consumedPercent)) && !savedEntry.consumedPercent.includes('%')) {
       savedEntry.consumedPercent = `${savedEntry.consumedPercent}%`;
     }
-    const newEmpty = emptyMealEntry();
-    setMealEntries(prev => [
-      ...prev.slice(0, -1),
-      savedEntry,
-      newEmpty
-    ]);
+    
+    const selectedMeal = mealTypeOptions.find(m => m.mealTypeName === savedEntry.mealType);
+    const selectedStatus = statusOptions.find(s => s.statusName === savedEntry.status);
+
+    const payload = {
+      inpatientId: selectedPatient.inpatientId,
+      dietOrderId: activeDietOrder.dietOrderId,
+      dietDate: savedEntry.date,
+      dietMealId: selectedMeal ? selectedMeal.mealTypeId : 0,
+      planedTime: formatTimeToString(savedEntry.plannedTime),
+      actualTime: formatTimeToString(savedEntry.actualTime),
+      scheduleStatusId: selectedStatus ? selectedStatus.dietScheduleStatusId : 0,
+      remark: savedEntry.remarks,
+      givenBy: currentUserName,
+      consumed: parseInt(savedEntry.consumedPercent) || 0
+    };
+
+    try {
+      const res = await postRequest(SAVE_CURRENT_ACTIVE_DIET_SCHEDULE, payload);
+      if (res?.status === 200) {
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Diet schedule entry saved successfully!",
+        });
+        // Refresh the schedule list
+        fetchActiveDietSchedule(selectedPatient.inpatientId, activeDietOrder.dietOrderId);
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to save: " + (res?.message || "Unknown error"),
+        });
+      }
+    } catch (error) {
+      console.error("Error saving diet schedule:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error saving diet schedule entry.",
+      });
+    }
   };
 
   return (
@@ -221,38 +321,34 @@ const DietOrderHistory = ({ selectedPatient }) => {
                             <span>{entry.date}</span>
                           )}
                         </td>
-                        {/* Meal Type Dropdown */}
                         <td>
-                          {editable ? (
-                            <select
-                              className="form-select form-select-sm"
-                              value={entry.mealType}
-                              onChange={(e) => handleMealCellChange(entry.id, 'mealType', e.target.value)}
-                            >
-                              <option value="">Select Meal</option>
-                              {mealOptions.map(meal => (
-                                <option key={meal} value={meal}>{meal}</option>
-                              ))}
-                            </select>
-                          ) : (
+                            {editable ? (
+                              <select
+                                className="form-select form-select-sm"
+                                value={entry.mealType}
+                                onChange={(e) => handleMealCellChange(entry.id, 'mealType', e.target.value)}
+                              >
+                                <option value="">Select Meal</option>
+                                {mealTypeOptions.map(meal => (
+                                  <option key={meal.mealTypeId} value={meal.mealTypeName}>{meal.mealTypeName}</option>
+                                ))}
+                              </select>
+                            ) : (
                             <span>{entry.mealType}</span>
                           )}
                         </td>
-                        {/* Planned Time (Auto) */}
                         <td>
                           {editable ? (
                             <input
                               type="time"
                               className="form-control form-control-sm"
                               value={entry.plannedTime}
-                              readOnly
-                              style={{ backgroundColor: '#e9ecef' }}
+                              onChange={(e) => handleMealCellChange(entry.id, 'plannedTime', e.target.value)}
                             />
                           ) : (
                             <span>{entry.plannedTime}</span>
                           )}
                         </td>
-                        {/* Actual Time (Auto but editable) */}
                         <td>
                           {editable ? (
                             <input
@@ -265,24 +361,22 @@ const DietOrderHistory = ({ selectedPatient }) => {
                             <span>{entry.actualTime}</span>
                           )}
                         </td>
-                        {/* Status Dropdown */}
                         <td>
-                          {editable ? (
-                            <select
-                              className="form-select form-select-sm"
-                              value={entry.status}
-                              onChange={(e) => handleMealCellChange(entry.id, 'status', e.target.value)}
-                            >
-                              <option value="">Select Status</option>
-                              {statusOptions.map(status => (
-                                <option key={status} value={status}>{status}</option>
-                              ))}
-                            </select>
-                          ) : (
+                            {editable ? (
+                              <select
+                                className="form-select form-select-sm"
+                                value={entry.status}
+                                onChange={(e) => handleMealCellChange(entry.id, 'status', e.target.value)}
+                              >
+                                <option value="">Select Status</option>
+                                {statusOptions.map(status => (
+                                  <option key={status.dietScheduleStatusId} value={status.statusName}>{status.statusName}</option>
+                                ))}
+                              </select>
+                            ) : (
                             <span>{entry.status}</span>
                           )}
                         </td>
-                        {/* Consumed % */}
                         <td>
                           {editable ? (
                             <input

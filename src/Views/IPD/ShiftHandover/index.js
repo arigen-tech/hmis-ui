@@ -2,43 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import Swal from "sweetalert2";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
+import { postRequest, getRequest } from "../../../service/apiService";
+import { SAVE_SHIFT_HANDOVER, GET_SHIFT_HANDOVER } from "../../../config/apiConfig";
 
 const MAX_NOTES_LENGTH = 2000;
 
-const DUMMY_HANDOVER_HISTORY = [
-  {
-    id: 1,
-    dateTime: "18-Aug-2026 08:15 AM",
-    enteredBy: "Nurse Priya",
-    notes:
-      "Patient resting comfortably. Temperature 98.4°F and blood pressure stable. Oral fluids encouraged. Patient tolerated breakfast well. No complaints of pain reported."
-  },
-  {
-    id: 2,
-    dateTime: "17-Aug-2026 10:30 PM",
-    enteredBy: "Nurse Rahul",
-    notes:
-      "Patient alert and responsive. IV fluids continued as prescribed. Urine output adequate. Dressing checked and found clean and dry. Patient advised to call staff if discomfort occurs."
-  },
-  {
-    id: 3,
-    dateTime: "17-Aug-2026 03:45 PM",
-    enteredBy: "Nurse Meena",
-    notes:
-      "Patient assisted with ambulation. No dizziness or weakness observed. Scheduled medication administered. Appetite improving and patient consumed approximately 75% of lunch."
-  },
-  {
-    id: 4,
-    dateTime: "17-Aug-2026 09:00 AM",
-    enteredBy: "Nurse Arjun",
-    notes:
-      "Morning assessment completed. Patient awake and oriented to time, place, and person. Vital signs recorded and documented. Physician rounds completed with no new orders."
-  }
-];
-
 const ShiftHandover = ({ selectedPatient }) => {
   const [handoverNotes, setHandoverNotes] = useState("");
-  const [history, setHistory] = useState(DUMMY_HANDOVER_HISTORY);
+  const [history, setHistory] = useState([]);
 
   // CKEditor refs
   const editorRef = useRef(null);
@@ -96,7 +67,7 @@ const ShiftHandover = ({ selectedPatient }) => {
     }
   };
 
-  const handleSaveHandover = () => {
+  const handleSaveHandover = async () => {
     const plainText = handoverNotes.replace(/<[^>]+>/g, "").trim();
     if (!plainText) {
       Swal.fire({
@@ -107,26 +78,88 @@ const ShiftHandover = ({ selectedPatient }) => {
       return;
     }
 
-    const now = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const newEntry = {
-      id: history.length ? Math.max(...history.map(h => h.id)) + 1 : 1,
-      dateTime: now,
-      enteredBy: "Nurse A",
-      notes: handoverNotes.trim()
-    };
-
-    setHistory(prev => [newEntry, ...prev]);
-    setHandoverNotes("");
-    if (editorRef.current) {
-      editorRef.current.setData("");
+    if (!selectedPatient?.inpatientId) {
+      Swal.fire({
+        title: "Warning",
+        text: "Patient not selected or missing inpatient ID.",
+        icon: "warning"
+      });
+      return;
     }
 
-    Swal.fire({
-      title: "Success",
-      text: "Shift handover notes saved successfully.",
-      icon: "success"
-    });
+    const payload = {
+      notes: handoverNotes.trim(),
+      inpatientId: selectedPatient.inpatientId
+    };
+
+    try {
+      const res = await postRequest(SAVE_SHIFT_HANDOVER, payload);
+      if (res?.status === 200 || res?.status === 201) {
+        await Swal.fire({
+          title: "Success",
+          text: "Shift handover notes saved successfully.",
+          icon: "success"
+        });
+
+        fetchHandoverHistory(selectedPatient.inpatientId);
+
+        setHandoverNotes("");
+        if (editorRef.current) {
+          editorRef.current.setData("");
+        }
+      } else {
+        Swal.fire({
+          title: "Error",
+          text: res?.message || "Failed to save handover notes",
+          icon: "error"
+        });
+      }
+    } catch (err) {
+      console.error("Error saving handover notes:", err);
+      Swal.fire({
+        title: "Error",
+        text: "Error saving handover notes",
+        icon: "error"
+      });
+    }
   };
+
+  const fetchHandoverHistory = async (inpatientId) => {
+    if (!inpatientId) {
+      setHistory([]);
+      return;
+    }
+    try {
+      const res = await getRequest(`${GET_SHIFT_HANDOVER}?inpatientId=${inpatientId}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        const mappedHistory = res.response.map(item => {
+          let dateStr = item.dateTime;
+          if (dateStr) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+              dateStr = d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+          }
+          return {
+            id: item.noteId,
+            dateTime: dateStr || "-",
+            enteredBy: item.entered || "-",
+            notes: item.notes || "-"
+          };
+        });
+        setHistory(mappedHistory);
+      } else {
+        setHistory([]);
+      }
+    } catch (err) {
+      console.error("Error fetching handover history", err);
+      setHistory([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchHandoverHistory(selectedPatient?.inpatientId);
+  }, [selectedPatient?.inpatientId]);
 
   // Cleanup CKEditor on unmount
   useEffect(() => {
@@ -206,7 +239,7 @@ const ShiftHandover = ({ selectedPatient }) => {
                     <tr key={h.id}>
                       <td>{h.dateTime}</td>
                       <td>{h.enteredBy}</td>
-                      <td style={{ whiteSpace: "pre-wrap" }}>{h.notes}</td>
+                      <td dangerouslySetInnerHTML={{ __html: h.notes }}></td>
                     </tr>
                   ))
                 )}

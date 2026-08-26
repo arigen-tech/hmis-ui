@@ -795,6 +795,7 @@ export const SAVE_INPATIENT_PROCEDURE = '/ipd/saveInpatientProcedure';
 export const ACTIVE_DIET_BY_INPATIENT = '/ipd/activeDietByInpatient';
 export const GET_PREVIOUS_DIET_ORDER_HISTORY = '/ipd/getPerviousDietOrderHistory';
 export const SAVE_DIET_ORDER_BY_INPATIENT = '/ipd/saveDietOrderByInpatient';
+export const SAVE_CURRENT_ACTIVE_DIET_SCHEDULE = '/ipd/saveCurrentActiveDietSchedule';
 export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
 export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`;
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
@@ -845,3 +846,6 @@ export const IP_DETAILED_BILL_REPORT_API = `${ALL_REPORTS}/ipDetailedBill`;
 export const ADVANCE_RECEIPT_REPORT_API = `${ALL_REPORTS}/advanceReceipt`;
 
 export const MAS_SURGERY_GET_BY_LEVEL = `${MASTERS}/masSurgery/getBySurgeryLevel`;
+export const GET_CURRENT_ACTIVE_DIET_SCHEDULE = "/ipd/getCurrentActiveDietSchedule";
+export const SAVE_SHIFT_HANDOVER = '/ipd/saveShiftHandover';
+export const GET_SHIFT_HANDOVER = '/ipd/getShiftHandover';
