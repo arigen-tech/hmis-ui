@@ -19,31 +19,93 @@ const OTDashboard = () => {
   });
 
   const [weeksData, setWeeksData] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  // ----- Dummy data generation -----
+  const getRandomTimeSlot = () => {
+    const slots = [
+      "08:00-10:00",
+      "10:30-12:00",
+      "12:30-14:00",
+      "14:00-16:00",
+      "16:30-18:00",
+    ];
+    return slots[Math.floor(Math.random() * slots.length)];
+  };
+
+  // ----- Dummy data generation with detailed surgeries -----
   const generateDummyData = (month, year, otFilter, deptFilter) => {
     const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
     const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+    const patientNames = [
+      "Rajesh Kumar",
+      "Amit Kumar",
+      "Sunita Devi",
+      "Ravi Shankar",
+      "Priya Singh",
+      "Vikram Patel",
+      "Neha Gupta",
+      "Suresh Reddy",
+      "Anita Sharma",
+      "Mohan Das",
+    ];
+    const surgeries = [
+      "Knee Replacement",
+      "Hernia Repair",
+      "XXXXX",
+      "Heart Bypass",
+      "Spinal Fusion",
+      "Cataract Surgery",
+      "Appendectomy",
+      "Gallbladder Removal",
+      "Hip Replacement",
+      "Tonsillectomy",
+    ];
+    const surgeons = [
+      "Dr. Sharma",
+      "Dr. Gupta",
+      "Dr. Verma",
+      "Dr. Patel",
+      "Dr. Reddy",
+      "Dr. Singh",
+      "Dr. Kumar",
+      "Dr. Das",
+    ];
+    const statuses = ["Scheduled", "Completed", "Cancelled"];
 
     const daysData = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, monthIndex, d);
       const dayOfWeek = dateObj.getDay();
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        const scheduled = Math.floor(Math.random() * 5) + 1;
-        const completed = Math.floor(Math.random() * scheduled);
-        const cancelled = Math.floor(Math.random() * (scheduled - completed + 1));
-        const otList = [];
-        const numOT = Math.floor(Math.random() * 3) + 1;
-        for (let i = 1; i <= numOT; i++) {
-          otList.push(`OT-0${i}`);
+        const numSurgeries = Math.floor(Math.random() * 4) + 1;
+        const surgeriesForDay = [];
+        for (let i = 0; i < numSurgeries; i++) {
+          const status = statuses[Math.floor(Math.random() * statuses.length)];
+          surgeriesForDay.push({
+            time: getRandomTimeSlot(),
+            ot: `OT-${String(Math.floor(Math.random() * 5) + 1).padStart(2, "0")}`,
+            uhid: `IPD/26/${String(Math.floor(Math.random() * 10000) + 1000).padStart(5, "0")}`,
+            patient: patientNames[Math.floor(Math.random() * patientNames.length)],
+            surgery: surgeries[Math.floor(Math.random() * surgeries.length)],
+            surgeon: surgeons[Math.floor(Math.random() * surgeons.length)],
+            status: status,
+          });
         }
+
+        const scheduled = surgeriesForDay.filter(s => s.status === "Scheduled").length;
+        const completed = surgeriesForDay.filter(s => s.status === "Completed").length;
+        const cancelled = surgeriesForDay.filter(s => s.status === "Cancelled").length;
+        const otList = [...new Set(surgeriesForDay.map(s => s.ot))];
+
         daysData.push({
           date: `${d}-${month.substring(0, 3)}-${year}`,
           scheduled,
           completed,
           cancelled,
-          otList: [...new Set(otList)],
+          otList,
+          surgeries: surgeriesForDay,
         });
       }
     }
@@ -109,6 +171,18 @@ const OTDashboard = () => {
       otType: "All OT",
       department: "All Departments",
     });
+  };
+
+  const handleDayClick = (dayData) => {
+    if (dayData) {
+      setSelectedDay(dayData);
+      setShowModal(true);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedDay(null);
   };
 
   // ----- Options -----
@@ -258,7 +332,7 @@ const OTDashboard = () => {
                 </div>
               </div>
 
-              {/* Weekly Calendar – all day cards now have a uniform light gray background */}
+              {/* Weekly Calendar – day cards with yellow background and click handler */}
               <div className="calendar-container">
                 {/* Weekday Headers */}
                 <div className="row g-2 mb-2">
@@ -278,8 +352,10 @@ const OTDashboard = () => {
                           className="card p-2 h-100 border"
                           style={{
                             minHeight: "140px",
-                            backgroundColor: "#e9ecef", // uniform slightly darker gray
+                            backgroundColor: "#fff9e6",
+                            cursor: day ? "pointer" : "default",
                           }}
+                          onClick={() => handleDayClick(day)}
                         >
                           {day ? (
                             <>
@@ -292,6 +368,9 @@ const OTDashboard = () => {
                                   {day.otList.join(", ")}
                                 </div>
                               )}
+                              <div className="small text-primary mt-1">
+                                Click for details
+                              </div>
                             </>
                           ) : (
                             <div className="text-muted small text-center">—</div>
@@ -323,6 +402,111 @@ const OTDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* ===== MODAL – styled exactly like DentalSection popups ===== */}
+      {showModal && selectedDay && (
+        <>
+          {/* Backdrop overlay */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              zIndex: 1040,
+            }}
+            onClick={closeModal}
+          />
+          {/* Modal container – fixed width, offset left, 90vh height */}
+          <div
+            className="modal show d-block"
+            tabIndex={-1}
+            role="dialog"
+            style={{
+              width: "calc(100vw - 310px)",
+              left: "285px",
+              maxWidth: "none",
+              height: "90vh",
+              margin: "5vh auto",
+              position: "fixed",
+              zIndex: 1050,
+              pointerEvents: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-dialog modal-dialog-centered modal-xl" role="document">
+              <div className="modal-content">
+                <div className="modal-header bg-primary text-white">
+                  <h5 className="modal-title">OT Schedule – {selectedDay.date}</h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={closeModal}
+                    aria-label="Close"
+                  />
+                </div>
+                <div className="modal-body">
+                  {selectedDay.surgeries && selectedDay.surgeries.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Time</th>
+                            <th>OT</th>
+                            <th>UHID / IP No.</th>
+                            <th>Patient</th>
+                            <th>Surgery</th>
+                            <th>Surgeon</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedDay.surgeries.map((s, idx) => (
+                            <tr key={idx}>
+                              <td>{s.time}</td>
+                              <td>{s.ot}</td>
+                              <td>{s.uhid}</td>
+                              <td>{s.patient}</td>
+                              <td>{s.surgery}</td>
+                              <td>{s.surgeon}</td>
+                              <td>
+                                <span
+                                  className={`badge ${
+                                    s.status === "Scheduled"
+                                      ? "bg-warning"
+                                      : s.status === "Completed"
+                                      ? "bg-success"
+                                      : "bg-danger"
+                                  }`}
+                                >
+                                  {s.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-muted">No surgeries scheduled for this day.</p>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={closeModal}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
