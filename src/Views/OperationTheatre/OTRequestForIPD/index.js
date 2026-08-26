@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { ACTIVE_ADMISSION_LIST_OT, MAS_WARD_GET_ALL_ACTIVE } from "../../../config/apiConfig";
 
 const OTRequestFromIPD = () => {
   // ----- State -----
@@ -16,7 +18,9 @@ const OTRequestFromIPD = () => {
 
   // Data
   const [admissions, setAdmissions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [wardOptions, setWardOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -41,97 +45,95 @@ const OTRequestFromIPD = () => {
     specialInstructions: "",
   });
 
-  // ----- Dummy data -----
-  const dummyAdmissions = [
-    {
-      id: 1,
-      admissionNo: "IPD/26/00125",
-      patientName: "Rajesh Kumar",
-      ageGender: "52 / Male",
-      admissionDate: "15-Aug-2026",
-      department: "Orthopaedics",
-      ward: "Ortho Ward",
-      bed: "B-12",
-      treatingDoctor: "Dr. Sharma",
-      uhid: "P000125",
-      mobile: "9800000000",
-      consultant: "Dr. Sharma",
-    },
-    {
-      id: 2,
-      admissionNo: "IPD/26/00128",
-      patientName: "Amit Kumar",
-      ageGender: "45 / Male",
-      admissionDate: "16-Aug-2026",
-      department: "General Surgery",
-      ward: "Surgical Ward",
-      bed: "B-08",
-      treatingDoctor: "Dr. Gupta",
-      uhid: "P000128",
-      mobile: "9812345678",
-      consultant: "Dr. Gupta",
-    },
-    {
-      id: 3,
-      admissionNo: "IPD/26/00131",
-      patientName: "Sunita Devi",
-      ageGender: "38 / Female",
-      admissionDate: "16-Aug-2026",
-      department: "Gynaecology",
-      ward: "Gynae Ward",
-      bed: "B-04",
-      treatingDoctor: "Dr. Verma",
-      uhid: "P000131",
-      mobile: "9823456789",
-      consultant: "Dr. Verma",
-    },
-  ];
-
-  // Unique wards for filter
-  const wardOptions = ["All Wards", ...new Set(dummyAdmissions.map((a) => a.ward))];
-
   // Surgery types and surgeries (dummy)
   const surgeryTypes = ["Orthopaedic Surgery", "General Surgery", "Cardiothoracic"];
   const surgeries = ["Total Knee Replacement", "Hernia Repair", "CABG"];
   const surgeons = ["Dr. Sharma", "Dr. Gupta", "Dr. Verma", "Dr. Patel"];
   const sessions = ["08:00 AM - 02:00 PM", "02:00 PM - 08:00 PM", "08:00 PM - 08:00 AM"];
 
+  // ----- API Fetching -----
+  const fetchWards = async () => {
+    try {
+      const res = await getRequest(MAS_WARD_GET_ALL_ACTIVE);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setWardOptions(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching wards", err);
+    }
+  };
+
+  const fetchAdmissions = async (page = 1, isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setListLoading(true);
+
+    try {
+      const queryParams = new URLSearchParams({
+        page: page - 1,
+        size: 5,
+        patientName: searchQuery,
+        admissionNo: searchQuery,
+        mobileNo: mobileNo,
+        wardId: wardFilter
+      });
+      // Remove empty params
+      const keysForDel = [];
+      queryParams.forEach((value, key) => {
+        if (!value) keysForDel.push(key);
+      });
+      keysForDel.forEach(key => queryParams.delete(key));
+
+      const res = await getRequest(`${ACTIVE_ADMISSION_LIST_OT}?${queryParams.toString()}`);
+      if (res?.status === 200 && res.response) {
+        setAdmissions(res.response.content || []);
+        setTotalItems(res.response.totalElements || 0);
+        setTotalPages(res.response.totalPages || 0);
+      } else {
+        setAdmissions([]);
+      }
+    } catch (err) {
+      console.error("Error fetching admissions", err);
+    } finally {
+      setLoading(false);
+      setListLoading(false);
+    }
+  };
+
   // ----- Effects -----
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setAdmissions(dummyAdmissions);
-      setTotalItems(dummyAdmissions.length);
-      setTotalPages(Math.ceil(dummyAdmissions.length / DEFAULT_ITEMS_PER_PAGE));
-      setLoading(false);
-    }, 300);
+    fetchWards();
+    fetchAdmissions(1, true);
   }, []);
 
-  // ----- Filtered data (list view) -----
-  const filteredData = admissions.filter((item) => {
-    const matchSearch =
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.admissionNo.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchMobile = item.mobile.includes(mobileNo);
-    const matchWard = wardFilter && wardFilter !== "All Wards" ? item.ward === wardFilter : true;
-    return matchSearch && matchMobile && matchWard;
-  });
-
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
   // ----- Handlers -----
-  const handlePageChange = (page) => setCurrentPage(page);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchAdmissions(page, false);
+  };
 
-  const handleSearch = () => setCurrentPage(1);
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchAdmissions(1, false);
+  };
 
   const handleReset = () => {
     setSearchQuery("");
     setMobileNo("");
     setWardFilter("");
     setCurrentPage(1);
+    // Fetch with empty params directly since state updates might be batched
+    const queryParams = new URLSearchParams({ page: 0, size: 5 });
+    setListLoading(true);
+    getRequest(`${ACTIVE_ADMISSION_LIST_OT}?${queryParams.toString()}`)
+      .then(res => {
+        if (res?.status === 200 && res.response) {
+          setAdmissions(res.response.content || []);
+          setTotalItems(res.response.totalElements || 0);
+          setTotalPages(res.response.totalPages || 0);
+        }
+      })
+      .catch(err => console.error(err))
+      .finally(() => setListLoading(false));
   };
 
   // ----- Row click -> Detail view -----
@@ -241,7 +243,7 @@ const OTRequestFromIPD = () => {
                           type="text"
                           className="form-control"
                           readOnly
-                          value={selectedAdmission.ageGender}
+                          value={selectedAdmission.age || selectedAdmission.gender ? `${selectedAdmission.age} / ${selectedAdmission.gender}` : ""}
                         />
                       </div>
                       <div className="col-md-3">
@@ -250,7 +252,7 @@ const OTRequestFromIPD = () => {
                           type="text"
                           className="form-control"
                           readOnly
-                          value={selectedAdmission.mobile}
+                          value={selectedAdmission.mobileNo}
                         />
                       </div>
                     </div>
@@ -274,21 +276,12 @@ const OTRequestFromIPD = () => {
                         />
                       </div>
                       <div className="col-md-3">
-                        <label className="form-label fw-bold">Department</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          readOnly
-                          value={selectedAdmission.department}
-                        />
-                      </div>
-                      <div className="col-md-3">
                         <label className="form-label fw-bold">Consultant</label>
                         <input
                           type="text"
                           className="form-control"
                           readOnly
-                          value={selectedAdmission.consultant}
+                          value={selectedAdmission.doctorName || ""}
                         />
                       </div>
                     </div>
@@ -519,8 +512,9 @@ const OTRequestFromIPD = () => {
                       value={wardFilter}
                       onChange={(e) => setWardFilter(e.target.value)}
                     >
+                      <option value="">All Wards</option>
                       {wardOptions.map((w) => (
-                        <option key={w} value={w}>{w}</option>
+                        <option key={w.wardId} value={w.wardId}>{w.wardName}</option>
                       ))}
                     </select>
                   </div>
@@ -536,7 +530,14 @@ const OTRequestFromIPD = () => {
               </div>
 
               {/* Table */}
-              <div className="table-responsive">
+              <div className="table-responsive position-relative">
+                {listLoading && (
+                  <div className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', zIndex: 10 }}>
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                )}
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
@@ -544,33 +545,31 @@ const OTRequestFromIPD = () => {
                       <th>Patient Name</th>
                       <th>Age / Gender</th>
                       <th>Admission Date</th>
-                      <th>Department</th>
                       <th>Ward</th>
                       <th>Bed</th>
                       <th>Treating Doctor</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
+                    {admissions.length > 0 ? (
+                      admissions.map((item) => (
                         <tr
-                          key={item.id}
+                          key={item.inpatientId}
                           onClick={() => handleRowClick(item)}
                           style={{ cursor: "pointer" }}
                         >
                           <td>{item.admissionNo}</td>
                           <td>{item.patientName}</td>
-                          <td>{item.ageGender}</td>
-                          <td>{item.admissionDate}</td>
-                          <td>{item.department}</td>
+                          <td>{item.age} / {item.gender}</td>
+                          <td>{item.admissionDateTime ? new Date(item.admissionDateTime).toLocaleDateString('en-GB') : ""}</td>
                           <td>{item.ward}</td>
                           <td>{item.bed}</td>
-                          <td>{item.treatingDoctor}</td>
+                          <td>{item.doctorName || "-"}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="8" className="text-center">No records found</td>
+                        <td colSpan="7" className="text-center">No records found</td>
                       </tr>
                     )}
                   </tbody>
@@ -578,8 +577,8 @@ const OTRequestFromIPD = () => {
               </div>
 
               <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                totalItems={totalItems}
+                itemsPerPage={5}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
               />
