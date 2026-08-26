@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import { getRequest, postRequest } from "../../../../service/apiService";
-import { MAS_WARD_GET_ALL_ACTIVE, ACTIVE_DIET_BY_INPATIENT, GET_PREVIOUS_DIET_ORDER_HISTORY, SAVE_DIET_ORDER_BY_INPATIENT, MAS_DIET_TYPE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME } from "../../../../config/apiConfig";
+import { MAS_WARD_GET_ALL_ACTIVE, ACTIVE_DIET_BY_INPATIENT, GET_PREVIOUS_DIET_ORDER_HISTORY, SAVE_DIET_ORDER_BY_INPATIENT, MAS_DIET_TYPE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, GET_VITALS_DETAILS_BY_INPATIENT_ID, GET_CURRENT_ACTIVE_DIET_SCHEDULE } from "../../../../config/apiConfig";
 import Swal from "sweetalert2";
 
 const DieticianDashboard = () => {
@@ -10,7 +10,8 @@ const DieticianDashboard = () => {
   const [currentView, setCurrentView] = useState("list");
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   /* =========================================================================
      ============================ LIST VIEW STATE ===========================
@@ -82,13 +83,18 @@ const DieticianDashboard = () => {
         setIsLoading(false);
       }
     };
-    fetchDropdowns();
-    fetchDieticianDashboard(0);
+    const init = async () => {
+      setIsInitialLoad(true);
+      await fetchDropdowns();
+      await fetchDieticianDashboard(0);
+      setIsInitialLoad(false);
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDieticianDashboard = async (page = 0) => {
-    setLoading(true);
+    setTableLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page,
@@ -113,7 +119,7 @@ const DieticianDashboard = () => {
       console.error("Error fetching dietician dashboard:", error);
       setDietData([]);
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
   };
 
@@ -153,7 +159,7 @@ const DieticianDashboard = () => {
     setCurrentPage(1);
 
     // Call API with empty filters
-    setLoading(true);
+    setTableLoading(true);
     try {
       const res = await getRequest(`${ACTIVE_DIET_BY_INPATIENT}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`);
       if (res?.status === 200 && res.response) {
@@ -166,7 +172,7 @@ const DieticianDashboard = () => {
     } catch (error) {
       console.error("Error fetching dietician dashboard:", error);
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
     setIsShowingAll(false);
   };
@@ -199,6 +205,7 @@ const DieticianDashboard = () => {
     });
 
     fetchDietHistory(item.inpatientId);
+    fetchVitalsDetails(item.inpatientId);
     setCurrentView("dietEntry");
   };
 
@@ -216,6 +223,60 @@ const DieticianDashboard = () => {
     }
   };
 
+  const [vitalsHistory, setVitalsHistory] = useState([]);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
+
+  const formatDateAndTime = (datetimeStr) => {
+    if (!datetimeStr) return { date: "", time: "" }
+    const d = new Date(datetimeStr)
+    if (isNaN(d.getTime())) return { date: "", time: "" }
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, "0")
+    const minutes = String(d.getMinutes()).padStart(2, "0")
+    return {
+      date: `${day}/${month}/${year}`,
+      time: `${hours}:${minutes}`
+    }
+  }
+
+  const fetchVitalsDetails = async (inpatientId) => {
+    if (!inpatientId) {
+      setVitalsHistory([]);
+      return;
+    }
+    setVitalsLoading(true);
+    try {
+      const response = await getRequest(`${GET_VITALS_DETAILS_BY_INPATIENT_ID}/${inpatientId}`);
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        const sorted = [...response.response].sort((a, b) => new Date(b.observationDatetime) - new Date(a.observationDatetime));
+        const mapped = sorted.map(item => {
+          const { date, time } = formatDateAndTime(item.observationDatetime);
+          return {
+            id: item.vitalId || Date.now() + Math.random(),
+            date: date,
+            time: time,
+            temperature: item.temperature !== null && item.temperature !== undefined ? `${item.temperature} °F` : "-",
+            pulse: item.pulse !== null && item.pulse !== undefined ? String(item.pulse) : "-",
+            respiration: item.respiration !== null && item.respiration !== undefined ? String(item.respiration) : "-",
+            bp: item.bpSystolic && item.bpDiastolic ? `${item.bpSystolic}/${item.bpDiastolic}` : "-",
+            o2Saturation: item.spo2 !== null && item.spo2 !== undefined ? `${item.spo2}%` : "-",
+            pain: item.painScore !== null && item.painScore !== undefined ? String(item.painScore) : "-"
+          }
+        });
+        setVitalsHistory(mapped);
+      } else {
+        setVitalsHistory([]);
+      }
+    } catch (error) {
+      console.error("Error fetching vitals details:", error);
+      setVitalsHistory([]);
+    } finally {
+      setVitalsLoading(false);
+    }
+  };
+
   /* =========================================================================
      =========================== DIET ENTRY VIEW STATE ======================
      ========================================================================= */
@@ -226,22 +287,6 @@ const DieticianDashboard = () => {
     patientName: "Ananya Sharma",
     gender: "Female",
     age: "42",
-  });
-
-  // ---------- Health Information (Auto-Populated, Read-Only) ----------
-  const [healthInfo, setHealthInfo] = useState({
-    height: "162",
-    weight: "68",
-    temperature: "98.4",
-    bpSystolic: "135",
-    bpDiastolic: "85",
-    pulse: "76",
-    bmi: "25.9",
-    rr: "18",
-    spo2: "99",
-    bloodSugarLevels: "110",
-    bloodCholesterolLevels: "205",
-    chronicDisease: "Type 2 Diabetes, Hypertension",
   });
 
   // ---------- Ward Details (Auto-Populated, Read-Only) ----------
@@ -384,6 +429,7 @@ const DieticianDashboard = () => {
       orderedBy: activeDiet.orderedBy || "-",
     });
 
+    fetchDietExecutionHistory(selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.admissionNo, activeDiet.dietOrderId);
     setCurrentView("tracking");
   };
 
@@ -408,56 +454,41 @@ const DieticianDashboard = () => {
     orderedBy: "Doctor - Dr. S. Deshmukh",
   });
 
-  const [executionEntries, setExecutionEntries] = useState([
-    {
-      id: 1,
-      meal: "Breakfast",
-      date: "18-Sep-2025",
-      served: "Yes",
-      timeServed: "08:20 AM",
-      quantity: "Full",
-      reasonIfNil: "-",
-      shift: "Morning",
-      enteredBy: "Nurse Priya",
-      status: "Finalized",
-    },
-    {
-      id: 2,
-      meal: "Lunch",
-      date: "18-Sep-2025",
-      served: "No",
-      timeServed: "-",
-      quantity: "Nil",
-      reasonIfNil: "Nausea, vomiting",
-      shift: "Afternoon",
-      enteredBy: "Nurse Priya",
-      status: "Finalized",
-    },
-    {
-      id: 3,
-      meal: "Dinner",
-      date: "18-Sep-2025",
-      served: "Yes",
-      timeServed: "07:50 PM",
-      quantity: "Half",
-      reasonIfNil: "-",
-      shift: "Night",
-      enteredBy: "Nurse Rahul",
-      status: "Finalized",
-    },
-    {
-      id: 4,
-      meal: "New Entry",
-      date: "19-Sep-2025",
-      served: "-",
-      timeServed: "-",
-      quantity: "-",
-      reasonIfNil: "-",
-      shift: "Auto",
-      enteredBy: "Auto",
-      status: "Draft",
-    },
-  ]);
+  const [executionEntries, setExecutionEntries] = useState([]);
+  const [executionLoading, setExecutionLoading] = useState(false);
+
+  const fetchDietExecutionHistory = async (inpatientId, dietOrderId) => {
+    if (!inpatientId || !dietOrderId) {
+      setExecutionEntries([]);
+      return;
+    }
+    setExecutionLoading(true);
+    try {
+      const response = await getRequest(`${GET_CURRENT_ACTIVE_DIET_SCHEDULE}?inpatientId=${inpatientId}&dietOrderId=${dietOrderId}`);
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        const mapped = response.response.map(entry => ({
+          id: entry.dietScheduleId || Date.now() + Math.random(),
+          meal: entry.mealType || "-",
+          date: entry.date || "-",
+          served: entry.status === "SERVED" ? "Yes" : (entry.status ? "No" : "-"),
+          timeServed: entry.actualTime || "-",
+          quantity: entry.consumed !== null && entry.consumed !== undefined ? `${entry.consumed}%` : "-",
+          reasonIfNil: entry.remark || "-",
+          shift: "-",
+          enteredBy: entry.givenBy || "-",
+          status: entry.status || "-",
+        }));
+        setExecutionEntries(mapped);
+      } else {
+        setExecutionEntries([]);
+      }
+    } catch (error) {
+      console.error("Error fetching diet execution history:", error);
+      setExecutionEntries([]);
+    } finally {
+      setExecutionLoading(false);
+    }
+  };
 
   const handleAddNewEntry = () => {
     console.log("Add new diet execution entry");
@@ -473,7 +504,7 @@ const DieticianDashboard = () => {
   if (currentView === "tracking") {
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen />}
+        {(isLoading || isInitialLoad) && <LoadingScreen />}
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -590,6 +621,17 @@ const DieticianDashboard = () => {
                         <h6 className="fw-bold mb-0">Diet Execution History </h6>
                       </div>
                       <div className="card-body">
+                        {executionLoading ? (
+                          <div className="text-center py-4">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                          </div>
+                        ) : executionEntries.length === 0 ? (
+                          <div className="text-center py-4 text-muted">
+                            No execution history found.
+                          </div>
+                        ) : (
                         <div className="table-responsive">
                           <table className="table table-bordered align-middle">
                             <thead>
@@ -629,6 +671,7 @@ const DieticianDashboard = () => {
                             </tbody>
                           </table>
                         </div>
+                        )}
 
                         {/* <button
                           type="button"
@@ -655,7 +698,7 @@ const DieticianDashboard = () => {
   if (currentView === "dietEntry") {
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen />}
+        {(isLoading || isInitialLoad) && <LoadingScreen />}
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -672,7 +715,7 @@ const DieticianDashboard = () => {
               </div>
 
               <div className="card-body p-2 pb-0">
-                {loading && (
+                {isLoading && (
                   <div className="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
                     <span
                       className="spinner-border spinner-border-sm"
@@ -737,131 +780,55 @@ const DieticianDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Health Information - redesigned for compactness */}
+                  {/* Vitals Entry (Read-only for Dietician) */}
                   <div className="col-md-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-2">
                         <h6 className="fw-bold mb-0">Health Information</h6>
                       </div>
-                      <div className="card-body">
-                        <div className="row g-3">
-                          {/* Height */}
-                          <div className="col-md-3">
-                            <label className="form-label">Height <span className="text-danger">*</span></label>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={healthInfo.height}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">cm</span>
+                      <div className="card-body p-0">
+                        {vitalsLoading ? (
+                          <div className="text-center py-4">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
                             </div>
                           </div>
-
-                          {/* Weight */}
-                          <div className="col-md-3">
-                            <label className="form-label">Weight <span className="text-danger">*</span></label>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={healthInfo.weight}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">kg</span>
-                            </div>
+                        ) : vitalsHistory.length === 0 ? (
+                          <div className="text-center py-4 text-muted">
+                            No vitals recorded.
                           </div>
-
-                          {/* BP Systolic */}
-                          <div className="col-md-3">
-                            <label className="form-label">BP Systolic <span className="text-danger">*</span></label>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={healthInfo.bpSystolic}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">mmHg</span>
-                            </div>
+                        ) : (
+                          <div className="table-responsive">
+                            <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
+                              <thead className="table-light">
+                                <tr>
+                                  <th style={{ maxWidth: "60px" }}>Date</th>
+                                  <th style={{ minWidth: "60px" }}>Time</th>
+                                  <th style={{ minWidth: "90px" }}>Temp.</th>
+                                  <th style={{ minWidth: "90px" }}>Pulse (bpm)</th>
+                                  <th style={{ minWidth: "60px" }}>Respiration</th>
+                                  <th style={{ minWidth: "60px" }}>BP (mm/Hg)</th>
+                                  <th style={{ minWidth: "60px" }}>O₂ Saturation</th>
+                                  <th style={{ minWidth: "60px" }}>Pain</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {vitalsHistory.map((vitals) => (
+                                  <tr key={vitals.id}>
+                                    <td>{vitals.date}</td>
+                                    <td>{vitals.time}</td>
+                                    <td>{vitals.temperature}</td>
+                                    <td>{vitals.pulse}</td>
+                                    <td>{vitals.respiration}</td>
+                                    <td>{vitals.bp}</td>
+                                    <td>{vitals.o2Saturation}</td>
+                                    <td>{vitals.pain}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
-
-                          {/* BP Diastolic */}
-                          <div className="col-md-3">
-                            <label className="form-label">BP Diastolic <span className="text-danger">*</span></label>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={healthInfo.bpDiastolic}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">mmHg</span>
-                            </div>
-                          </div>
-
-                          {/* Pulse */}
-                          <div className="col-md-3">
-                            <label className="form-label">Pulse <span className="text-danger">*</span></label>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={healthInfo.pulse}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">/min</span>
-                            </div>
-                          </div>
-
-                          {/* Blood Sugar Levels */}
-                          <div className="col-md-3">
-                            <label className="form-label">Blood Sugar Levels</label>
-                            <div className="input-group">
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={healthInfo.bloodSugarLevels}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">mg/dl</span>
-                            </div>
-                          </div>
-
-                          {/* Blood Cholesterol Levels */}
-                          <div className="col-md-3">
-                            <label className="form-label">Blood Cholesterol Levels</label>
-                            <div className="input-group">
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={healthInfo.bloodCholesterolLevels}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">mg/dl</span>
-                            </div>
-                          </div>
-
-                          {/* Chronic Disease */}
-                          <div className="col-md-3">
-                            <label className="form-label">Chronic Disease</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={healthInfo.chronicDisease}
-                              readOnly
-                              disabled
-                            />
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1099,7 +1066,7 @@ const DieticianDashboard = () => {
      ========================================================================= */
   return (
     <div className="content-wrapper">
-      {loading && <LoadingScreen />}
+      {(isLoading || isInitialLoad) && <LoadingScreen />}
 
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
@@ -1153,7 +1120,7 @@ const DieticianDashboard = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleSearch}
-                    disabled={loading || isSearching || isShowingAll}
+                    disabled={tableLoading || isSearching || isShowingAll}
                   >
                     {isSearching ? (
                       <>
@@ -1173,7 +1140,7 @@ const DieticianDashboard = () => {
                     type="button"
                     className="btn btn-secondary"
                     onClick={handleShowAll}
-                    disabled={loading || isSearching || isShowingAll}
+                    disabled={tableLoading || isSearching || isShowingAll}
                   >
                     {isShowingAll ? (
                       <>
@@ -1192,8 +1159,32 @@ const DieticianDashboard = () => {
               </div>
 
               {/* Diet Grid Table */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
+              <div style={{ position: "relative", minHeight: "200px" }}>
+                {tableLoading && !isInitialLoad && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      backgroundColor: "rgba(255, 255, 255, 0.7)",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      zIndex: 5,
+                    }}
+                  >
+                    <div className="d-flex flex-column align-items-center">
+                      <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <span className="mt-2 fw-bold text-primary">Loading Patients...</span>
+                    </div>
+                  </div>
+                )}
+                <div className="table-responsive">
+                  <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                     <tr>
                       <th>Patient Name / UHID</th>
@@ -1207,23 +1198,17 @@ const DieticianDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={8} className="text-center py-4">
-                          <LoadingScreen />
-                        </td>
-                      </tr>
-                    ) : dietData.length === 0 ? (
+                    {dietData.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="text-center py-4 text-muted">
                           No patients found.
                         </td>
                       </tr>
                     ) : (
-                      dietData.map((item) => {
+                      dietData.map((item, index) => {
                         const displayStatus = item.dietStatus === 'A' ? 'Active' : item.dietStatus === 'C' ? 'Complete' : 'Not Assigned';
                         return (
-                          <tr key={item.uhid || Math.random()}>
+                          <tr key={`${item.uhid || 'row'}-${index}`}>
                             <td>
                               {item.patientName}
                               <br />
@@ -1269,8 +1254,9 @@ const DieticianDashboard = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              <Pagination
+            <Pagination
                 totalItems={totalElements}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                 currentPage={currentPage}
