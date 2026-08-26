@@ -282,6 +282,9 @@ const validRoutes = [
   "/ManufacturerMaster",
   "/ProcedureWorklist",
   "/OTRequestFromIPD",
+  "/OTDashboard",
+  "/PendingOTReview",
+  "/OTBookingHistory",
 ];
 
 // Routes that should bypass authorization
