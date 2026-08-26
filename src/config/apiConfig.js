@@ -849,3 +849,4 @@ export const MAS_SURGERY_GET_BY_LEVEL = `${MASTERS}/masSurgery/getBySurgeryLevel
 export const GET_CURRENT_ACTIVE_DIET_SCHEDULE = "/ipd/getCurrentActiveDietSchedule";
 export const SAVE_SHIFT_HANDOVER = '/ipd/saveShiftHandover';
 export const GET_SHIFT_HANDOVER = '/ipd/getShiftHandover';
+export const ACTIVE_ADMISSION_LIST_OT = '/otController/activeAdmissionList';
