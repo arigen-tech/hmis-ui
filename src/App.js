@@ -284,6 +284,9 @@ import BrandMaster from './Views/Masters/BrandMaster';
 import ManufacturerMaster from './Views/Masters/ManufacturerMaster';
 import ProcedureWorklist from './Views/ProcedureManagement/ProcedureWorklist';
 import OTRequestFromIPD from './Views/OperationTheatre/OTRequestForIPD';
+import OTDashboard from './Views/OPD/GeneralMedicineWaitingList/OTDashboard';
+import PendingOTReview from './Views/OperationTheatre/PendingOTReview';
+import OTBookingHistory from './Views/OperationTheatre/OTBookingHistory';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -599,6 +602,9 @@ function App() {
                 <Route path="/ManufacturerMaster" element={<ManufacturerMaster/>} />
                 <Route path="/ProcedureWorklist" element={<ProcedureWorklist/>} />
                 <Route path="/OTRequestFromIPD" element={<OTRequestFromIPD/>} />
+                <Route path="/OTDashboard" element={<OTDashboard/>} />
+                <Route path="/PendingOTReview" element={<PendingOTReview/>} />
+                <Route path="/OTBookingHistory" element={<OTBookingHistory/>} />
                 </Route>
             </Route>
 
