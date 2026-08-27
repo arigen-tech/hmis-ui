@@ -107,7 +107,6 @@ const PatientwiseBilldatails = () => {
 
   const generateReport = async (record, flag = "D") => {
     const recordId = record.id;
-    debugger;
 
     if (flag === "D") {
       setGeneratingPdfIds((prev) => new Set(prev).add(recordId));

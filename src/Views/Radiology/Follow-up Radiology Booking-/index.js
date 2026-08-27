@@ -789,7 +789,6 @@ const RadiologyBookingRegisteredPatient = () => {
     genderValue,
     currentGenderData = genderData,
   ) {
-    debugger;
     setLoading(true);
     try {
       const selectedGender = currentGenderData.find(
