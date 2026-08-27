@@ -595,7 +595,6 @@ const InvestigationModal = ({
   }));
 
   const handleSaveTemplate = async () => {
-    debugger;
     if (!templateName.trim() || !templateCode.trim()) {
       showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error");
       return;

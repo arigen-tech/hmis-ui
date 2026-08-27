@@ -508,6 +508,23 @@ const OpeningBalanceEntry = () => {
       if (!entry.totalCost || isNaN(entry.totalCost)) errors.totalCost = "totalCost is required";
       if (!entry.brandName) errors.brandName = "brandName is required";
       if (!entry.manufacturer) errors.manufacturer = "manufacturer is required";
+
+      // >>> ADDED VALIDATION: Purchase Rate must be less than MRP
+      if (
+        !errors.purchaseRatePerUnit &&
+        !errors.mrpPerUnit &&
+        entry.purchaseRatePerUnit &&
+        entry.mrpPerUnit
+      ) {
+        const purchaseRate = parseFloat(entry.purchaseRatePerUnit);
+        const mrp = parseFloat(entry.mrpPerUnit);
+        if (purchaseRate >= mrp) {
+          errors.purchaseRatePerUnit =
+            "Purchase Rate per Unit must be less than MRP per Unit";
+        }
+      }
+      // <<< END ADDED VALIDATION
+
       return errors;
     });
   };
@@ -550,7 +567,9 @@ const OpeningBalanceEntry = () => {
           const error = drugErrors[i];
           const errorKeys = Object.keys(error);
           if (errorKeys.length > 0) {
-            firstErrorMsg = error.dateValidation || `${errorKeys[0]} is required`;
+            // >>> MODIFIED: use actual error message instead of generic "is required"
+            firstErrorMsg = error.dateValidation || error[errorKeys[0]];
+            // <<< END MODIFIED
             break;
           }
         }

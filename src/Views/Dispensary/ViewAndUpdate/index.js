@@ -767,7 +767,6 @@ const OpeningBalanceApproval = () => {
       } else if (status === "p") {
         setIsSubmitting(true);
       }
-      debugger;
 
       const response = await putRequest(
         `${UPDATE_OPENING_BALANCE_ENTRY_BY_ID}/${selectedRecord.balanceMId}`,

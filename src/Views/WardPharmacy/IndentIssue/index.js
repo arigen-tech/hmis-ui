@@ -11,6 +11,8 @@ import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination
 import {ERROR_MESSAGES,ERROR_FETCHING_INDENTS,CONFIRM_ISSUE_INDENT,CONFIRM_INDENT_ISSUED_PRINT,
   ERROR_ISSUING_INDENT,ERROR_ITEM_ID_MISSING,} from "../../../config/constants";
 
+const GET_ITEM_BATCHES_EXCEPT_STOCK = "/inventory/item/batchesExceptGivenStock";
+
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
 
@@ -72,7 +74,7 @@ const IndentIssue = () => {
   const [previousIssuesLoading, setPreviousIssuesLoading] = useState(false)
   const [previousIssuesError, setPreviousIssuesError] = useState(null)
   const [manuallyAddedRows, setManuallyAddedRows] = useState({})
-  const [isIssuing, setIsIssuing] = useState(false) // Added state for issuing spinner
+  const [isIssuing, setIsIssuing] = useState(false)
 
   const navigate = useNavigate();
 
@@ -189,7 +191,8 @@ const IndentIssue = () => {
         doe: b.doe,
         stock: b.batchStock,
         totalAvailableStock: b.availableStock,
-        manufacturerId: b.manufacturerId ?? null 
+        manufacturerId: b.manufacturerId ?? null,
+        stockId: b.stockId ?? null
       }));
       setBatchOptions(prev => ({
         ...prev,
@@ -208,6 +211,46 @@ const IndentIssue = () => {
       .map(e => e.batchNo);
   };
 
+  const getUsedStockIds = (itemCode, currentIndex) => {
+    return indentEntries
+      .filter((e, i) => i !== currentIndex && e.itemCode === itemCode && e.stockId)
+      .map(e => e.stockId);
+  };
+
+  const fetchBatchExcludingStocks = async (itemId, excludeStockIds) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('hospitalId', hospitalId);
+      params.append('departmentId', departmentId);
+      params.append('minimumClosingStock', '0');
+      excludeStockIds.forEach(id => params.append('excludeStockIds', id));
+      const url = `${GET_ITEM_BATCHES_EXCEPT_STOCK}/${itemId}?${params.toString()}`;
+      const response = await getRequest(url);
+      const apiStatus = response?.status;
+      if (apiStatus === 200) {
+        const batch = response?.response;
+        return {
+          stockId: batch.stockId,
+          batchNo: batch.batchName,
+          dom: batch.dom,
+          doe: batch.doe,
+          batchStock: Number(batch.batchStock) || 0,
+          availableStock: Number(batch.availableStock) || 0,
+          manufacturerId: batch.manufacturerId ?? null,
+        };
+      } else if (apiStatus === 404) {
+        return null;
+      } else {
+        showPopup(response?.message || "Internal server error !", "error");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching batch excluding stocks:", error);
+      showPopup("Internal server error !", "error");
+      return null;
+    }
+  };
+
   const handleIndentEntryChange = (index, field, value) => {
     const updatedEntries = [...indentEntries];
 
@@ -224,9 +267,11 @@ const IndentIssue = () => {
         apu: selectedItem ? selectedItem.unit : "",
         availableStock: totalAvailableStock,
         batchNo: "",
+        stockId: null,
         dom: "",
         doe: "",
         expDate: "",
+        mfgDate: "",
         batchStock: "",
         qtyIssued: "",
       };
@@ -247,72 +292,22 @@ const IndentIssue = () => {
         const availableStock = Number(updatedEntries[index].availableStock) || 0;
 
         if (manuallyAddedRows[index]) {
-          // Find the original (non-manual) row for this item
-          const originalRowIndex = updatedEntries.findIndex(
-            (e, i) => i !== index && e.itemCode === updatedEntries[index].itemCode && !manuallyAddedRows[i]
-          );
-
-          const origBatchStock = originalRowIndex !== -1
-            ? Number(updatedEntries[originalRowIndex].batchStock) || 0
-            : 0;
-
-          // Reconstruct full approved qty by summing both rows' current approvedQty
-          // This is stable regardless of how many times batch is re-selected
-          const currentOrigApproved = originalRowIndex !== -1
-            ? Number(updatedEntries[originalRowIndex].approvedQty) || 0
-            : 0;
-          const currentManualApproved = Number(updatedEntries[index].approvedQty) || 0;
-          const fullApprovedQty = currentOrigApproved + currentManualApproved;
-
-          // Original row is capped to its own batchStock
-          const origRowQty = Math.min(origBatchStock, fullApprovedQty);
-          // New row gets whatever remains after original row's batchStock covers its share
-          const newRowQty = Math.max(0, fullApprovedQty - origBatchStock);
-
-          // Update the new (manual) row
-          updatedEntries[index] = {
-            ...updatedEntries[index],
-            batchNo: value,
-            dom: formatDateForDisplay(selectedBatch.dom),
-            doe: formatDateForDisplay(selectedBatch.doe),
-            expDate: selectedBatch.doe || "",
-            manufacturerId: selectedBatch.manufacturerId ?? updatedEntries[index].manufacturerId ?? null,
-            batchStock: newBatchStock,
-            availableStock: selectedBatch.totalAvailableStock || availableStock,
-            qtyDemanded: newRowQty,
-            approvedQty: newRowQty,
-            qtyIssued: newRowQty,
-            balanceAfterIssue: 0,
-          };
-
-          // Update the original row
-          if (originalRowIndex !== -1) {
-            updatedEntries[originalRowIndex] = {
-              ...updatedEntries[originalRowIndex],
-              qtyDemanded: origRowQty,
-              approvedQty: origRowQty,
-              qtyIssued: origBatchStock > 0
-                ? Math.min(origBatchStock, origRowQty)
-                : origRowQty,
-              balanceAfterIssue: origBatchStock > 0
-                ? Math.max(0, origRowQty - Math.min(origBatchStock, origRowQty))
-                : 0,
-            };
-          }
-
+          // For manually added rows (split rows) we don't allow batch change here, it's auto-filled.
+          // But keep for safety: do nothing.
         } else {
-          // Non-manual row: standard auto-fill logic
           const autoQtyIssued = calculateAutoQtyIssued(newBatchStock, approvedQty, previousIssuedQty, availableStock);
           updatedEntries[index] = {
             ...updatedEntries[index],
             batchNo: value,
+            stockId: selectedBatch.stockId ?? null,
             dom: formatDateForDisplay(selectedBatch.dom),
             doe: formatDateForDisplay(selectedBatch.doe),
             expDate: selectedBatch.doe || "",
-            manufacturerId: selectedBatch.manufacturerId ?? updatedEntries[index].manufacturerId ?? null,
+            mfgDate: selectedBatch.dom || "",
+            manufacturerId: selectedBatch.manufacturerId ?? null,
             batchStock: newBatchStock,
             qtyIssued: autoQtyIssued,
-            balanceAfterIssue: Math.max(0, approvedQty - previousIssuedQty - Number(autoQtyIssued)),
+            balanceAfterIssue: Math.max(0, availableStock - Number(autoQtyIssued)),
           };
         }
       }
@@ -323,13 +318,14 @@ const IndentIssue = () => {
       const approvedQty = Number(updatedEntries[index].approvedQty) || 0;
       const batchStock = Number(updatedEntries[index].batchStock) || 0;
       const previousIssuedQty = Number(updatedEntries[index].previousIssuedQty) || 0;
+      const availableStock = Number(updatedEntries[index].availableStock) || 0;
       const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
 
       if (value === "") {
         updatedEntries[index] = {
           ...updatedEntries[index],
           qtyIssued: "",
-          balanceAfterIssue: remainingQty,
+          balanceAfterIssue: availableStock,
         };
       } else {
         let finalQtyIssued = qtyIssued;
@@ -338,7 +334,7 @@ const IndentIssue = () => {
         updatedEntries[index] = {
           ...updatedEntries[index],
           qtyIssued: finalQtyIssued.toString(),
-          balanceAfterIssue: remainingQty - finalQtyIssued,
+          balanceAfterIssue: Math.max(0, availableStock - finalQtyIssued),
         };
       }
       setIndentEntries(updatedEntries);
@@ -364,7 +360,6 @@ const IndentIssue = () => {
         items = response;
       }
 
-      // ── CHANGED: added expDate and manufacturerId ──
       const entries = items.map((item) => ({
         id: item.indentTId || null,
         itemId: item.itemId || "",
@@ -375,12 +370,14 @@ const IndentIssue = () => {
         approvedQty: item.approvedQty || 0,
         previousIssuedQty: 0,
         batchNo: item.batchNo || "",
+        stockId: item.stockId || null,
         dom: formatDateForDisplay(item.mfgDate),
         doe: formatDateForDisplay(item.expDate),
-        expDate: item.expDate || "",           // raw value for payload
-        manufacturerId: item.manufacturerId ?? null,  // for payload
+        expDate: item.expDate || "",
+        mfgDate: item.mfgDate || "",
+        manufacturerId: item.manufacturerId ?? null,
         qtyIssued: item.approvedQty,
-        balanceAfterIssue: Math.max(0, item.approvedQty || 0),
+        balanceAfterIssue: Math.max(0, Number(item.availableStock) - Number(item.approvedQty)),
         batchStock: item.batchAvailableStock || 0,
         availableStock: item.availableStock || 0,
       }));
@@ -406,10 +403,12 @@ const IndentIssue = () => {
           if (!batchMap[itemCode]) batchMap[itemCode] = [];
           batchMap[itemCode].push({
             batchNo: item.batchNo,
+            stockId: item.stockId || null,
             dom: item.mfgDate || "",
             doe: item.expDate || "",
             stock: item.batchAvailableStock || 0,
-            totalAvailableStock: item.availableStock || 0
+            totalAvailableStock: item.availableStock || 0,
+            manufacturerId: item.manufacturerId ?? null
           });
         }
       });
@@ -453,32 +452,81 @@ const IndentIssue = () => {
     setFilteredIndentData(indentData);
   };
 
-  const addNewRow = (sourceIndex) => {
+  // FIX: nth-row split logic.
+  // Previously the newly-inserted child row's `availableStock` was taken directly from
+  // `nextBatch.availableStock`, which is the *next batch's own* stock figure returned by
+  // GET_ITEM_BATCHES_EXCEPT_STOCK — not the item's remaining total stock after the parent
+  // row's allocation. That caused `splitConditionMet` (which checks
+  // `qtyIssued <= availableStock`) to evaluate against a wrong/zero value, so the "+" button
+  // stayed disabled even when there was clearly more item stock left to split into another row.
+  //
+  // Now `availableStock` for the child row is derived from the source row's own
+  // `availableStock` minus what the parent row just consumed (`parentIssuedQty`). This keeps
+  // the running "remaining item-level stock" correct across any number of chained splits
+  // (2nd row, 3rd row, 4th row, ...), since each new row is always spawned from its immediate
+  // predecessor's `availableStock`, not from unrelated batch-local data.
+  const addNewRow = async (sourceIndex) => {
     const sourceEntry = indentEntries[sourceIndex];
+    const qtyIssuedOriginal = Number(sourceEntry.qtyIssued) || 0;
+    const batchStock = Number(sourceEntry.batchStock) || 0;
+    const availableStock = Number(sourceEntry.availableStock) || 0;
+
+    if (!(qtyIssuedOriginal > 0 && batchStock > 0 && qtyIssuedOriginal > batchStock && qtyIssuedOriginal <= availableStock)) {
+      return;
+    }
+
+    const usedStockIds = getUsedStockIds(sourceEntry.itemCode, sourceIndex);
+    if (sourceEntry.stockId) usedStockIds.push(sourceEntry.stockId);
+
+    const nextBatch = await fetchBatchExcludingStocks(sourceEntry.itemId, usedStockIds);
+    if (!nextBatch) {
+      showPopup("No Batches Available", "error");
+      return;
+    }
+
+    const parentIssuedQty = batchStock;
+    const childIssuedQty = qtyIssuedOriginal - parentIssuedQty;
+
+    // Remaining item-level available stock after the parent row's allocation.
+    // This — not nextBatch.availableStock — is what the child row and future
+    // splitConditionMet checks must compare qtyIssued against.
+    const remainingAvailableStock = availableStock - parentIssuedQty;
+
+    const updatedEntries = [...indentEntries];
+    updatedEntries[sourceIndex] = {
+      ...updatedEntries[sourceIndex],
+      qtyDemanded: parentIssuedQty,
+      approvedQty: parentIssuedQty,
+      qtyIssued: parentIssuedQty,
+      balanceAfterIssue: availableStock - parentIssuedQty,
+    };
+
     const newEntry = {
-      id: sourceEntry.id,
+      id: sourceEntry.id, // Use parent's indentTId for split row
       itemId: sourceEntry.itemId,
       itemCode: sourceEntry.itemCode,
       itemName: sourceEntry.itemName,
       apu: sourceEntry.apu,
-      qtyDemanded: "",
-      approvedQty: "",
-      batchNo: "",
-      dom: "",
-      doe: "",
-      expDate: "",
-      manufacturerId: sourceEntry.manufacturerId || null,
-      qtyIssued: "",
-      balanceAfterIssue: "",
-      batchStock: "",
-      availableStock: sourceEntry.availableStock,
+      qtyDemanded: childIssuedQty,
+      approvedQty: childIssuedQty,
+      batchNo: nextBatch.batchNo,
+      stockId: nextBatch.stockId,
+      dom: formatDateForDisplay(nextBatch.dom),
+      doe: formatDateForDisplay(nextBatch.doe),
+      expDate: nextBatch.doe || "",
+      mfgDate: nextBatch.dom || "",
+      manufacturerId: nextBatch.manufacturerId,
+      qtyIssued: childIssuedQty,
+      balanceAfterIssue: remainingAvailableStock - childIssuedQty,
+      batchStock: nextBatch.batchStock,
+      // FIX: was nextBatch.availableStock (wrong — batch-local, unrelated to item total)
+      availableStock: remainingAvailableStock,
       previousIssuedQty: 0,
     };
 
-    const newEntries = [...indentEntries];
     const insertIndex = sourceIndex + 1;
-    newEntries.splice(insertIndex, 0, newEntry);
-    setIndentEntries(newEntries);
+    updatedEntries.splice(insertIndex, 0, newEntry);
+    setIndentEntries(updatedEntries);
 
     setManuallyAddedRows(prev => {
       const updated = {};
@@ -493,10 +541,6 @@ const IndentIssue = () => {
       updated[insertIndex] = true;
       return updated;
     });
-
-    if (sourceEntry.itemId && sourceEntry.itemCode) {
-      fetchBatchesForItem(sourceEntry.itemId, sourceEntry.itemCode);
-    }
   };
 
   const removeRow = (index) => {
@@ -504,23 +548,27 @@ const IndentIssue = () => {
       const entryToRemove = indentEntries[index];
 
       if (manuallyAddedRows[index]) {
-        const removedQty = Number(entryToRemove.approvedQty) || 0;
-        const originalRowIndex = indentEntries.findIndex(
-          (e, i) => i !== index && e.itemCode === entryToRemove.itemCode && !manuallyAddedRows[i]
-        );
+        let previousRowIndex = -1;
+        for (let i = index - 1; i >= 0; i--) {
+          if (indentEntries[i].itemCode === entryToRemove.itemCode) {
+            previousRowIndex = i;
+            break;
+          }
+        }
+
         const updatedEntries = [...indentEntries];
-        if (originalRowIndex !== -1) {
-          const origApproved = Number(updatedEntries[originalRowIndex].approvedQty) || 0;
-          const restoredApproved = origApproved + removedQty;
-          const origBatchStock = Number(updatedEntries[originalRowIndex].batchStock) || 0;
-          updatedEntries[originalRowIndex] = {
-            ...updatedEntries[originalRowIndex],
+        if (previousRowIndex !== -1) {
+          const removedQty = Number(entryToRemove.approvedQty) || 0;
+          const prevEntry = updatedEntries[previousRowIndex];
+          const restoredApproved = Number(prevEntry.approvedQty) + removedQty;
+          const prevAvailableStock = Number(prevEntry.availableStock) || 0;
+
+          updatedEntries[previousRowIndex] = {
+            ...prevEntry,
             qtyDemanded: restoredApproved,
             approvedQty: restoredApproved,
-            qtyIssued: origBatchStock > 0 ? Math.min(origBatchStock, restoredApproved) : restoredApproved,
-            balanceAfterIssue: origBatchStock > 0
-              ? Math.max(0, restoredApproved - Math.min(origBatchStock, restoredApproved))
-              : 0,
+            qtyIssued: restoredApproved,
+            balanceAfterIssue: Math.max(0, prevAvailableStock - restoredApproved),
           };
         }
         updatedEntries.splice(index, 1);
@@ -652,14 +700,7 @@ const IndentIssue = () => {
         `⚠️ Batch Stock Insufficient for Full Issue:\n\n${warnMsg}\n\nDo you want to proceed anyway or cancel to add a split row?`,
         "warning",
         () => {
-          showConfirmationPopup(
-            CONFIRM_ISSUE_INDENT,
-            "info",
-            () => handleConfirmSubmit(),
-            () => console.log("Issue cancelled by user"),
-            "Submit",
-            "Cancel"
-          );
+          handleConfirmSubmit();
         },
         () => console.log("User cancelled to add split row"),
         "Proceed Anyway",
@@ -681,23 +722,29 @@ const IndentIssue = () => {
   const handleConfirmSubmit = async () => {
     try {
       setProcessing(true);
-      setIsIssuing(true); 
+      setIsIssuing(true);
 
       const payload = {
         indentMId: selectedRecord?.indentMId,
-        // ── CHANGED: added batchStock, itemId, batchNo, manufacturerId, expiryDate ──
         items: indentEntries
           .filter((entry) => entry.itemCode && entry.itemName && Number(entry.qtyIssued) > 0)
-          .map((entry) => ({
-            indentTId: entry.id,
-            issuedQty: Number(entry.qtyIssued) || 0,
-            availableStock: entry.availableStock ? Number(entry.availableStock) : 0,
-            batchStock: entry.batchStock ? Number(entry.batchStock) : 0,
-            itemId: entry.itemId || null,
-            batchNo: entry.batchNo || "",
-            manufacturerId: entry.manufacturerId || null,
-            expiryDate: entry.expDate || null,
-          })),
+          .map((entry) => {
+            const issuedQty = Number(entry.qtyIssued) > Number(entry.batchStock)
+              ? Number(entry.batchStock)
+              : Number(entry.qtyIssued);
+            return {
+              indentTId: entry.id,
+              issuedQty: issuedQty || 0,
+              availableStock: entry.availableStock ? Number(entry.availableStock) : 0,
+              batchStock: entry.batchStock ? Number(entry.batchStock) : 0,
+              itemId: entry.itemId || null,
+              batchNo: entry.batchNo || "",
+              manufacturerId: entry.manufacturerId || null,
+              expiryDate: entry.expDate || null,
+              stockId: entry.stockId || null,
+              manufactureDate: entry.mfgDate || null,
+            };
+          }),
       };
 
       const response = await postRequest(`${ISSUE_INDENT}`, payload);
@@ -740,8 +787,7 @@ const IndentIssue = () => {
       showConfirmationPopup(ERROR_ISSUING_INDENT, "error", () => {}, null, "OK", "Close");
     } finally {
       setProcessing(false);
-      
-      setIsIssuing(false); 
+      setIsIssuing(false);
     }
   };
 
@@ -790,7 +836,9 @@ const IndentIssue = () => {
   };
 
   const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
+    // UI-only: show "N/A" when backend sends null/empty. This does NOT affect the
+    // payload — expDate/mfgDate (raw values) are still sent as-is (null) in handleConfirmSubmit.
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
       const day = String(date.getDate()).padStart(2, '0');
@@ -798,7 +846,7 @@ const IndentIssue = () => {
       const year = date.getFullYear();
       return `${day}/${month}/${year}`;
     } catch (error) {
-      return "";
+      return "N/A";
     }
   };
 
@@ -991,6 +1039,13 @@ const IndentIssue = () => {
                         indentEntries.map((entry, index) => {
                           const isManualRow = !!manuallyAddedRows[index];
                           const usedBatchNos = getUsedBatchNos(entry.itemCode, index);
+                          const splitConditionMet = Number(entry.qtyIssued) > 0 &&
+                                                   Number(entry.batchStock) > 0 &&
+                                                   Number(entry.qtyIssued) > Number(entry.batchStock) &&
+                                                   Number(entry.qtyIssued) <= Number(entry.availableStock);
+
+                          const hasLaterSameItem = indentEntries.some((e, i) => i > index && e.itemCode === entry.itemCode);
+                          const canDelete = isManualRow && !hasLaterSameItem;
 
                           return (
                             <tr key={entry.id ? `${entry.id}-${index}` : index}
@@ -1018,7 +1073,8 @@ const IndentIssue = () => {
                                     placeholder="Item Name/Code"
                                     autoComplete="off"
                                     onFocus={() => setActiveItemDropdown(index)}
-                                    readOnly={!isManualRow}
+                                    readOnly={true}
+                                    title={`Item: ${entry.itemName}\nCode: ${entry.itemCode}\nAvailable Stock: ${entry.availableStock}`}
                                     style={!isManualRow ? { backgroundColor: "#e9ecef" } : {}}
                                   />
                                   {isManualRow && (
@@ -1071,82 +1127,93 @@ const IndentIssue = () => {
                               </td>
 
                               <td>
-                                <div className="dropdown-search-container">
+                                {isManualRow ? (
                                   <input
-                                    ref={(el) => { batchInputRefs.current[index] = el; }}
                                     type="text"
                                     className="form-control form-control-sm"
                                     value={entry.batchNo}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      handleIndentEntryChange(index, "batchNo", value);
-                                      setActiveBatchDropdown(value.length > 0 ? index : null);
-                                    }}
-                                    placeholder="Batch"
-                                    autoComplete="off"
-                                    onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
+                                    readOnly
+                                    title={`DOM: ${entry.dom}\nDOE: ${entry.doe}\nBatch Stock: ${entry.batchStock}\nAvailable Stock: ${entry.availableStock}`}
                                   />
-                                  <PortalDropdown
-                                    anchorRef={{ current: batchInputRefs.current[index] }}
-                                    show={activeBatchDropdown === index && !!entry.itemCode && !!batchOptions[entry.itemCode]}
-                                  >
-                                    {batchOptions[entry.itemCode]
-                                      ?.filter(batch =>
+                                ) : (
+                                  <div className="dropdown-search-container">
+                                    <input
+                                      ref={(el) => { batchInputRefs.current[index] = el; }}
+                                      type="text"
+                                      className="form-control form-control-sm"
+                                      value={entry.batchNo}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        handleIndentEntryChange(index, "batchNo", value);
+                                        setActiveBatchDropdown(value.length > 0 ? index : null);
+                                      }}
+                                      placeholder="Batch"
+                                      autoComplete="off"
+                                      onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
+                                      title={`DOM: ${entry.dom}\nDOE: ${entry.doe}\nBatch Stock: ${entry.batchStock}\nAvailable Stock: ${entry.availableStock}`}
+                                    />
+                                    <PortalDropdown
+                                      anchorRef={{ current: batchInputRefs.current[index] }}
+                                      show={activeBatchDropdown === index && !!entry.itemCode && !!batchOptions[entry.itemCode]}
+                                    >
+                                      {batchOptions[entry.itemCode]
+                                        ?.filter(batch =>
+                                          entry.batchNo === "" ||
+                                          batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase())
+                                        )
+                                        .map((batch, batchIndex) => {
+                                          const isUsed = usedBatchNos.includes(batch.batchNo);
+                                          return (
+                                            <div
+                                              key={`${batch.batchNo}-${batchIndex}`}
+                                              className="p-2"
+                                              onMouseDown={(e) => {
+                                                if (isUsed) { e.preventDefault(); return; }
+                                                e.preventDefault();
+                                                dropdownClickedRef.current = true;
+                                                handleIndentEntryChange(index, "batchNo", batch.batchNo);
+                                                setActiveBatchDropdown(null);
+                                                setTimeout(() => { dropdownClickedRef.current = false; }, 100);
+                                              }}
+                                              style={{
+                                                cursor: isUsed ? "not-allowed" : "pointer",
+                                                borderBottom: "1px solid #f0f0f0",
+                                                opacity: isUsed ? 0.7 : 1,
+                                                backgroundColor: isUsed ? "#fff8e1" : "transparent"
+                                              }}
+                                              onMouseEnter={(e) => { if (!isUsed) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
+                                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isUsed ? "#fff8e1" : "transparent"; }}
+                                            >
+                                              <div className="d-flex justify-content-between align-items-center">
+                                                <strong>{batch.batchNo}</strong>
+                                                {isUsed && (
+                                                  <span style={{ fontSize: "11px", fontWeight: "600", backgroundColor: "#ffc107", color: "#000", padding: "2px 6px", borderRadius: "4px" }}>
+                                                    Already Used
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div>
+                                                <small className="text-muted">
+                                                  DOM: {formatDate(batch.dom)} | DOE: {formatDate(batch.doe)}
+                                                </small>
+                                              </div>
+                                              <div>
+                                                <small className="text-muted">
+                                                  Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
+                                                </small>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      {batchOptions[entry.itemCode]?.filter(batch =>
                                         entry.batchNo === "" ||
                                         batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase())
-                                      )
-                                      .map((batch, batchIndex) => {
-                                        const isUsed = usedBatchNos.includes(batch.batchNo);
-                                        return (
-                                          <div
-                                            key={`${batch.batchNo}-${batchIndex}`}
-                                            className="p-2"
-                                            onMouseDown={(e) => {
-                                              if (isUsed) { e.preventDefault(); return; }
-                                              e.preventDefault();
-                                              dropdownClickedRef.current = true;
-                                              handleIndentEntryChange(index, "batchNo", batch.batchNo);
-                                              setActiveBatchDropdown(null);
-                                              setTimeout(() => { dropdownClickedRef.current = false; }, 100);
-                                            }}
-                                            style={{
-                                              cursor: isUsed ? "not-allowed" : "pointer",
-                                              borderBottom: "1px solid #f0f0f0",
-                                              opacity: isUsed ? 0.7 : 1,
-                                              backgroundColor: isUsed ? "#fff8e1" : "transparent"
-                                            }}
-                                            onMouseEnter={(e) => { if (!isUsed) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
-                                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isUsed ? "#fff8e1" : "transparent"; }}
-                                          >
-                                            <div className="d-flex justify-content-between align-items-center">
-                                              <strong>{batch.batchNo}</strong>
-                                              {isUsed && (
-                                                <span style={{ fontSize: "11px", fontWeight: "600", backgroundColor: "#ffc107", color: "#000", padding: "2px 6px", borderRadius: "4px" }}>
-                                                  Already Used
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div>
-                                              <small className="text-muted">
-                                                DOM: {formatDate(batch.dom)} | DOE: {formatDate(batch.doe)}
-                                              </small>
-                                            </div>
-                                            <div>
-                                              <small className="text-muted">
-                                                Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
-                                              </small>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    {batchOptions[entry.itemCode]?.filter(batch =>
-                                      entry.batchNo === "" ||
-                                      batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase())
-                                    ).length === 0 && entry.batchNo !== "" && (
-                                      <div className="p-2 text-muted text-center">No matches found</div>
-                                    )}
-                                  </PortalDropdown>
-                                </div>
+                                      ).length === 0 && entry.batchNo !== "" && (
+                                        <div className="p-2 text-muted text-center">No matches found</div>
+                                      )}
+                                    </PortalDropdown>
+                                  </div>
+                                )}
                               </td>
 
                               <td>
@@ -1202,8 +1269,9 @@ const IndentIssue = () => {
                                   type="button"
                                   className="btn btn-success btn-sm"
                                   onClick={() => addNewRow(index)}
+                                  disabled={!splitConditionMet}
                                   style={{ color: "white", border: "none", height: "35px" }}
-                                  title="Add Split Row for Same Item"
+                                  title={splitConditionMet ? "Add Split Row for Same Item" : "Split condition not met: requires qtyIssued > batchStock and qtyIssued <= availableStock"}
                                 >
                                   +
                                 </button>
@@ -1214,8 +1282,8 @@ const IndentIssue = () => {
                                   type="button"
                                   className="btn btn-danger btn-sm"
                                   onClick={() => removeRow(index)}
-                                  disabled={indentEntries.length === 1}
-                                  title="Delete Row"
+                                  disabled={!canDelete || indentEntries.length === 1}
+                                  title={canDelete ? "Delete this split row" : "Only the last split row can be deleted"}
                                   style={{ height: "35px" }}
                                 >
                                   −
