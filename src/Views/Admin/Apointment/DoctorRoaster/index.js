@@ -12,6 +12,7 @@ const DoctorRoaster = () => {
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorData, setDoctorData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterDoctorData, setRosterDoctorData] = useState(null);
   const [popup, setPopup] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
@@ -142,7 +143,7 @@ const DoctorRoaster = () => {
     if (!department || !fromDate) return;
 
     try {
-      setLoading(true);
+      setRosterLoading(true);
 
       const queryParams = new URLSearchParams({
         deptId: department,
@@ -204,7 +205,7 @@ const DoctorRoaster = () => {
       console.error("Error preparing roster data:", error);
       showPopup("Error preparing roster data", "error");
     } finally {
-      setLoading(false);
+      setRosterLoading(false);
     }
   };
 
@@ -570,7 +571,20 @@ const DoctorRoaster = () => {
                       </div>
                     </div>
 
-                    {rosterDoctorData && renderRosterTable()}
+                    {rosterLoading ? (
+                      <div className="col-12 mt-4">
+                        <div className="card shadow">
+                          <div className="card-body text-center p-5">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <div className="mt-2 text-muted fw-bold">Loading Roster Schedule...</div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      rosterDoctorData && renderRosterTable()
+                    )}
 
                     <div className="mt-4 d-flex justify-content-end gap-2">
                       <button

@@ -3,8 +3,19 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination from "../../../Components/Pagination";
-import { getRequest } from "../../../service/apiService";
-import { ACTIVE_ADMISSION_LIST_OT, MAS_WARD_GET_ALL_ACTIVE } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { 
+  ACTIVE_ADMISSION_LIST_OT, 
+  MAS_WARD_GET_ALL_ACTIVE, 
+  MAS_SURGERY_TYPE_GET_ALL,
+  MAS_SURGERY_BY_SURGERY_TYPE,
+  SAVE_OT_REQUEST,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
+  REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  FILTER_OPD_DEPT,
+  DOCTOR_BY_SPECIALITY
+} from "../../../config/apiConfig";
 
 const OTRequestFromIPD = () => {
   // ----- State -----
@@ -30,26 +41,29 @@ const OTRequestFromIPD = () => {
   // ----- Detail form state -----
   const [detailForm, setDetailForm] = useState({
     // Surgery Details
+    departmentId: "",
     surgeryType: "",
     surgery: "",
-    majorMinor: "Major",
+    majorMinor: "",
     diagnosis: "",
     primarySurgeon: "",
     priority: "Elective",
     // Preferred OT Schedule
     preferredDate: "",
     preferredOT: "",
-    preferredSession: "",
-    expectedDuration: "120",
+    preferredStartTime: "",
+    preferredEndTime: "",
+    expectedDuration: "",
     // Special Instructions
     specialInstructions: "",
   });
 
-  // Surgery types and surgeries (dummy)
-  const surgeryTypes = ["Orthopaedic Surgery", "General Surgery", "Cardiothoracic"];
-  const surgeries = ["Total Knee Replacement", "Hernia Repair", "CABG"];
-  const surgeons = ["Dr. Sharma", "Dr. Gupta", "Dr. Verma", "Dr. Patel"];
-  const sessions = ["08:00 AM - 02:00 PM", "02:00 PM - 08:00 PM", "08:00 PM - 08:00 AM"];
+  // Surgery types and surgeries
+  const [departments, setDepartments] = useState([]);
+  const [surgeons, setSurgeons] = useState([]);
+  const [surgeryTypes, setSurgeryTypes] = useState([]);
+  const [surgeriesList, setSurgeriesList] = useState([]);
+  const [operationTheatres, setOperationTheatres] = useState([]);
 
   // ----- API Fetching -----
   const fetchWards = async () => {
@@ -60,6 +74,69 @@ const OTRequestFromIPD = () => {
       }
     } catch (err) {
       console.error("Error fetching wards", err);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const res = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setDepartments(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching departments", err);
+    }
+  };
+
+  const fetchSurgeons = async (departmentId) => {
+    if (!departmentId) {
+      setSurgeons([]);
+      return;
+    }
+    try {
+      const res = await getRequest(`${DOCTOR_BY_SPECIALITY}${departmentId}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setSurgeons(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching surgeons", err);
+    }
+  };
+
+  const fetchSurgeryTypes = async () => {
+    try {
+      const res = await getRequest(MAS_SURGERY_TYPE_GET_ALL);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setSurgeryTypes(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching surgery types", err);
+    }
+  };
+
+  const fetchSurgeries = async (surgeryTypeId) => {
+    if (!surgeryTypeId) {
+      setSurgeriesList([]);
+      return;
+    }
+    try {
+      const res = await getRequest(`${MAS_SURGERY_BY_SURGERY_TYPE}/${surgeryTypeId}`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setSurgeriesList(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching surgeries", err);
+    }
+  };
+
+  const fetchOperationTheatres = async () => {
+    try {
+      const res = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+      if (res?.status === 200 && Array.isArray(res.response)) {
+        setOperationTheatres(res.response);
+      }
+    } catch (err) {
+      console.error("Error fetching OTs", err);
     }
   };
 
@@ -102,8 +179,15 @@ const OTRequestFromIPD = () => {
   // ----- Effects -----
   useEffect(() => {
     fetchWards();
+    fetchSurgeryTypes();
+    fetchDepartments();
+    fetchOperationTheatres();
     fetchAdmissions(1, true);
   }, []);
+
+  useEffect(() => {
+    fetchSurgeons(detailForm.departmentId);
+  }, [detailForm.departmentId]);
 
   // ----- Handlers -----
   const handlePageChange = (page) => {
@@ -141,16 +225,18 @@ const OTRequestFromIPD = () => {
     setSelectedAdmission(admission);
     // Pre-fill detail form with any existing data (dummy for now)
     setDetailForm({
+      departmentId: "",
       surgeryType: "",
       surgery: "",
-      majorMinor: "Major",
+      majorMinor: "",
       diagnosis: "",
       primarySurgeon: "",
       priority: "Elective",
       preferredDate: "",
       preferredOT: "",
-      preferredSession: "",
-      expectedDuration: "120",
+      preferredStartTime: "",
+      preferredEndTime: "",
+      expectedDuration: "",
       specialInstructions: "",
     });
     setCurrentView("detail");
@@ -164,23 +250,95 @@ const OTRequestFromIPD = () => {
 
   // ----- Detail form field changes -----
   const handleDetailChange = (field, value) => {
-    setDetailForm((prev) => ({ ...prev, [field]: value }));
+    setDetailForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "departmentId") {
+        updated.primarySurgeon = "";
+      }
+      if (field === "surgeryType") {
+        updated.surgery = "";
+        updated.majorMinor = "";
+        fetchSurgeries(value);
+      }
+      if (field === "surgery") {
+        const selectedSurgery = surgeriesList.find(s => s.surgeryId.toString() === value.toString());
+        if (selectedSurgery) {
+          updated.majorMinor = selectedSurgery.surgeryLevel 
+            ? selectedSurgery.surgeryLevel.charAt(0).toUpperCase() + selectedSurgery.surgeryLevel.slice(1).toLowerCase() 
+            : "";
+        } else {
+          updated.majorMinor = "";
+        }
+      }
+      if (field === "preferredStartTime" || field === "preferredEndTime") {
+        const startTime = field === "preferredStartTime" ? value : updated.preferredStartTime;
+        const endTime = field === "preferredEndTime" ? value : updated.preferredEndTime;
+        if (startTime && endTime) {
+          const [sHour, sMinute] = startTime.split(':').map(Number);
+          const [eHour, eMinute] = endTime.split(':').map(Number);
+          let sTotal = sHour * 60 + sMinute;
+          let eTotal = eHour * 60 + eMinute;
+          if (eTotal < sTotal) eTotal += 24 * 60; // Next day
+          updated.expectedDuration = String(eTotal - sTotal);
+        } else {
+          updated.expectedDuration = "";
+        }
+      }
+      return updated;
+    });
   };
 
   // ----- Submit OT Request -----
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
-    if (!detailForm.surgeryType || !detailForm.surgery || !detailForm.diagnosis || !detailForm.primarySurgeon || !detailForm.preferredDate || !detailForm.preferredOT || !detailForm.preferredSession) {
+    if (!detailForm.departmentId || !detailForm.surgeryType || !detailForm.surgery || !detailForm.diagnosis || !detailForm.primarySurgeon || !detailForm.preferredDate || !detailForm.preferredOT || !detailForm.preferredStartTime || !detailForm.preferredEndTime) {
       showPopup("Please fill all required fields.", "error");
       return;
     }
+
+    const parseTime = (timeString) => {
+      if (!timeString) return null;
+      if (timeString.split(':').length === 2) {
+        return `${timeString}:00`;
+      }
+      return timeString;
+    };
+
+    const payload = {
+      inpatientId: selectedAdmission?.inpatientId || 0,
+      patientId: selectedAdmission?.patientId || 0,
+      visitId: selectedAdmission?.visitId || 0,
+      hospitalId: parseInt(sessionStorage.getItem("hospitalId"), 10) || 12,
+      surgeryTypeId: parseInt(detailForm.surgeryType, 10),
+      surgeryId: parseInt(detailForm.surgery, 10),
+      diagnosis: detailForm.diagnosis,
+      departmentId: parseInt(detailForm.departmentId, 10),
+      primarySurgeonId: parseInt(detailForm.primarySurgeon, 10),
+      priority: detailForm.priority,
+      preferredDate: detailForm.preferredDate,
+      preferredOtId: parseInt(detailForm.preferredOT, 10) || 0,
+      expectedDuration: parseInt(detailForm.expectedDuration, 10) || 0,
+      specialInstructions: detailForm.specialInstructions,
+      preferredStartTime: parseTime(detailForm.preferredStartTime),
+      preferredEndTime: parseTime(detailForm.preferredEndTime)
+    };
+
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const response = await postRequest(SAVE_OT_REQUEST, payload);
+      if (response && response.status === 200) {
+        showPopup("OT Request submitted successfully!", "success", () => {
+          handleBackToList();
+        });
+      } else {
+        showPopup(response?.message || "Failed to submit OT Request.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showPopup("An error occurred while submitting OT Request.", "error");
+    } finally {
       setIsSubmitting(false);
-      showPopup("OT Request submitted successfully!", "success", () => {
-        handleBackToList();
-      });
-    }, 1000);
+    }
   };
 
   // ----- Popup -----
@@ -304,7 +462,7 @@ const OTRequestFromIPD = () => {
                         >
                           <option value="">Select Surgery Type</option>
                           {surgeryTypes.map((st) => (
-                            <option key={st} value={st}>{st}</option>
+                            <option key={st.surgeryTypeId} value={st.surgeryTypeId}>{st.surgeryTypeName}</option>
                           ))}
                         </select>
                       </div>
@@ -316,8 +474,8 @@ const OTRequestFromIPD = () => {
                           onChange={(e) => handleDetailChange("surgery", e.target.value)}
                         >
                           <option value="">Select Surgery</option>
-                          {surgeries.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                          {surgeriesList.map((s) => (
+                            <option key={s.surgeryId} value={s.surgeryId}>{s.surgeryName}</option>
                           ))}
                         </select>
                       </div>
@@ -341,15 +499,29 @@ const OTRequestFromIPD = () => {
                         />
                       </div>
                       <div className="col-md-4 mb-3">
+                        <label className="form-label fw-bold">Department *</label>
+                        <select
+                          className="form-select"
+                          value={detailForm.departmentId}
+                          onChange={(e) => handleDetailChange("departmentId", e.target.value)}
+                        >
+                          <option value="">Select Department</option>
+                          {departments.map((dept) => (
+                            <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4 mb-3">
                         <label className="form-label fw-bold">Primary Surgeon *</label>
                         <select
                           className="form-select"
                           value={detailForm.primarySurgeon}
                           onChange={(e) => handleDetailChange("primarySurgeon", e.target.value)}
+                          disabled={!detailForm.departmentId}
                         >
                           <option value="">Select Surgeon</option>
                           {surgeons.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s.userId} value={s.userId}>{s.firstName} {s.middleName || ""} {s.lastName}</option>
                           ))}
                         </select>
                       </div>
@@ -393,31 +565,36 @@ const OTRequestFromIPD = () => {
                           onChange={(e) => handleDetailChange("preferredOT", e.target.value)}
                         >
                           <option value="">Select OT</option>
-                          <option value="Main OT-01">Main OT-01</option>
-                          <option value="Main OT-02">Main OT-02</option>
-                          <option value="Cardio OT">Cardio OT</option>
-                        </select>
-                      </div>
-                      <div className="col-md-3 mb-3">
-                        <label className="form-label fw-bold">Preferred Session *</label>
-                        <select
-                          className="form-select"
-                          value={detailForm.preferredSession}
-                          onChange={(e) => handleDetailChange("preferredSession", e.target.value)}
-                        >
-                          <option value="">Select Session</option>
-                          {sessions.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                          {operationTheatres.map((ot) => (
+                            <option key={ot.otId} value={ot.otId}>{ot.otName}</option>
                           ))}
                         </select>
                       </div>
-                      <div className="col-md-3 mb-3">
-                        <label className="form-label fw-bold">Expected Duration</label>
+                      <div className="col-md-2 mb-3">
+                        <label className="form-label fw-bold">Preferred Start *</label>
+                        <input
+                          type="time"
+                          className="form-control"
+                          value={detailForm.preferredStartTime}
+                          onChange={(e) => handleDetailChange("preferredStartTime", e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-2 mb-3">
+                        <label className="form-label fw-bold">Preferred End *</label>
+                        <input
+                          type="time"
+                          className="form-control"
+                          value={detailForm.preferredEndTime}
+                          onChange={(e) => handleDetailChange("preferredEndTime", e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-2 mb-3">
+                        <label className="form-label fw-bold">Duration (m)</label>
                         <input
                           type="number"
                           className="form-control"
                           value={detailForm.expectedDuration}
-                          onChange={(e) => handleDetailChange("expectedDuration", e.target.value)}
+                          readOnly
                         />
                       </div>
                     </div>
