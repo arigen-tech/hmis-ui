@@ -284,7 +284,8 @@ export const UPDATE_RECALL_PATIENT = `/opd/update-recall-patient`;
 export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic`;
 
 export const MAS_OPERATION_THEATRE_GET_ALL = `${MASTERS}/operationTheatre/getAll`;
-export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailability`
+export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailability`;
+export const SAVE_OT_REQUEST = `/otController/saveOtRequest`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
@@ -714,6 +715,8 @@ export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 
 export const MAS_SURGERY = `${MASTERS}/masSurgery`;
 export const MAS_SURGERY_TYPE = "/master/masSurgeryType";
+export const MAS_SURGERY_TYPE_GET_ALL = `${MAS_SURGERY_TYPE}/getAll/1`;
+export const MAS_SURGERY_BY_SURGERY_TYPE = `${MASTERS}/masSurgeryBySurgeryType`;
 export const MAS_OPD_HOLIDAY = `${MASTERS}/opdHoliday`;
 
 export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
