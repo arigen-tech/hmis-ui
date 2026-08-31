@@ -32,6 +32,7 @@ const AppointmentSetup = () => {
   const [doctorData, setDoctorData] = useState([]);
   const [sessionData, setSessionData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
   const [modifiedFields, setModifiedFields] = useState({});
   const [dataFromDB, setDataFromDB] = useState(false);
@@ -248,7 +249,7 @@ const AppointmentSetup = () => {
 
   const handleFetchAppointment = async () => {
     try {
-      setLoading(true);
+      setSetupLoading(true);
       setModifiedFields({});
       const params = new URLSearchParams({
         deptId: department,
@@ -320,7 +321,7 @@ const AppointmentSetup = () => {
       console.error("Error fetching appointment data:", error);
       setDataFromDB(false);
     } finally {
-      setLoading(false);
+      setSetupLoading(false);
     }
   };
 
@@ -720,6 +721,18 @@ const AppointmentSetup = () => {
                         />
                       </div>
 
+                      {setupLoading ? (
+                        <div className="col-12 mt-4">
+                          <div className="card shadow">
+                            <div className="card-body text-center p-5">
+                              <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              <div className="mt-2 text-muted fw-bold">Loading Setup Data...</div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
                       <div className="col-md-12">
                         <table className="table table-bordered">
                           <thead>
@@ -1016,6 +1029,7 @@ const AppointmentSetup = () => {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                     <div className="mt-2">
                       <div className="d-flex align-items-center mb-2">
