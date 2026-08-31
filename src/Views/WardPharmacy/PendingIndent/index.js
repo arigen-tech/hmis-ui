@@ -384,19 +384,21 @@ const PendingIndentApproval = () => {
   }, [departmentId])
 
   const handleSearch = () => {
-    if (!fromDate || !toDate) {
-      setFilteredIndentData(indentData)
-      return
-    }
-    const from = new Date(fromDate)
-    const to = new Date(toDate)
-    const filtered = indentData.filter((item) => {
-      const itemDate = new Date(item.indentDate)
-      return itemDate >= from && itemDate <= to
-    })
-    setFilteredIndentData(filtered)
-    setCurrentPage(1)
+  if (!fromDate || !toDate) {
+    setFilteredIndentData(indentData);
+    return;
   }
+  const from = new Date(fromDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(toDate);
+  to.setHours(23, 59, 59, 999);
+  const filtered = indentData.filter((item) => {
+    const itemDate = new Date(item.indentDate);
+    return itemDate >= from && itemDate <= to;
+  });
+  setFilteredIndentData(filtered);
+  setCurrentPage(1);
+};
 
   const handleEditClick = async (record, e) => {
     e.stopPropagation()
