@@ -1,433 +1,268 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading/index";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { GET_PROCEDURE_WORKLIST } from "../../../config/apiConfig";
 
 const ProcedureWorklist = () => {
-  // ----- State -----
-  const [currentView, setCurrentView] = useState("list"); // "list" | "detail"
-  const [selectedRecord, setSelectedRecord] = useState(null);
-
+  const [tableLoading, setTableLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showAllLoading, setShowAllLoading] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [searchMobile, setSearchMobile] = useState("");
   const [searchPatient, setSearchPatient] = useState("");
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // ----- Dummy data -----
-  const dummyData = [
-    {
-      id: 1,
-      mobile: "9765432108",
-      patientName: "Vikram Malhotra",
-      ageGender: "45/M",
-      department: "Cardiology",
-      procedure: "ECG",
-      sitting: "1/1",
-      dateTime: "27-Aug-26 09:00AM",
-      advisedBy: "Dr.Patel",
-      scheduled: "Consultation"
-    },
-    {
-      id: 2,
-      mobile: "9856123470",
-      patientName: "Ananya Verma",
-      ageGender: "28/F",
-      department: "Orthopedics",
-      procedure: "Knee Physiotherapy",
-      sitting: "3/6",
-      dateTime: "27-Aug-26 10:15AM",
-      advisedBy: "Dr.Agarwal",
-      scheduled: "Treatment"
-    },
-    {
-      id: 3,
-      mobile: "9912345670",
-      patientName: "Manish Tiwari",
-      ageGender: "51/M",
-      department: "Ophthalmology",
-      procedure: "Eye Examination",
-      sitting: "1/2",
-      dateTime: "27-Aug-26 11:45AM",
-      advisedBy: "Dr.Mishra",
-      scheduled: "Checkup"
-    },
-    {
-      id: 4,
-      mobile: "9789012345",
-      patientName: "Kavita Joshi",
-      ageGender: "36/F",
-      department: "Dermatology",
-      procedure: "Laser Treatment",
-      sitting: "2/5",
-      dateTime: "27-Aug-26 01:00PM",
-      advisedBy: "Dr.Kapoor",
-      scheduled: ""
-    },
-    {
-      id: 5,
-      mobile: "9834567210",
-      patientName: "Sandeep Yadav",
-      ageGender: "40/M",
-      department: "Physiotherapy",
-      procedure: "Back Pain Therapy",
-      sitting: "5/8",
-      dateTime: "27-Aug-26 03:30PM",
-      advisedBy: "Dr.Chauhan",
-      scheduled: ""
-    },
-    {
-      id: 6,
-      mobile: "9871203456",
-      patientName: "Meera Nair",
-      ageGender: "33/F",
-      department: "Gynecology",
-      procedure: "Ultrasound",
-      sitting: "1/1",
-      dateTime: "28-Aug-26 10:00AM",
-      advisedBy: "Dr.Iyer",
-      scheduled: ""
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({ message, type });
+  };
+
+  const fetchWorklist = async (page = 0, options = {}) => {
+    const { loadingType = "table" } = options;
+    try {
+      if (loadingType === "search") {
+        setSearchLoading(true);
+      } else if (loadingType === "showAll") {
+        setShowAllLoading(true);
+      } else {
+        setTableLoading(true);
+      }
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", String(page));
+      queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
+      if (searchMobile.trim()) {
+        queryParams.append("mobileNo", searchMobile.trim());
+      }
+      if (searchPatient.trim()) {
+        queryParams.append("patientName", searchPatient.trim());
+      }
+
+      const response = await getRequest(
+        `${GET_PROCEDURE_WORKLIST}?${queryParams.toString()}`,
+      );
+
+      const payload = response?.data || response?.response || {};
+      const content = payload.content || [];
+      if (response?.status === 200) {
+        setRows(Array.isArray(content) ? content : []);
+        setTotalItems(payload.totalElements || 0);
+        setTotalPages(payload.totalPages || 0);
+      } else {
+        setRows([]);
+        setTotalItems(0);
+        setTotalPages(0);
+      }
+    } catch (error) {
+      console.error("Error fetching procedure worklist:", error);
+      setRows([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      showPopup("Failed to fetch procedure worklist.", "error");
+    } finally {
+      setTableLoading(false);
+      setSearchLoading(false);
+      setShowAllLoading(false);
     }
-  ];
+  };
 
-  // ----- Effects -----
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
-      setLoading(false);
-    }, 300);
-  }, []);
-
-  // ----- Filtered data (list view) -----
-  const filteredData = data.filter(item => {
-    const matchMobile = item.mobile.includes(searchMobile);
-    const matchPatient = item.patientName.toLowerCase().includes(searchPatient.toLowerCase());
-    return matchMobile && matchPatient;
-  });
-
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  // ----- Handlers for list view -----
-  const handlePageChange = (page) => setCurrentPage(page);
-
-  const handleSearch = () => setCurrentPage(1);
+    fetchWorklist(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   const handleReset = () => {
     setSearchMobile("");
     setSearchPatient("");
-    setCurrentPage(1);
+    setCurrentPage(0);
+    fetchWorklist(0, { loadingType: "showAll" });
   };
 
-  const handleAddNew = () => {
-    alert("Add New Procedure – open form here");
+  const handleSearch = () => {
+    setCurrentPage(0);
+    fetchWorklist(0, { loadingType: "search" });
   };
 
-  // ----- Navigate to detail view -----
-  const handleRowClick = (record) => {
-    setSelectedRecord({ ...record }); // copy to allow editing
-    setCurrentView("detail");
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(
+      date.getHours(),
+    )}:${pad(date.getMinutes())}`;
   };
 
-  // ----- Navigate back to list -----
-  const handleBackToList = () => {
-    setCurrentView("list");
-    setSelectedRecord(null);
-  };
-
-  // ----- Detail view: handle field changes -----
-  const handleFieldChange = (field, value) => {
-    setSelectedRecord((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // ----- Save changes (simulate) -----
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      // Update the main data list with the edited record
-      const updatedData = data.map((item) =>
-        item.id === selectedRecord.id ? { ...selectedRecord } : item
-      );
-      setData(updatedData);
-      setIsSaving(false);
-      showPopup("Procedure updated successfully!", "success", () => {
-        handleBackToList();
-      });
-    }, 500);
-  };
-
-  // ----- Popup helper -----
-  const showPopup = (message, type, onCloseCallback = null) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-        if (onCloseCallback) onCloseCallback();
-      },
-    });
-  };
-
-  // ============================================================
-  // RENDER: DETAIL VIEW
-  // ============================================================
-  if (currentView === "detail" && selectedRecord) {
-    return (
-      <div className="content-wrapper">
-        {loading && <LoadingScreen />}
-        <div className="row">
-          <div className="col-12 grid-margin stretch-card">
-            <div className="card form-card">
-              <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">
-                  Procedure Details – {selectedRecord.patientName}
-                </h4>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleBackToList}
-                >
-                  <i className="mdi mdi-arrow-left"></i> Back
-                </button>
-              </div>
-              <div className="card-body">
-                <div className="row">
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Mobile No.</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.mobile}
-                      onChange={(e) => handleFieldChange("mobile", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Patient Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.patientName}
-                      onChange={(e) => handleFieldChange("patientName", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Age / Gender</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.ageGender}
-                      onChange={(e) => handleFieldChange("ageGender", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Department</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.department}
-                      onChange={(e) => handleFieldChange("department", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Procedure</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.procedure}
-                      onChange={(e) => handleFieldChange("procedure", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Sitting</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.sitting}
-                      onChange={(e) => handleFieldChange("sitting", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Date / Time</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.dateTime}
-                      onChange={(e) => handleFieldChange("dateTime", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Advised By</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.advisedBy}
-                      onChange={(e) => handleFieldChange("advisedBy", e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-4 mt-3">
-                    <label className="form-label fw-bold">Scheduled</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedRecord.scheduled || ""}
-                      onChange={(e) => handleFieldChange("scheduled", e.target.value)}
-                      placeholder="(Optional)"
-                    />
-                  </div>
-                </div>
-
-                <div className="d-flex justify-content-end mt-4">
-                  <button
-                    className="btn btn-success me-2"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleBackToList}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {popupMessage && (
-          <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-        )}
-      </div>
-    );
-  }
-
-  // ============================================================
-  // RENDER: LIST VIEW
-  // ============================================================
   return (
     <div className="content-wrapper">
       <div className="row">
-        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2 mb-0">Procedure Worklist</h4>
-              <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-success" onClick={handleAddNew}>
-                  <i className="mdi mdi-plus"></i> Add
-                </button>
-                <button className="btn btn-success" onClick={() => setData(dummyData)}>
-                  <i className="mdi mdi-refresh"></i> Refresh
-                </button>
-              </div>
+              <h4 className="card-title p-2">Procedure Worklist</h4>
             </div>
+
             <div className="card-body">
-              {/* Search Section */}
-              <div className="mb-3">
-                <div className="row g-3 align-items-end">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Mobile No.</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search by mobile..."
-                      value={searchMobile}
-                      onChange={(e) => setSearchMobile(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Patient Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search by patient name..."
-                      value={searchPatient}
-                      onChange={(e) => setSearchPatient(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-2 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>
-                      Search
-                    </button>
-                    <button className="btn btn-secondary" onClick={handleReset}>
-                      Reset
-                    </button>
+              {/* Search Section - Matches OPD Billing styling */}
+              <div className="mb-4">
+                <div className="card-body">
+                  <div className="row g-4 align-items-end">
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">
+                        Mobile No.
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="mobileNo"
+                        placeholder="Enter Mobile number"
+                        value={searchMobile}
+                        onChange={(e) => {
+                          setSearchMobile(e.target.value);
+                          setCurrentPage(0);
+                        }}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">
+                        Patient Name
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="patientName"
+                        placeholder="Enter patient name"
+                        value={searchPatient}
+                        onChange={(e) => {
+                          setSearchPatient(e.target.value);
+                          setCurrentPage(0);
+                        }}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary flex-fill"
+                          onClick={handleSearch}
+                          disabled={searchLoading || showAllLoading}
+                        >
+                          {searchLoading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Searching...
+                            </>
+                          ) : (
+                            <>
+                              <i className="mdi mdi-magnify"></i> Search
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary flex-fill"
+                          onClick={handleReset}
+                          disabled={searchLoading || showAllLoading}
+                        >
+                          {showAllLoading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Loading...
+                            </>
+                          ) : (
+                            "Show All"
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Mobile No.</th>
-                      <th>Patient Name</th>
-                      <th>Age/Gender</th>
-                      <th>Department</th>
-                      <th>Procedure</th>
-                      <th>Sitting</th>
-                      <th>Date/Time</th>
-                      <th>Advised By</th>
-                      <th>Scheduled</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
-                        <tr
-                          key={item.id}
-                          onClick={() => handleRowClick(item)}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <td>{item.mobile}</td>
-                          <td>{item.patientName}</td>
-                          <td>{item.ageGender}</td>
-                          <td>{item.department}</td>
-                          <td>{item.procedure}</td>
-                          <td>{item.sitting}</td>
-                          <td>{item.dateTime}</td>
-                          <td>{item.advisedBy}</td>
-                          <td>{item.scheduled || "-"}</td>
-                        </tr>
-                      ))
-                    ) : (
+              {/* Table Section */}
+              {tableLoading ? (
+                <div className="text-center py-5">
+                  <div
+                    className="spinner-border text-primary"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                  <div className="mt-3 text-muted">Loading procedure worklist...</div>
+                </div>
+              ) : rows.length > 0 ? (
+                <div className="table-responsive">
+                  <table className="table table-bordered table-hover align-middle">
+                    <thead className="table-light">
                       <tr>
-                        <td colSpan="9" className="text-center">No records found</td>
+                        <th>S.N.</th>
+                        <th>Patient</th>
+                        <th>Mobile</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Department</th>
+                        <th>Procedure</th>
+                        <th>Sessions</th>
+                        <th>Scheduled At</th>
+                        <th>Advised By</th>
+                        <th>Billing Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {rows.map((item, index) => (
+                        <tr key={`${item.procedureHdId}-${item.procedureDtId}`}>
+                          <td>
+                            {currentPage * DEFAULT_ITEMS_PER_PAGE + index + 1}
+                          </td>
+                          <td>{item.patientName || "-"}</td>
+                          <td>{item.mobileNo || "-"}</td>
+                          <td>{item.age ?? "-"}</td>
+                          <td>{item.gender || "-"}</td>
+                          <td>{item.department || "-"}</td>
+                          <td>{item.procedure || "-"}</td>
+                          <td>
+                            {item.completedSessions ?? 0}/
+                            {item.totalSessions ?? 0}
+                          </td>
+                          <td>{formatDateTime(item.scheduledDateTime)}</td>
+                          <td>{item.advisedBy || "-"}</td>
+                          <td>
+                            <span className="badge bg-warning text-dark">
+                              {item.billingStatus || "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="alert alert-info" role="alert">
+                  <i className="mdi mdi-information"></i> No procedure worklist
+                  records found.
+                </div>
+              )}
 
-              {filteredData.length > 0 && (
+              {rows.length > 0 && (
                 <Pagination
-                  totalItems={filteredData.length}
+                  totalItems={totalItems}
                   itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
+                  currentPage={currentPage + 1}
+                  onPageChange={(page) => {
+                    setCurrentPage(page - 1);
+                    fetchWorklist(page - 1);
+                  }}
                 />
               )}
             </div>
@@ -436,7 +271,11 @@ const ProcedureWorklist = () => {
       </div>
 
       {popupMessage && (
-        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={() => setPopupMessage(null)}
+        />
       )}
     </div>
   );

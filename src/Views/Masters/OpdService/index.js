@@ -1,10 +1,27 @@
-import { useState, useEffect } from "react"
-import Popup from "../../../Components/popup"
+import { useState, useEffect } from "react";
+import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, FILTER_OPD_DEPT, DOCTOR } from "../../../config/apiConfig";
-import { ADD_OPD_SERVICE_SUCC_MSG, UPDATE_OPD_SERVICE_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import {
+  getRequest,
+  putRequest,
+  postRequest,
+} from "../../../service/apiService";
+import {
+  MAS_OPD_SERVICE,
+  MAS_SERVICE_CATEGORY,
+  MAS_DEPARTMENT,
+  FILTER_OPD_DEPT,
+  DOCTOR,
+} from "../../../config/apiConfig";
+import {
+  ADD_OPD_SERVICE_SUCC_MSG,
+  UPDATE_OPD_SERVICE_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES,
+  FAIL_TO_UPDATE_STS,
+} from "../../../config/constants";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 
 const OPDServiceMaster = () => {
   const [formData, setFormData] = useState({
@@ -14,27 +31,32 @@ const OPDServiceMaster = () => {
     doctorId: "",
     fromDate: "",
     toDate: "",
-  })
+  });
 
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" })
-
-  const [filterDepartment, setFilterDepartment] = useState("")
-  const [filterDoctor, setFilterDoctor] = useState("")
-  const [serviceOpdData, setServiceOpdData] = useState([])
-  const [serviceCategoryData, setServiceCategoryData] = useState([])
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    serviceId: null,
+    newStatus: false,
+    serviceName: "",
+  });
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterDoctor, setFilterDoctor] = useState("");
+  const [serviceOpdData, setServiceOpdData] = useState([]);
+  const [serviceCategoryData, setServiceCategoryData] = useState([]);
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorData, setDoctorData] = useState([]);
   const [rowDepartmentData, setRowDepartmentData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [currentItem, setCurrentItem] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [isFormValid, setIsFormValid] = useState(false)
-  const [dateError, setDateError] = useState("")
-  const [editingService, setEditingService] = useState(null)
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [totalItems, setTotalItems] = useState(0)
+  const [currentItem, setCurrentItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [dateError, setDateError] = useState("");
+  const [editingService, setEditingService] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [process, setProcess] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -43,8 +65,10 @@ const OPDServiceMaster = () => {
 
   const sortServicesByStatus = (services) => {
     return [...services].sort((a, b) => {
-      if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
-      if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
+      if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y")
+        return -1;
+      if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y")
+        return 1;
       return 0;
     });
   };
@@ -72,7 +96,7 @@ const OPDServiceMaster = () => {
       const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
+          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`,
         );
         setDepartmentData(filteredDepartments);
       }
@@ -87,7 +111,9 @@ const OPDServiceMaster = () => {
       return;
     }
     try {
-      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${departmentId}`);
+      const data = await getRequest(
+        `${DOCTOR}/doctorBySpeciality/${departmentId}`,
+      );
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
       } else {
@@ -100,12 +126,17 @@ const OPDServiceMaster = () => {
   };
 
   const handleSearch = () => {
+    setSearchLoading(true);
     setCurrentPage(1);
-    fetchServiceOpdData(0);
+    fetchServiceOpdData(0).finally(() => {
+      setSearchLoading(false);
+    });
   };
 
   const fetchServiceOpdData = async (page = 0) => {
-    setLoading(true);
+    if (!searchLoading) {
+      setLoading(true);
+    }
     try {
       let url = `${MAS_OPD_SERVICE}/getByHospitalId/${hospitalId}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
       if (filterDepartment) url += `&departmentId=${filterDepartment}`;
@@ -151,7 +182,7 @@ const OPDServiceMaster = () => {
       const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
-          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
+          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`,
         );
         setRowDepartmentData(data.response);
         setDepartmentData(filteredDepartments);
@@ -200,22 +231,29 @@ const OPDServiceMaster = () => {
   };
 
   const handleEdit = async (item) => {
-    setFormLoading(true);
-    setShowForm(true);
+    setEditingRowId(item.id);
     try {
       const [categories, departments] = await Promise.all([
         fetchServicecategoryData(),
-        fetchDepartmentData()
+        fetchDepartmentData(),
       ]);
-      const serviceCategoryId = categories.find(cat => cat.serviceCatName === item.serviceCategory)?.id?.toString() || "";
-      const departmentId = departments.find(dept => dept.departmentName === item.departmentName)?.id?.toString() || "";
+      const serviceCategoryId =
+        categories
+          .find((cat) => cat.serviceCatName === item.serviceCategory)
+          ?.id?.toString() || "";
+      const departmentId =
+        departments
+          .find((dept) => dept.departmentName === item.departmentName)
+          ?.id?.toString() || "";
       let doctors = [];
       let doctorId = "";
       if (departmentId) {
         doctors = await fetchDoctorData(departmentId);
-        const fullName = `${item.doctorFirstName || ''} ${item.doctorMiddleName || ''} ${item.doctorLastName || ''}`.trim();
-        const doctor = doctors.find(doc => {
-          const docFullName = `${doc.firstName || ''} ${doc.middleName || ''} ${doc.lastName || ''}`.trim();
+        const fullName =
+          `${item.doctorFirstName || ""} ${item.doctorMiddleName || ""} ${item.doctorLastName || ""}`.trim();
+        const doctor = doctors.find((doc) => {
+          const docFullName =
+            `${doc.firstName || ""} ${doc.middleName || ""} ${doc.lastName || ""}`.trim();
           return docFullName === fullName;
         });
         doctorId = doctor?.userId?.toString() || "";
@@ -225,17 +263,25 @@ const OPDServiceMaster = () => {
         serviceCategory: serviceCategoryId,
         departmentId: departmentId,
         doctorId: doctorId,
-        fromDate: item.fromDate ? item.fromDate.split('T')[0] : "",
-        toDate: item.toDate ? item.toDate.split('T')[0] : "",
+        fromDate: item.fromDate ? item.fromDate.split("T")[0] : "",
+        toDate: item.toDate ? item.toDate.split("T")[0] : "",
       };
       setFormData(newFormData);
       setEditingService(item);
-      const isValid = !!(newFormData.baseTariff && newFormData.serviceCategory && newFormData.departmentId && newFormData.doctorId && newFormData.fromDate && newFormData.toDate);
+      const isValid = !!(
+        newFormData.baseTariff &&
+        newFormData.serviceCategory &&
+        newFormData.departmentId &&
+        newFormData.doctorId &&
+        newFormData.fromDate &&
+        newFormData.toDate
+      );
       setIsFormValid(isValid);
+      setShowForm(true); // only switch views once data is loaded
     } catch (error) {
       console.error("Error loading edit form:", error);
     } finally {
-      setFormLoading(false);
+      setEditingRowId(null);
     }
   };
 
@@ -261,12 +307,12 @@ const OPDServiceMaster = () => {
       message,
       type,
       onClose: () => {
-                setPopupMessage(null);
-                if (onCloseCallback) onCloseCallback();
-            },
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
     });
     if (type !== "success") {
-      setTimeout(() => setPopupMessage(null), 3000);
+      setTimeout(() => setPopupMessage(null), 5000);
     }
   };
 
@@ -282,39 +328,67 @@ const OPDServiceMaster = () => {
       doctorId: parseInt(formData.doctorId, 10),
       hospitalId: parseInt(hospitalId, 10),
       fromDate: new Date(formData.fromDate).toISOString(),
-      toDate: new Date(formData.toDate).toISOString()
+      toDate: new Date(formData.toDate).toISOString(),
     };
 
     try {
+      let response;
       if (editingService) {
-        await putRequest(`${MAS_OPD_SERVICE}/update/${editingService.id}`, payload);
-        // Show success popup – data will refresh only after OK
-        setPopupMessage({
-          message: UPDATE_OPD_SERVICE_SUCC_MSG,
-          type: "success",
-          onClose: async () => {
-            setPopupMessage(null);
-            await fetchServiceOpdData(0);
-            setCurrentPage(1);
-            resetForm(); // Close form and reset after OK
-          }
-        });
+        response = await putRequest(
+          `${MAS_OPD_SERVICE}/update/${editingService.id}`,
+          payload,
+        );
       } else {
-        await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
-        setPopupMessage({
-          message: ADD_OPD_SERVICE_SUCC_MSG,
-          type: "success",
-          onClose: async () => {
-            setPopupMessage(null);
-            await fetchServiceOpdData(0);
-            setCurrentPage(1);
-            resetForm(); // Close form and reset after OK
-          }
-        });
+        response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
       }
+
+      debugger;
+      const resultStatus = response?.data?.status ?? response?.status;
+      const resultMessage = response?.data?.message ?? response?.message;
+
+      if (resultStatus === 409) {
+        showPopup(resultMessage || "Duplicate entry found!", "error");
+        setProcess(false);
+        return;
+      }
+
+      if (resultStatus !== 200 && resultStatus !== 201) {
+        showPopup(resultMessage || FAIL_TO_SAVE_CHANGES, "error");
+        setProcess(false);
+        return;
+      }
+
+      // Success case
+      const successMessage = editingService
+        ? UPDATE_OPD_SERVICE_SUCC_MSG
+        : ADD_OPD_SERVICE_SUCC_MSG;
+
+      setPopupMessage({
+        message: successMessage,
+        type: "success",
+        onClose: async () => {
+          setPopupMessage(null);
+          await fetchServiceOpdData(0);
+          setCurrentPage(1);
+          resetForm();
+        },
+      });
     } catch (error) {
       console.error("Error saving OPD Service:", error);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      if (
+        error.response?.status === 409 ||
+        error.response?.data?.status === 409
+      ) {
+        showPopup(
+          error.response?.data?.message ||
+            "Doctor tariff already exists for the selected service category, hospital, department and date range",
+          "error",
+        );
+      } else if (error.response?.data?.message) {
+        showPopup(error.response.data.message, "error");
+      } else {
+        showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      }
     } finally {
       setProcess(false);
     }
@@ -322,21 +396,28 @@ const OPDServiceMaster = () => {
 
   const handleSwitchChange = (id, name, newStatus) => {
     setCurrentItem(name);
-    setConfirmDialog({ isOpen: true, serviceId: id, newStatus, serviceName: name });
+    setConfirmDialog({
+      isOpen: true,
+      serviceId: id,
+      newStatus,
+      serviceName: name,
+    });
   };
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.serviceId !== null) {
       setProcess(true);
       try {
-        await putRequest(`${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`);
+        await putRequest(
+          `${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`,
+        );
         setPopupMessage({
-          message: `Service "${confirmDialog.serviceName}" ${confirmDialog.newStatus?.toLowerCase() === "y" ? 'activated' : 'deactivated'} successfully!`,
+          message: `Service "${confirmDialog.serviceName}" ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
           type: "success",
           onClose: async () => {
             setPopupMessage(null);
             await fetchServiceOpdData(currentPage - 1);
-          }
+          },
         });
       } catch (error) {
         console.error("Error updating status:", error);
@@ -345,7 +426,12 @@ const OPDServiceMaster = () => {
         setProcess(false);
       }
     }
-    setConfirmDialog({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" });
+    setConfirmDialog({
+      isOpen: false,
+      serviceId: null,
+      newStatus: false,
+      serviceName: "",
+    });
   };
 
   const isDateRangeValid = (fromDate, toDate) => {
@@ -354,7 +440,14 @@ const OPDServiceMaster = () => {
   };
 
   const validateForm = (data) => {
-    const hasRequiredFields = !!data.baseTariff && !!data.serviceCategory && !!data.departmentId && !!data.doctorId && !!data.fromDate && !!data.toDate;
+    const hasRequiredFields =
+      !!data.baseTariff &&
+      parseFloat(data.baseTariff) > 0 &&
+      !!data.serviceCategory &&
+      !!data.departmentId &&
+      !!data.doctorId &&
+      !!data.fromDate &&
+      !!data.toDate;
     if (!hasRequiredFields) {
       setDateError("");
       return false;
@@ -369,7 +462,46 @@ const OPDServiceMaster = () => {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData(prev => {
+
+    if (id === "baseTariff") {
+      if (value === "") {
+        setFormData((prev) => {
+          const updated = { ...prev, [id]: value };
+          setIsFormValid(validateForm(updated));
+          return updated;
+        });
+        return;
+      }
+
+      if (/[-+eE]/.test(value)) {
+        return;
+      }
+
+      // Only digits with an optional single decimal point
+      const regex = /^\d*\.?\d*$/;
+      if (!regex.test(value)) {
+        return;
+      }
+
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        if (numValue <= 0) {
+          return;
+        }
+        if (value.includes(".") && value.split(".")[1].length > 2) {
+          return;
+        }
+      }
+
+      setFormData((prev) => {
+        const updated = { ...prev, [id]: value };
+        setIsFormValid(validateForm(updated));
+        return updated;
+      });
+      return;
+    }
+
+    setFormData((prev) => {
       const updated = { ...prev, [id]: value };
       setIsFormValid(validateForm(updated));
       return updated;
@@ -378,8 +510,14 @@ const OPDServiceMaster = () => {
 
   const handleSelectChange = (e) => {
     const { id, value } = e.target;
-    const parsedValue = ["doctorId", "departmentId", "serviceCategory"].includes(id) ? parseInt(value, 10) || "" : value;
-    setFormData(prev => {
+    const parsedValue = [
+      "doctorId",
+      "departmentId",
+      "serviceCategory",
+    ].includes(id)
+      ? parseInt(value, 10) || ""
+      : value;
+    setFormData((prev) => {
       let updated = { ...prev, [id]: parsedValue };
       if (id === "departmentId") {
         updated = { ...updated, doctorId: "" };
@@ -401,7 +539,6 @@ const OPDServiceMaster = () => {
   return (
     <div className="content-wrapper">
       <div className="row">
-        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -409,8 +546,27 @@ const OPDServiceMaster = () => {
               <div className="d-flex justify-content-between align-items-center gap-2">
                 {!showForm && (
                   <>
-                    <button className="btn btn-success" onClick={handleRefresh}><i className="mdi mdi-refresh"></i> Show All</button>
-                    <button className="btn btn-success" onClick={() => { setEditingService(null); setIsFormValid(false); setFormData({ baseTariff: "", serviceCategory: "", departmentId: "", doctorId: "", fromDate: "", toDate: "" }); setShowForm(true); }}><i className="mdi mdi-plus"></i> Add</button>
+                    <button className="btn btn-success" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
+                    <button
+                      className="btn btn-success"
+                      onClick={() => {
+                        setEditingService(null);
+                        setIsFormValid(false);
+                        setFormData({
+                          baseTariff: "",
+                          serviceCategory: "",
+                          departmentId: "",
+                          doctorId: "",
+                          fromDate: "",
+                          toDate: "",
+                        });
+                        setShowForm(true);
+                      }}
+                    >
+                      <i className="mdi mdi-plus"></i> Add
+                    </button>
                   </>
                 )}
               </div>
@@ -421,71 +577,408 @@ const OPDServiceMaster = () => {
                   <div className="row mb-3 align-items-end">
                     <div className="col-md-4">
                       <label className="form-label fw-bold">Department</label>
-                      <select className="form-select" value={filterDepartment} onChange={handleDepartmentFilterChange}>
+                      <select
+                        className="form-select"
+                        value={filterDepartment}
+                        onChange={handleDepartmentFilterChange}
+                      >
                         <option value="">All Departments</option>
-                        {departmentData.map(dept => <option key={dept.id} value={dept.id.toString()}>{dept.departmentName}</option>)}
+                        {departmentData.map((dept) => (
+                          <option key={dept.id} value={dept.id.toString()}>
+                            {dept.departmentName}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label fw-bold">Doctor</label>
-                      <select className="form-select" value={filterDoctor} onChange={handleDoctorFilterChange} disabled={!filterDepartment}>
+                      <select
+                        className="form-select"
+                        value={filterDoctor}
+                        onChange={handleDoctorFilterChange}
+                        disabled={!filterDepartment}
+                      >
                         <option value="">All Doctors</option>
-                        {doctorData.map(doc => <option key={doc.userId} value={doc.userId.toString()}>{doc.firstName} {doc.middleName} {doc.lastName}</option>)}
+                        {doctorData.map((doc) => (
+                          <option
+                            key={doc.userId}
+                            value={doc.userId.toString()}
+                          >
+                            {doc.firstName} {doc.middleName} {doc.lastName}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-2">
                       <label className="form-label fw-bold">&nbsp;</label>
-                      <button className="btn btn-primary w-100" onClick={handleSearch} disabled={loading}><i className="mdi mdi-magnify"></i> Search</button>
+                      <button
+                        className="btn btn-primary w-100"
+                        onClick={handleSearch}
+                        disabled={loading || searchLoading}
+                      >
+                        {searchLoading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <i className="mdi mdi-magnify"></i> Search
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  <div className="table-responsive packagelist">
+                  <div
+                    className="table-responsive packagelist"
+                    style={{ position: "relative", minHeight: "150px" }}
+                  >
+                    {loading && (
+                      <div
+                        className="d-flex justify-content-center align-items-center"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "rgba(255,255,255,0.7)",
+                          zIndex: 1,
+                        }}
+                      >
+                        <div
+                          className="spinner-border text-primary"
+                          role="status"
+                        >
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      </div>
+                    )}
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
-                        <tr><th>Base Tariff</th><th>Service Category</th><th>Department</th><th>Doctor</th><th>From Date</th><th>To Date</th><th>Status</th><th>Edit</th></tr>
+                        <tr>
+                          <th>Base Tariff</th>
+                          <th>Service Category</th>
+                          <th>Department</th>
+                          <th>Doctor</th>
+                          <th>From Date</th>
+                          <th>To Date</th>
+                          <th>Status</th>
+                          <th>Edit</th>
+                        </tr>
                       </thead>
                       <tbody>
-                        {serviceOpdData.length > 0 ? serviceOpdData.map(item => (
-                          <tr key={item.id}>
-                            <td>{item.baseTariff !== undefined ? `₹${Number(item.baseTariff).toFixed(2)}` : '₹0.00'}</td>
-                            <td>{item.serviceCategory || '-'}</td>
-                            <td>{item.departmentName || '-'}</td>
-                            <td>{[item.doctorFirstName, item.doctorMiddleName, item.doctorLastName].filter(Boolean).join(" ") || '-'}</td>
-                            <td>{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : '-'}</td>
-                            <td>{item.toDate ? new Date(item.toDate).toLocaleDateString() : '-'}</td>
-                            <td><div className="form-check form-switch"><input className="form-check-input" type="checkbox" checked={item.status?.toLowerCase() === "y"} onChange={() => handleSwitchChange(item.id, item.serviceName, item.status?.toLowerCase() === "y" ? "n" : "y")} id={`switch-${item.id}`} /><label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>{item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}</label></div></td>
-                            <td><button className="btn btn-sm btn-success me-2" onClick={() => handleEdit(item)} disabled={item.status?.toLowerCase() !== "y"}><i className="fa fa-pencil"></i></button></td>
+                        {serviceOpdData.length > 0 ? (
+                          serviceOpdData.map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                {item.baseTariff !== undefined
+                                  ? `₹${Number(item.baseTariff).toFixed(2)}`
+                                  : "₹0.00"}
+                              </td>
+                              <td>{item.serviceCategory || "-"}</td>
+                              <td>{item.departmentName || "-"}</td>
+                              <td>
+                                {[
+                                  item.doctorFirstName,
+                                  item.doctorMiddleName,
+                                  item.doctorLastName,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ") || "-"}
+                              </td>
+                              <td>
+                                {item.fromDate
+                                  ? new Date(item.fromDate).toLocaleDateString(
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "-"}
+                              </td>
+                              <td>
+                                {item.toDate
+                                  ? new Date(item.toDate).toLocaleDateString(
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "-"}
+                              </td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={item.status?.toLowerCase() === "y"}
+                                    onChange={() =>
+                                      handleSwitchChange(
+                                        item.id,
+                                        item.serviceName,
+                                        item.status?.toLowerCase() === "y"
+                                          ? "n"
+                                          : "y",
+                                      )
+                                    }
+                                    id={`switch-${item.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${item.id}`}
+                                  >
+                                    {item.status?.toLowerCase() === "y"
+                                      ? "Active"
+                                      : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(item)}
+                                  disabled={
+                                    item.status?.toLowerCase() !== "y" ||
+                                    editingRowId !== null
+                                  }
+                                >
+                                  {editingRowId === item.id ? (
+                                    <span
+                                      className="spinner-border spinner-border-sm"
+                                      role="status"
+                                      aria-hidden="true"
+                                    ></span>
+                                  ) : (
+                                    <i className="fa fa-pencil"></i>
+                                  )}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center">
+                              No records found
+                            </td>
                           </tr>
-                        )) : <tr><td colSpan="8" className="text-center">No records found</td></tr>}
+                        )}
                       </tbody>
                     </table>
                   </div>
-                  {totalPages > 0 && <Pagination totalItems={totalItems} itemsPerPage={DEFAULT_ITEMS_PER_PAGE} currentPage={currentPage} onPageChange={handlePageChange} />}
+                  {totalPages > 0 && (
+                    <Pagination
+                      totalItems={totalItems}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={handlePageChange}
+                    />
+                  )}
                 </>
               ) : (
                 <>
-                  {formLoading && <LoadingScreen />}
                   <form className="forms row" onSubmit={handleSave}>
-                    <div className="d-flex justify-content-end mb-3"><button type="button" className="btn btn-secondary" onClick={resetForm}><i className="mdi mdi-arrow-left"></i> Back</button></div>
-                    <div className="row">
-                      <div className="form-group col-md-4 mt-3"><label>Base Tariff <span className="text-danger">*</span></label><input type="number" step="0.01" className="form-control" id="baseTariff" placeholder="Base Tariff" onChange={handleInputChange} value={formData.baseTariff} required /></div>
-                      <div className="form-group col-md-4 mt-3"><label>Service Category <span className="text-danger">*</span></label><select className="form-select" id="serviceCategory" onChange={handleSelectChange} value={formData.serviceCategory} required><option value="">Select Service Category</option>{serviceCategoryData.map(cat => <option key={cat.id} value={cat.id}>{cat.serviceCatName}</option>)}</select></div>
-                      <div className="form-group col-md-4 mt-3"><label>Department <span className="text-danger">*</span></label><select className="form-select" id="departmentId" onChange={handleSelectChange} value={formData.departmentId} required><option value="">Select Department</option>{departmentData.map(dept => <option key={dept.id} value={dept.id}>{dept.departmentName}</option>)}</select></div>
-                      <div className="form-group col-md-4 mt-3"><label>Doctor <span className="text-danger">*</span></label><select className="form-select" id="doctorId" onChange={handleSelectChange} value={formData.doctorId} required disabled={!formData.departmentId || formLoading}><option value="">Select Doctor</option>{doctorData.map(doc => <option key={doc.userId} value={doc.userId}>{doc.firstName} {doc.middleName} {doc.lastName}</option>)}</select></div>
-                      <div className="form-group col-md-4 mt-3"><label>From Date <span className="text-danger">*</span></label><input type="date" className="form-control" id="fromDate" onChange={handleInputChange} value={formData.fromDate} required /></div>
-                      <div className="form-group col-md-4 mt-3"><label>To Date <span className="text-danger">*</span></label><input type="date" className="form-control" id="toDate" onChange={handleInputChange} value={formData.toDate} required /></div>
+                    <div className="d-flex justify-content-end mb-3">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={resetForm}
+                      >
+                        <i className="mdi mdi-arrow-left"></i> Back
+                      </button>
                     </div>
-                    {dateError && <div className="row"><div className="col-md-12"><p className="text-danger mb-0">{dateError}</p></div></div>}
+                    <div className="row">
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Base Tariff <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          className="form-control"
+                          id="baseTariff"
+                          placeholder="Base Tariff"
+                          onKeyDown={(e) => {
+                            if (["-", "+", "e", "E"].includes(e.key))
+                              e.preventDefault();
+                          }}
+                          onChange={handleInputChange}
+                          value={formData.baseTariff}
+                          required
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Service Category{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="serviceCategory"
+                          onChange={handleSelectChange}
+                          value={formData.serviceCategory}
+                          required
+                        >
+                          <option value="">Select Service Category</option>
+                          {serviceCategoryData.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.serviceCatName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Department <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="departmentId"
+                          onChange={handleSelectChange}
+                          value={formData.departmentId}
+                          required
+                        >
+                          <option value="">Select Department</option>
+                          {departmentData.map((dept) => (
+                            <option key={dept.id} value={dept.id}>
+                              {dept.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Doctor <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="doctorId"
+                          onChange={handleSelectChange}
+                          value={formData.doctorId}
+                          required
+                          disabled={!formData.departmentId || formLoading}
+                        >
+                          <option value="">Select Doctor</option>
+                          {doctorData.map((doc) => (
+                            <option key={doc.userId} value={doc.userId}>
+                              {doc.firstName} {doc.middleName} {doc.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          From Date <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="fromDate"
+                          onChange={handleInputChange}
+                          value={formData.fromDate}
+                          required
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          To Date <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="toDate"
+                          onChange={handleInputChange}
+                          value={formData.toDate}
+                          required
+                        />
+                      </div>
+                    </div>
+                    {dateError && (
+                      <div className="row">
+                        <div className="col-md-12">
+                          <p className="text-danger mb-0">{dateError}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                      <button type="submit" className="btn btn-primary me-2" disabled={process || !isFormValid}>{process ? "Processing..." : (editingService ? 'Update' : 'Save')}</button>
-                      <button type="button" className="btn btn-danger" onClick={resetForm} disabled={process}>Cancel</button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary me-2"
+                        disabled={process || !isFormValid}
+                      >
+                        {process
+                          ? "Processing..."
+                          : editingService
+                            ? "Update"
+                            : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={resetForm}
+                        disabled={process}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </>
               )}
-              {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog"><div className="modal-content"><div className="modal-header"><h5 className="modal-title">Confirm Status Change</h5><button type="button" className="close" onClick={() => handleConfirm(false)}><span>&times;</span></button></div><div className="modal-body"><p>Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} <strong>{confirmDialog.serviceName}</strong>?</p></div><div className="modal-footer"><button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button><button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button></div></div></div>
+                <div
+                  className="modal d-block"
+                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                >
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="close"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          <span>&times;</span>
+                        </button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to{" "}
+                          {confirmDialog.newStatus?.toLowerCase() === "y"
+                            ? "activate"
+                            : "deactivate"}{" "}
+                          <strong>{confirmDialog.serviceName}</strong>?
+                        </p>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -493,7 +986,7 @@ const OPDServiceMaster = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default OPDServiceMaster
+export default OPDServiceMaster;
