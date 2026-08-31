@@ -14,7 +14,8 @@ import {
   GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
   REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
   FILTER_OPD_DEPT,
-  DOCTOR_BY_SPECIALITY
+  DOCTOR_BY_SPECIALITY,
+  GET_IP_DIAGNOSIS_ENTRY
 } from "../../../config/apiConfig";
 
 const OTRequestFromIPD = () => {
@@ -221,15 +222,39 @@ const OTRequestFromIPD = () => {
   };
 
   // ----- Row click -> Detail view -----
-  const handleRowClick = (admission) => {
+  const handleRowClick = async (admission) => {
     setSelectedAdmission(admission);
+    
+    setLoading(true);
+    let finalDiagnosis = admission.diagnosis || "";
+
+    try {
+      const res = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${admission.inpatientId}`);
+      if (res?.status === 200 && Array.isArray(res.response) && res.response.length > 0) {
+        let diagnosesList = [];
+        if (admission.diagnosis) {
+          diagnosesList.push(admission.diagnosis);
+        }
+        res.response.forEach(item => {
+          if (item.diagnosis && !diagnosesList.includes(item.diagnosis)) {
+             diagnosesList.push(item.diagnosis);
+          }
+        });
+        finalDiagnosis = diagnosesList.join(", ");
+      }
+    } catch (err) {
+      console.error("Error fetching IP diagnosis entry", err);
+    }
+    
+    setLoading(false);
+
     // Pre-fill detail form with any existing data (dummy for now)
     setDetailForm({
       departmentId: "",
       surgeryType: "",
       surgery: "",
       majorMinor: "",
-      diagnosis: "",
+      diagnosis: finalDiagnosis,
       primarySurgeon: "",
       priority: "Elective",
       preferredDate: "",
