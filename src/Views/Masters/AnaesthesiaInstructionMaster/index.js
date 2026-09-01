@@ -2,6 +2,18 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import { MAS_ANAESTHESIA_INSTRUCTION } from "../../../config/apiConfig";
+import {
+  FETCH_ANAESTHESIA_INSTRUCTION,
+  ADD_ANAESTHESIA_INSTRUCTION,
+  UPDATE_ANAESTHESIA_INSTRUCTION,
+  UPDATE_STATUS_ANAESTHESIA_INSTRUCTION,
+  FAIL_ANAESTHESIA_INSTRUCTION,
+  DUPLICATE_ANAESTHESIA_INSTRUCTION,
+  UPDATE_FAIL_ANAESTHESIA_INSTRUCTION,
+  FETCH_ANAESTHESIA_INSTRUCTION_DETAIL,
+} from "../../../config/constants";
 
 const AnaesthesiaInstructionMaster = () => {
   // ----- State -----
@@ -25,32 +37,31 @@ const AnaesthesiaInstructionMaster = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const [process, setProcess] = useState(false);
 
   // ----- Constants for validation -----
   const INSTRUCTION_MAX_LENGTH = 255;
 
-  // ----- Dummy data -----
-  const dummyData = [
-    { id: 1, instructionType: "PRE", instruction: "Nil by mouth for 6 hours before surgery", status: "Y" },
-    { id: 2, instructionType: "PRE", instruction: "Shower with antiseptic soap on morning of surgery", status: "Y" },
-    { id: 3, instructionType: "POST", instruction: "Drink plenty of fluids after surgery", status: "Y" },
-    { id: 4, instructionType: "POST", instruction: "Apply ice pack to the surgical area for 20 minutes every 2 hours", status: "N" }
-  ];
-
-  // ----- Effects -----
-  useEffect(() => {
+  // ----- Fetch data (flag=0 = all) -----
+  const fetchData = async (flag = 0) => {
     setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
+    try {
+      const { response } = await getRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/getAll/${flag}`);
+      setData(response || []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      showPopup(FETCH_ANAESTHESIA_INSTRUCTION, "error");
+      setData([]);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
+  // ----- Form validation -----
   useEffect(() => {
     const { instructionType, instruction } = formData;
     setIsFormValid(instructionType !== "" && instruction.trim() !== "");
@@ -62,72 +73,14 @@ const AnaesthesiaInstructionMaster = () => {
     item.instruction?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ----- Handlers -----
+  // ----- Pagination -----
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
   const handlePageChange = (page) => setCurrentPage(page);
 
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setFormData({
-      instructionType: item.instructionType || "",
-      instruction: item.instruction || ""
-    });
-    setShowForm(true);
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-    setProcess(true);
-
-    setTimeout(() => {
-      setProcess(false);
-      showPopup(editingItem ? "Updated successfully" : "Added successfully", "success", () => {
-        resetForm();
-        setData(dummyData);
-      });
-    }, 500);
-  };
-
-  const resetForm = () => {
-    setEditingItem(null);
-    setShowForm(false);
-    setFormData({ instructionType: "", instruction: "" });
-    setPopupMessage(null);
-  };
-
-  const showPopup = (message, type = "info", onCloseCallback = null) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-        if (onCloseCallback) onCloseCallback();
-      },
-    });
-  };
-
-  const handleSwitchChange = (id, name, newStatus) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, name });
-  };
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.id !== null) {
-      setProcess(true);
-      setTimeout(() => {
-        setProcess(false);
-        showPopup(
-          `Anaesthesia instruction ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
-          "success",
-          () => {
-            setData(dummyData);
-            setCurrentPage(1);
-          }
-        );
-      }, 500);
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
-  };
-
+  // ----- Handlers -----
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
@@ -143,31 +96,152 @@ const AnaesthesiaInstructionMaster = () => {
     setCurrentPage(1);
   };
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    setData(dummyData);
+  const resetForm = () => {
+    setEditingItem(null);
+    setShowForm(false);
+    setFormData({ instructionType: "", instruction: "" });
+    setPopupMessage(null);
   };
 
-  const handleActivate = () => {
-    if (editingItem && editingItem.status?.toLowerCase() === "n") {
-      setProcess(true);
-      setTimeout(() => {
-        setProcess(false);
-        showPopup("Anaesthesia instruction activated successfully!", "success", () => {
-          setData(dummyData);
-          resetForm();
-        });
-      }, 500);
+  const handleCancel = () => resetForm();
+
+  // ----- Edit -----
+  // Pulls the record fresh via GET /master/masAnaesthesiaInstruction/getById/{id}
+  // on the primary key (anaesthesiaInstructionId) rather than trusting the
+  // locally cached row, so the form always reflects the latest server state.
+  const handleEdit = async (item) => {
+    setProcess(true);
+    try {
+      const { response } = await getRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/getById/${item.anaesthesiaInstructionId}`);
+      const record = response || item;
+
+      setEditingItem(record);
+      setFormData({
+        instructionType: record.instructionType || "",
+        instruction: record.instruction || "",
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error("Fetch by id error:", error);
+      showPopup(FETCH_ANAESTHESIA_INSTRUCTION_DETAIL, "error");
+    } finally {
+      setProcess(false);
     }
   };
 
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  // ----- Save (Add / Update) -----
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-  // ----- Render -----
+    setProcess(true);
+
+    // Check duplicate (same instruction type + instruction text)
+    const duplicate = data.find(
+      (rec) =>
+        rec.instructionType === formData.instructionType &&
+        rec.instruction?.trim().toLowerCase() === formData.instruction.trim().toLowerCase() &&
+        (!editingItem || rec.anaesthesiaInstructionId !== editingItem.anaesthesiaInstructionId)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_ANAESTHESIA_INSTRUCTION, "error");
+      setProcess(false);
+      return;
+    }
+
+    // Matches the create/update request body exactly: { instructionType, instruction }
+    const payload = {
+      instructionType: formData.instructionType,
+      instruction: formData.instruction.trim(),
+    };
+
+    try {
+      if (editingItem) {
+        await putRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/update/${editingItem.anaesthesiaInstructionId}`, payload);
+        showPopup(UPDATE_ANAESTHESIA_INSTRUCTION, "success", () => {
+          fetchData();
+          resetForm();
+        });
+      } else {
+        await postRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/create`, payload);
+        showPopup(ADD_ANAESTHESIA_INSTRUCTION, "success", () => {
+          fetchData();
+          resetForm();
+        });
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      showPopup(FAIL_ANAESTHESIA_INSTRUCTION, "error");
+    } finally {
+      setProcess(false);
+    }
+  };
+
+  // ----- Status toggle -----
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ isOpen: true, id, newStatus, name });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
+      return;
+    }
+
+    setProcess(true);
+    try {
+      await putRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_STATUS_ANAESTHESIA_INSTRUCTION, "success", () => {
+        fetchData();
+      });
+    } catch (error) {
+      console.error("Status update error:", error);
+      showPopup(UPDATE_FAIL_ANAESTHESIA_INSTRUCTION, "error");
+    } finally {
+      setProcess(false);
+      setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
+    }
+  };
+
+  // ----- Activate (from edit form) -----
+  const handleActivate = async () => {
+    if (!editingItem) return;
+    setProcess(true);
+    try {
+      await putRequest(`${MAS_ANAESTHESIA_INSTRUCTION}/status/${editingItem.anaesthesiaInstructionId}?status=Y`);
+      showPopup(UPDATE_STATUS_ANAESTHESIA_INSTRUCTION, "success", () => {
+        fetchData();
+        resetForm();
+      });
+    } catch (error) {
+      console.error("Activation error:", error);
+      showPopup(UPDATE_FAIL_ANAESTHESIA_INSTRUCTION, "error");
+    } finally {
+      setProcess(false);
+    }
+  };
+
+  // ----- Refresh -----
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
+  };
+
+  // ----- Popup helper -----
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
+  };
+
+  // ====================== RENDER ======================
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -212,7 +286,7 @@ const AnaesthesiaInstructionMaster = () => {
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                  <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                     <i className="mdi mdi-arrow-left"></i> Back
                   </button>
                 )}
@@ -236,7 +310,7 @@ const AnaesthesiaInstructionMaster = () => {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((item) => (
-                            <tr key={item.id}>
+                            <tr key={item.anaesthesiaInstructionId}>
                               <td>
                                 <span className={`badge ${item.instructionType === "PRE" ? "bg-primary" : "bg-success"}`}>
                                   {item.instructionType || '-'}
@@ -250,13 +324,13 @@ const AnaesthesiaInstructionMaster = () => {
                                     type="checkbox"
                                     checked={item.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
-                                      item.id,
+                                      item.anaesthesiaInstructionId,
                                       item.instruction,
                                       item.status?.toLowerCase() === "y" ? "n" : "y"
                                     )}
-                                    id={`switch-${item.id}`}
+                                    id={`switch-${item.anaesthesiaInstructionId}`}
                                   />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>
+                                  <label className="form-check-label px-0" htmlFor={`switch-${item.anaesthesiaInstructionId}`}>
                                     {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
@@ -265,7 +339,7 @@ const AnaesthesiaInstructionMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status?.toLowerCase() !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y" || process}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -353,7 +427,7 @@ const AnaesthesiaInstructionMaster = () => {
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={resetForm}
+                      onClick={handleCancel}
                       disabled={process}
                     >
                       Cancel

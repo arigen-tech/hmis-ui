@@ -96,6 +96,14 @@ export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
 
 export const DEPARTMENT = `/department`;
 
+export const MAS_OPERATION_THEATRE = `${MASTERS}/operationTheatre`;
+export const MAS_OT_DAY_ALLOCATION = `${MASTERS}/otDayAllocation`;
+export const MAS_ANAESTHESIA_TYPE = `${MASTERS}/masAnaesthesiaType`;
+export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction`;
+export const MAS_OT_SCHEDULE_CHANGE_REASON = `${MASTERS}/masOtScheduleChangeReason`;
+export const MAS_OT_TEAM_ROLE = `${MASTERS}/otTeamRole`;
+export const MAS_OT_BOOKING_STATUS = `${MASTERS}/otBookingStatus`;
+
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
 export const SESSION = `/opd-session`;
