@@ -1,7 +1,7 @@
-// export const API_HOST = 'https://api.arigenhmis.com/hims';
-// // export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = 'https://api.arigenhmis.com/hims';
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
-export const API_HOST = "http://localhost:8080";
+// export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -196,6 +196,7 @@ export const RADIOLOGY = `/radiology`;
 export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
 export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
+export const CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/cancelOrCompleteInvestigationRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
@@ -296,6 +297,8 @@ export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDyna
 export const MAS_OPERATION_THEATRE_GET_ALL = `${MASTERS}/operationTheatre/getAll`;
 export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailability`;
 export const SAVE_OT_REQUEST = `/otController/saveOtRequest`;
+export const PENDING_FOR_REVIEW_OT_LIST = `/otController/pendingForReviewOtList`;
+export const SAVE_ACCEPT_REJECT_OT = `/otController/saveAcceptAndReject`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
@@ -502,6 +505,7 @@ export const STATUS_N = `N`;
 export const STATUS_S = `S`;
 export const STATUS_P = `P`;
 export const STATUS_D = `D`;
+export const STATUS_X = `x`;
 export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
 export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;
