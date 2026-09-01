@@ -1345,6 +1345,7 @@ const UpdateLabRegistration = () => {
 
             patientImage: imageURL || formData.imageurl || "",
           },
+          patientId: formData.id,
           investigationReq: [],
         };
 
