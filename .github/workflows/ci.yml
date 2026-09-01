@@ -31,10 +31,12 @@ jobs:
 
         
     - name: Install dependencies
-      run: npm install
+      run: npm install --no-audit --no-fund --prefer-offline
 
     - name: Build the project
       run: npm run build
       env:
         # Setting CI to false prevents warnings from failing the build on standard CRA
         CI: false
+        # Setting GENERATE_SOURCEMAP to false drastically speeds up Webpack build times
+        GENERATE_SOURCEMAP: false
