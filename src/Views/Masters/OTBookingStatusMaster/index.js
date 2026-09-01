@@ -3,24 +3,24 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import { MAS_OPERATION_THEATRE } from "../../../config/apiConfig";
+import { MAS_OT_BOOKING_STATUS } from "../../../config/apiConfig";
 import {
-  FETCH_OT,
-  ADD_OT,
-  UPDATE_OT,
-  UPDATE_STATUS_OT,
-  FAIL_OT,
-  DUPLICATE_OT,
-  UPDATE_FAIL_OT,
+  FETCH_OT_BOOKING_STATUS,
+  ADD_OT_BOOKING_STATUS,
+  UPDATE_OT_BOOKING_STATUS,
+  UPDATE_STATUS_OT_BOOKING_STATUS,
+  FAIL_OT_BOOKING_STATUS,
+  DUPLICATE_OT_BOOKING_STATUS,
+  UPDATE_FAIL_OT_BOOKING_STATUS,
+  FETCH_OT_BOOKING_STATUS_DETAIL,
 } from "../../../config/constants";
 
-const OperationTheatre = () => {
+const OTBookingStatusMaster = () => {
   // ----- State -----
   const [formData, setFormData] = useState({
-    otCode: "",
-    otName: "",
-    otType: "",
-    location: ""
+    statusCode: "",
+    statusName: "",
+    description: ""
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -38,27 +38,22 @@ const OperationTheatre = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const [process, setProcess] = useState(false);
 
   // ----- Constants for validation -----
-  const OT_CODE_MAX_LENGTH = 10;
-  const OT_NAME_MAX_LENGTH = 100;
-  const OT_TYPE_MAX_LENGTH = 50;
-  const LOCATION_MAX_LENGTH = 100;
+  const STATUS_CODE_MAX_LENGTH = 30;
+  const STATUS_NAME_MAX_LENGTH = 100;
+  const DESCRIPTION_MAX_LENGTH = 500;
 
-  // ----- Fetch data (all records, flag=0) -----
+  // ----- Fetch data (flag=0 = all) -----
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_OPERATION_THEATRE}/getAll/${flag}`);
+      const { response } = await getRequest(`${MAS_OT_BOOKING_STATUS}/getAll/${flag}`);
       setData(response || []);
-      setTotalItems((response || []).length);
-      setTotalPages(Math.ceil((response || []).length / DEFAULT_ITEMS_PER_PAGE));
     } catch (error) {
       console.error("Fetch error:", error);
-      showPopup(FETCH_OT, "error");
+      showPopup(FETCH_OT_BOOKING_STATUS, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -71,25 +66,17 @@ const OperationTheatre = () => {
 
   // ----- Form validation -----
   useEffect(() => {
-    const { otCode, otName, otType, location } = formData;
-    if (editingItem) {
-      setIsFormValid(otName.trim() !== "" && otType.trim() !== "" && location.trim() !== "");
-    } else {
-      setIsFormValid(
-        otCode.trim() !== "" &&
-        otName.trim() !== "" &&
-        otType.trim() !== "" &&
-        location.trim() !== ""
-      );
-    }
-  }, [formData, editingItem]);
+    const { statusCode, statusName, description } = formData;
+    setIsFormValid(
+      statusCode.trim() !== "" && statusName.trim() !== "" && description.trim() !== ""
+    );
+  }, [formData]);
 
   // ----- Filtered data (search) -----
   const filteredData = data.filter(item =>
-    item.otCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.otName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.otType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.location?.toLowerCase().includes(searchQuery.toLowerCase())
+    item.statusCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.statusName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // ----- Pagination -----
@@ -113,24 +100,35 @@ const OperationTheatre = () => {
   const resetForm = () => {
     setEditingItem(null);
     setShowForm(false);
-    setFormData({ otCode: "", otName: "", otType: "", location: "" });
+    setFormData({ statusCode: "", statusName: "", description: "" });
     setPopupMessage(null);
   };
 
-  const handleCancel = () => {
-    resetForm();
-  };
+  const handleCancel = () => resetForm();
 
   // ----- Edit -----
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setFormData({
-      otCode: item.otCode || "",
-      otName: item.otName || "",
-      otType: item.otType || "",
-      location: item.location || ""
-    });
-    setShowForm(true);
+  // Pulls the record fresh via GET /master/otBookingStatus/getById/{id} on
+  // the primary key (bookingStatusId) rather than trusting the locally
+  // cached row, so the form always reflects the latest server state.
+  const handleEdit = async (item) => {
+    setProcess(true);
+    try {
+      const { response } = await getRequest(`${MAS_OT_BOOKING_STATUS}/getById/${item.bookingStatusId}`);
+      const record = response || item;
+
+      setEditingItem(record);
+      setFormData({
+        statusCode: record.statusCode || "",
+        statusName: record.statusName || "",
+        description: record.description || "",
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error("Fetch by id error:", error);
+      showPopup(FETCH_OT_BOOKING_STATUS_DETAIL, "error");
+    } finally {
+      setProcess(false);
+    }
   };
 
   // ----- Save (Add / Update) -----
@@ -140,47 +138,45 @@ const OperationTheatre = () => {
 
     setProcess(true);
 
-    // Check duplicate (based on code + name)
+    // Check duplicate (same status code) - statusCode is the business key
+    // (e.g. REQUESTED, SCHEDULED, IN_PROGRESS) so it must stay unique.
     const duplicate = data.find(
       (rec) =>
-        (rec.otCode?.toLowerCase() === formData.otCode.trim().toLowerCase() ||
-         rec.otName?.toLowerCase() === formData.otName.trim().toLowerCase()) &&
-        (!editingItem || rec.otId !== editingItem.otId)
+        rec.statusCode?.trim().toLowerCase() === formData.statusCode.trim().toLowerCase() &&
+        (!editingItem || rec.bookingStatusId !== editingItem.bookingStatusId)
     );
 
     if (duplicate) {
-      showPopup(DUPLICATE_OT, "error");
+      showPopup(DUPLICATE_OT_BOOKING_STATUS, "error");
       setProcess(false);
       return;
     }
 
+    // Matches the create/update request body exactly:
+    // { statusCode, statusName, description }
+    const payload = {
+      statusCode: formData.statusCode.trim(),
+      statusName: formData.statusName.trim(),
+      description: formData.description.trim(),
+    };
+
     try {
       if (editingItem) {
-        await putRequest(`${MAS_OPERATION_THEATRE}/update/${editingItem.otId}`, {
-          otCode: formData.otCode.trim(),
-          otName: formData.otName.trim(),
-          otType: formData.otType.trim(),
-          location: formData.location.trim(),
-        });
-        showPopup(UPDATE_OT, "success", () => {
+        await putRequest(`${MAS_OT_BOOKING_STATUS}/update/${editingItem.bookingStatusId}`, payload);
+        showPopup(UPDATE_OT_BOOKING_STATUS, "success", () => {
           fetchData();
           resetForm();
         });
       } else {
-        await postRequest(`${MAS_OPERATION_THEATRE}/create`, {
-          otCode: formData.otCode.trim(),
-          otName: formData.otName.trim(),
-          otType: formData.otType.trim(),
-          location: formData.location.trim(),
-        });
-        showPopup(ADD_OT, "success", () => {
+        await postRequest(`${MAS_OT_BOOKING_STATUS}/create`, payload);
+        showPopup(ADD_OT_BOOKING_STATUS, "success", () => {
           fetchData();
           resetForm();
         });
       }
     } catch (error) {
       console.error("Save error:", error);
-      showPopup(FAIL_OT, "error");
+      showPopup(FAIL_OT_BOOKING_STATUS, "error");
     } finally {
       setProcess(false);
     }
@@ -199,38 +195,38 @@ const OperationTheatre = () => {
 
     setProcess(true);
     try {
-      await putRequest(`${MAS_OPERATION_THEATRE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`);
-      showPopup(UPDATE_STATUS_OT, "success", () => {
+      await putRequest(`${MAS_OT_BOOKING_STATUS}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_STATUS_OT_BOOKING_STATUS, "success", () => {
         fetchData();
       });
     } catch (error) {
       console.error("Status update error:", error);
-      showPopup(UPDATE_FAIL_OT, "error");
+      showPopup(UPDATE_FAIL_OT_BOOKING_STATUS, "error");
     } finally {
       setProcess(false);
       setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
     }
   };
 
-  // ----- Activate (for inactive editing) -----
+  // ----- Activate (from edit form) -----
   const handleActivate = async () => {
     if (!editingItem) return;
     setProcess(true);
     try {
-      await putRequest(`${MAS_OPERATION_THEATRE}/status/${editingItem.otId}?status=Y`);
-      showPopup(UPDATE_STATUS_OT, "success", () => {
+      await putRequest(`${MAS_OT_BOOKING_STATUS}/status/${editingItem.bookingStatusId}?status=Y`);
+      showPopup(UPDATE_STATUS_OT_BOOKING_STATUS, "success", () => {
         fetchData();
         resetForm();
       });
     } catch (error) {
       console.error("Activation error:", error);
-      showPopup(UPDATE_FAIL_OT, "error");
+      showPopup(UPDATE_FAIL_OT_BOOKING_STATUS, "error");
     } finally {
       setProcess(false);
     }
   };
 
-  // ----- Refresh / Show All -----
+  // ----- Refresh -----
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
@@ -257,7 +253,7 @@ const OperationTheatre = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Operation Theatre Master</h4>
+              <h4 className="card-title p-2">OT Booking Status Master</h4>
 
               <div className="d-flex justify-content-between align-items-center gap-2">
                 {!showForm ? (
@@ -267,7 +263,7 @@ const OperationTheatre = () => {
                         <input
                           type="search"
                           className="form-control"
-                          placeholder="Search by code, name, type or location"
+                          placeholder="Search by code, name or description"
                           aria-label="Search"
                           value={searchQuery}
                           onChange={handleSearchChange}
@@ -285,7 +281,7 @@ const OperationTheatre = () => {
                       className="btn btn-success"
                       onClick={() => {
                         setEditingItem(null);
-                        setFormData({ otCode: "", otName: "", otType: "", location: "" });
+                        setFormData({ statusCode: "", statusName: "", description: "" });
                         setShowForm(true);
                       }}
                     >
@@ -308,10 +304,9 @@ const OperationTheatre = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>OT Code</th>
-                          <th>OT Name</th>
-                          <th>OT Type</th>
-                          <th>Location</th>
+                          <th>Status Code</th>
+                          <th>Status Name</th>
+                          <th>Description</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
@@ -319,11 +314,10 @@ const OperationTheatre = () => {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((item) => (
-                            <tr key={item.otId}>
-                              <td>{item.otCode || '-'}</td>
-                              <td style={{ textTransform: "capitalize" }}>{item.otName || '-'}</td>
-                              <td>{item.otType || '-'}</td>
-                              <td>{item.location || '-'}</td>
+                            <tr key={item.bookingStatusId}>
+                              <td>{item.statusCode || '-'}</td>
+                              <td>{item.statusName || '-'}</td>
+                              <td>{item.description || '-'}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -331,13 +325,13 @@ const OperationTheatre = () => {
                                     type="checkbox"
                                     checked={item.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
-                                      item.otId,
-                                      item.otName,
+                                      item.bookingStatusId,
+                                      item.statusName,
                                       item.status?.toLowerCase() === "y" ? "n" : "y"
                                     )}
-                                    id={`switch-${item.otId}`}
+                                    id={`switch-${item.bookingStatusId}`}
                                   />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.otId}`}>
+                                  <label className="form-check-label px-0" htmlFor={`switch-${item.bookingStatusId}`}>
                                     {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
@@ -346,7 +340,7 @@ const OperationTheatre = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status?.toLowerCase() !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y" || process}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -355,7 +349,7 @@ const OperationTheatre = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No records found</td>
+                            <td colSpan="5" className="text-center">No records found</td>
                           </tr>
                         )}
                       </tbody>
@@ -377,64 +371,51 @@ const OperationTheatre = () => {
                   <div className="row">
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        OT Code <span className="text-danger">*</span>
+                        Status Code <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="otCode"
-                        placeholder="Enter OT code"
+                        id="statusCode"
+                        placeholder="e.g. REQUESTED"
                         onChange={handleInputChange}
-                        value={formData.otCode}
-                        maxLength={OT_CODE_MAX_LENGTH}
+                        value={formData.statusCode}
+                        maxLength={STATUS_CODE_MAX_LENGTH}
                         required
                         disabled={process || !!editingItem}
+                        style={{ textTransform: "uppercase" }}
                       />
                     </div>
+
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        OT Name <span className="text-danger">*</span>
+                        Status Name <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="otName"
-                        placeholder="Enter OT name"
+                        id="statusName"
+                        placeholder="e.g. Requested"
                         onChange={handleInputChange}
-                        value={formData.otName}
-                        maxLength={OT_NAME_MAX_LENGTH}
+                        value={formData.statusName}
+                        maxLength={STATUS_NAME_MAX_LENGTH}
                         required
                         disabled={process}
                       />
                     </div>
+
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        OT Type <span className="text-danger">*</span>
+                        Description <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
                         className="form-control"
-                        id="otType"
-                        placeholder="Enter OT type"
+                        id="description"
+                        placeholder="Enter description"
                         onChange={handleInputChange}
-                        value={formData.otType}
-                        maxLength={OT_TYPE_MAX_LENGTH}
-                        required
-                        disabled={process}
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Location <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="location"
-                        placeholder="Enter location"
-                        onChange={handleInputChange}
-                        value={formData.location}
-                        maxLength={LOCATION_MAX_LENGTH}
+                        value={formData.description}
+                        maxLength={DESCRIPTION_MAX_LENGTH}
                         required
                         disabled={process}
                       />
@@ -488,7 +469,7 @@ const OperationTheatre = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{confirmDialog.name}</strong> OT?
+                          <strong>{confirmDialog.name}</strong> booking status?
                         </p>
                       </div>
                       <div className="modal-footer">
@@ -511,4 +492,4 @@ const OperationTheatre = () => {
   );
 };
 
-export default OperationTheatre;
+export default OTBookingStatusMaster;

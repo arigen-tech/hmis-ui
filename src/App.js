@@ -287,6 +287,8 @@ import OTRequestFromIPD from './Views/OperationTheatre/OTRequestForIPD';
 import OTDashboard from './Views/OPD/GeneralMedicineWaitingList/OTDashboard';
 import PendingOTReview from './Views/OperationTheatre/PendingOTReview';
 import OTBookingHistory from './Views/OperationTheatre/OTBookingHistory';
+import OTPatientReceiptPending from './Views/OperationTheatre/OTPatientReceiptPending';
+import OTBookingStatusMaster from './Views/Masters/OTBookingStatusMaster';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -605,6 +607,8 @@ function App() {
                 <Route path="/OTDashboard" element={<OTDashboard/>} />
                 <Route path="/PendingOTReview" element={<PendingOTReview/>} />
                 <Route path="/OTBookingHistory" element={<OTBookingHistory/>} />
+                <Route path="/OTBookingStatusMaster" element={<OTBookingStatusMaster/>} />
+                <Route path="/OTPatientReceiptPending" element={<OTPatientReceiptPending/>} />
                 </Route>
             </Route>
 

@@ -1,19 +1,25 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination from "../../../Components/Pagination";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { PENDING_FOR_REVIEW_OT_LIST, SAVE_ACCEPT_REJECT_OT } from "../../../config/apiConfig";
+
+const ITEMS_PER_PAGE = 5;
 
 const PendingOTReview = () => {
   // ----- State -----
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
   // Filter states
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchMobile, setSearchMobile] = useState("");
   const [patientType, setPatientType] = useState("");
 
   // Modal states
@@ -23,149 +29,100 @@ const PendingOTReview = () => {
   const [remarks, setRemarks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Helper: get day of week from date string like "28-Aug-2026"
+  // Helper: get day of week from date string like "2026-08-27"
   const getDayOfWeek = (dateStr) => {
-    const parts = dateStr.split("-");
-    const day = parseInt(parts[0]);
-    const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-    const month = monthMap[parts[1]];
-    const year = parseInt(parts[2]);
-    const dateObj = new Date(year, month, day);
+    if (!dateStr) return "-";
+    const dateObj = new Date(dateStr);
+    if (isNaN(dateObj.getTime())) return "-";
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     return days[dateObj.getDay()];
   };
 
-  // ----- Dummy data (with Surgeon field added) -----
-  const dummyData = [
-    {
-      id: 1,
-      patientType: "OPD",
-      uhid: "OPD/26/00125",
-      ipNo: null,
-      patientName: "Rajesh Kumar",
-      ageGender: "52 / Male",
-      surgery: "Total Knee Replacement",
-      surgeon: "Dr. Sharma",
-      priority: "Elective",
-      requestedOT: "Main OT-01",
-      requestedDate: "28-Aug-2026",
-      requestedTime: "10:00 AM",
-      requestedBy: "Dr. Sharma",
-      requestedOn: "25-Aug-2026 09:30 AM",
-      department: "Orthopaedics",
-      status: "REQUESTED",
-    },
-    {
-      id: 2,
-      patientType: "IPD",
-      uhid: null,
-      ipNo: "IPD/26/00128",
-      patientName: "Amit Kumar",
-      ageGender: "45 / Male",
-      surgery: "Hernia Repair",
-      surgeon: "Dr. Gupta",
-      priority: "Urgent",
-      requestedOT: "Main OT-02",
-      requestedDate: "28-Aug-2026",
-      requestedTime: "02:00 PM",
-      requestedBy: "Dr. Gupta",
-      requestedOn: "26-Aug-2026 11:15 AM",
-      department: "General Surgery",
-      status: "REQUESTED",
-    },
-    {
-      id: 3,
-      patientType: "OPD",
-      uhid: "OPD/26/00131",
-      ipNo: null,
-      patientName: "Sunita Devi",
-      ageGender: "38 / Female",
-      surgery: "CABG",
-      surgeon: "Dr. Verma",
-      priority: "Emergency",
-      requestedOT: "Cardio OT",
-      requestedDate: "29-Aug-2026",
-      requestedTime: "09:00 AM",
-      requestedBy: "Dr. Verma",
-      requestedOn: "26-Aug-2026 08:45 AM",
-      department: "Cardiology",
-      status: "REQUESTED",
-    },
-    {
-      id: 4,
-      patientType: "IPD",
-      uhid: null,
-      ipNo: "IPD/26/00135",
-      patientName: "Neha Singh",
-      ageGender: "31 / Female",
-      surgery: "Laparoscopic Cholecystectomy",
-      surgeon: "Dr. Mehta",
-      priority: "Elective",
-      requestedOT: "Main OT-01",
-      requestedDate: "30-Aug-2026",
-      requestedTime: "11:30 AM",
-      requestedBy: "Dr. Mehta",
-      requestedOn: "27-Aug-2026 10:00 AM",
-      department: "General Surgery",
-      status: "REQUESTED",
-    },
-    {
-      id: 5,
-      patientType: "OPD",
-      uhid: "OPD/26/00142",
-      ipNo: null,
-      patientName: "Vikram Singh",
-      ageGender: "60 / Male",
-      surgery: "Prostatectomy",
-      surgeon: "Dr. Rao",
-      priority: "Urgent",
-      requestedOT: "Main OT-03",
-      requestedDate: "30-Aug-2026",
-      requestedTime: "03:00 PM",
-      requestedBy: "Dr. Rao",
-      requestedOn: "27-Aug-2026 02:20 PM",
-      department: "Urology",
-      status: "REQUESTED",
-    },
-  ];
+  const fetchData = async (page = 0, isSearch = false) => {
+    try {
+      if (isSearch) {
+        setSearchLoading(true);
+      } else {
+        setLoading(true);
+      }
+
+      const params = new URLSearchParams({
+        page: page,
+        size: ITEMS_PER_PAGE,
+      });
+
+      if (searchName?.trim()) params.append("patientName", searchName.trim());
+      if (searchMobile?.trim()) params.append("mobileNo", searchMobile.trim());
+      if (patientType?.trim()) params.append("patientType", patientType.trim());
+
+      const response = await getRequest(
+        `${PENDING_FOR_REVIEW_OT_LIST}?${params.toString()}`
+      );
+
+      if (response?.response?.content) {
+        setData(response.response.content);
+        setTotalPages(response.response.totalPages);
+        setTotalItems(response.response.totalElements);
+      } else {
+        setData([]);
+        setTotalPages(0);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching pending OT reviews:", error);
+      showPopup("Failed to fetch data", "error");
+      setData([]);
+      setTotalPages(0);
+      setTotalItems(0);
+    } finally {
+      setLoading(false);
+      setSearchLoading(false);
+    }
+  };
 
   // ----- Effects -----
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
-      setLoading(false);
-    }, 300);
+    fetchData(0, false);
   }, []);
 
-  // ----- Filtered data -----
-  const filteredData = data.filter((item) => {
-    const matchSearch =
-      (item.uhid && item.uhid.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.ipNo && item.ipNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgery.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgeon.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchType = patientType ? item.patientType === patientType : true;
-    return matchSearch && matchType;
-  });
-
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
   // ----- Handlers -----
-  const handlePageChange = (page) => setCurrentPage(page);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchData(page - 1, true);
+  };
 
-  const handleSearch = () => setCurrentPage(1);
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchData(0, true);
+  };
 
   const handleReset = () => {
-    setSearchQuery("");
+    setSearchName("");
+    setSearchMobile("");
     setPatientType("");
     setCurrentPage(1);
+    
+    // Fetch without filters
+    setSearchLoading(true);
+    getRequest(`${PENDING_FOR_REVIEW_OT_LIST}?page=0&size=${ITEMS_PER_PAGE}`)
+      .then((response) => {
+        if (response?.response?.content) {
+          setData(response.response.content);
+          setTotalPages(response.response.totalPages);
+          setTotalItems(response.response.totalElements);
+        } else {
+          setData([]);
+          setTotalPages(0);
+          setTotalItems(0);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching pending OT reviews:", error);
+        showPopup("Failed to reset data", "error");
+      })
+      .finally(() => {
+        setSearchLoading(false);
+      });
   };
 
   // ----- Open modal for accept/reject -----
@@ -185,43 +142,41 @@ const PendingOTReview = () => {
   };
 
   // ----- Confirm action (Accept / Reject) -----
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (modalAction === "reject" && !remarks.trim()) {
       showPopup("Please enter reject remarks.", "error");
       return;
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
-      // Simulate API call
-      const updatedData = data.map((item) => {
-        if (item.id === selectedRecord.id) {
-          if (modalAction === "accept") {
-            return {
-              ...item,
-              status: "ACCEPTED",
-              bookingStatus: "SCHEDULED",
-            };
-          } else {
-            return {
-              ...item,
-              status: "REJECTED",
-              rejectRemarks: remarks,
-            };
+    
+    try {
+      const flag = modalAction === "accept" ? "A" : "R";
+      let apiUrl = `${SAVE_ACCEPT_REJECT_OT}?otBookingRequestId=${selectedRecord.otBookingRequestId}&flag=${flag}`;
+      if (modalAction === "reject" && remarks.trim()) {
+        apiUrl += `&remark=${encodeURIComponent(remarks.trim())}`;
+      }
+      
+      const response = await postRequest(apiUrl, {});
+
+      if (response?.status === 200) {
+        showPopup(
+          response?.response || `OT Request ${modalAction === "accept" ? "accepted" : "rejected"} successfully.`,
+          "success",
+          () => {
+            fetchData(currentPage - 1, true);
           }
-        }
-        return item;
-      });
-      setData(updatedData);
+        );
+        closeModal();
+      } else {
+        showPopup(response?.message || `Failed to ${modalAction} OT request`, "error");
+      }
+    } catch (error) {
+      console.error(`Error processing ${modalAction} action:`, error);
+      showPopup(`Failed to ${modalAction} OT request`, "error");
+    } finally {
       setIsProcessing(false);
-      closeModal();
-      showPopup(
-        modalAction === "accept"
-          ? "OT Request accepted successfully!"
-          : "OT Request rejected successfully.",
-        "success"
-      );
-    }, 500);
+    }
   };
 
   // ----- Popup helper -----
@@ -235,6 +190,8 @@ const PendingOTReview = () => {
       },
     });
   };
+
+  const indexOfFirstItem = (currentPage - 1) * ITEMS_PER_PAGE;
 
   // ============================================================
   // RENDER: MAIN LIST VIEW
@@ -253,13 +210,23 @@ const PendingOTReview = () => {
               <div className="mb-4">
                 <div className="row g-3 align-items-end">
                   <div className="col-md-3">
-                    <label className="form-label fw-bold">Search</label>
+                    <label className="form-label fw-bold">Patient Name</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Name, UHID, IP No., Surgery or Surgeon"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Enter patient name"
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label fw-bold">Mobile No.</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter mobile no."
+                      value={searchMobile}
+                      onChange={(e) => setSearchMobile(e.target.value)}
                     />
                   </div>
                   <div className="col-md-2">
@@ -274,11 +241,19 @@ const PendingOTReview = () => {
                       <option value="IPD">IPD</option>
                     </select>
                   </div>
-                  <div className="col-md-2 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>
+                  <div className="col-md-4 d-flex gap-2">
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleSearch}
+                      disabled={loading || searchLoading}
+                    >
                       Search
                     </button>
-                    <button className="btn btn-secondary" onClick={handleReset}>
+                    <button 
+                      className="btn btn-secondary" 
+                      onClick={handleReset}
+                      disabled={loading || searchLoading}
+                    >
                       Reset
                     </button>
                   </div>
@@ -306,63 +281,83 @@ const PendingOTReview = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item, idx) => (
-                        <tr key={item.id}>
-                          <td>{indexOfFirstItem + idx + 1}</td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                item.patientType === "OPD" ? "bg-info" : "bg-warning"
-                              }`}
-                            >
-                              {item.patientType}
-                            </span>
-                          </td>
-                          <td>{item.patientType === "OPD" ? item.uhid : item.ipNo}</td>
-                          <td>{item.patientName}</td>
-                          <td>{item.surgery}</td>
-                          <td>{item.surgeon}</td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                item.priority === "Emergency"
-                                  ? "bg-danger"
-                                  : item.priority === "Urgent"
-                                  ? "bg-warning text-dark"
-                                  : "bg-success"
-                              }`}
-                            >
-                              {item.priority}
-                            </span>
-                          </td>
-                          <td>{item.requestedOT}</td>
-                          <td>{item.requestedDate}</td>
-                          <td>{getDayOfWeek(item.requestedDate)}</td>
-                          <td>{item.requestedTime}</td>
-                          <td>{item.requestedBy}</td>
-                          <td className="text-center d-flex">
-                            <button
-                              className="btn btn-sm btn-success me-1"
-                              onClick={() => openModal(item, "accept")}
-                              title="Accept"
-                            >
-                              <i className="fa fa-check"></i>
-                            </button>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => openModal(item, "reject")}
-                              title="Reject"
-                            >
-                              <i className="fa fa-times"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                    {searchLoading ? (
+                      <tr>
+                        <td colSpan="13" className="text-center py-4">
+                          <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <p className="mt-2 text-muted">Loading...</p>
+                        </td>
+                      </tr>
+                    ) : data.length > 0 ? (
+                      data.map((item, idx) => {
+                        const surgeryNames = item.surgeryResponses
+                          ?.map((s) => s.surgeryName)
+                          .join(", ") || "-";
+
+                        return (
+                          <tr key={item.otBookingRequestId}>
+                            <td>{indexOfFirstItem + idx + 1}</td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  item.patientType === "OPD" ? "bg-info" : "bg-warning"
+                                }`}
+                              >
+                                {item.patientType}
+                              </span>
+                            </td>
+                            <td>
+                              {item.patientType === "OPD"
+                                ? item.uhid || "-"
+                                : item.admissionNo || "-"}
+                            </td>
+                            <td>{item.patientName || "-"}</td>
+                            <td>{surgeryNames}</td>
+                            <td>{item.surgeonName || "-"}</td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  item.priority?.toUpperCase() === "EMERGENCY"
+                                    ? "bg-danger"
+                                    : item.priority?.toUpperCase() === "URGENT"
+                                    ? "bg-warning text-dark"
+                                    : "bg-success"
+                                }`}
+                              >
+                                {item.priority || "-"}
+                              </span>
+                            </td>
+                            <td>{item.otName || "-"}</td>
+                            <td>{item.requestedDate || "-"}</td>
+                            <td>{getDayOfWeek(item.requestedDate)}</td>
+                            <td>{item.requestedTime || "-"}</td>
+                            <td>{item.requestedBy || "-"}</td>
+                            <td className="text-center d-flex">
+                              <button
+                                className="btn btn-sm btn-success me-1"
+                                onClick={() => openModal(item, "accept")}
+                                title="Accept"
+                              >
+                                <i className="fa fa-check"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => openModal(item, "reject")}
+                                title="Reject"
+                              >
+                                <i className="fa fa-times"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
-                        <td colSpan="12" className="text-center">
-                          No pending requests found.
+                        <td colSpan="13" className="text-center py-4 text-muted">
+                          <i className="fas fa-search fa-2x mb-3"></i>
+                          <p>No pending requests found.</p>
                         </td>
                       </tr>
                     )}
@@ -370,12 +365,15 @@ const PendingOTReview = () => {
                 </table>
               </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-              />
+              {data.length > 0 && totalPages > 0 && (
+                <Pagination
+                  totalItems={totalItems}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  totalPages={totalPages}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -407,17 +405,20 @@ const PendingOTReview = () => {
                   <strong>Patient:</strong> {selectedRecord.patientName} (
                   {selectedRecord.patientType === "OPD"
                     ? selectedRecord.uhid
-                    : selectedRecord.ipNo}
+                    : selectedRecord.admissionNo}
                   )
                 </p>
                 <p>
-                  <strong>Surgery:</strong> {selectedRecord.surgery}
+                  <strong>Surgery:</strong>{" "}
+                  {selectedRecord.surgeryResponses
+                    ?.map((s) => s.surgeryName)
+                    .join(", ")}
                 </p>
                 <p>
-                  <strong>Surgeon:</strong> {selectedRecord.surgeon}
+                  <strong>Surgeon:</strong> {selectedRecord.surgeonName}
                 </p>
                 <p>
-                  <strong>Requested OT:</strong> {selectedRecord.requestedOT}
+                  <strong>Requested OT:</strong> {selectedRecord.otName}
                 </p>
                 <p>
                   <strong>Requested Date/Time:</strong> {selectedRecord.requestedDate}{" "}
@@ -440,19 +441,6 @@ const PendingOTReview = () => {
                   </div>
                 )}
 
-                {modalAction === "accept" && (
-                  <div className="mb-3">
-                    <label className="form-label fw-bold">Remarks (Optional)</label>
-                    <textarea
-                      className="form-control"
-                      rows="2"
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Any additional notes..."
-                      disabled={isProcessing}
-                    />
-                  </div>
-                )}
               </div>
               <div className="modal-footer">
                 <button
