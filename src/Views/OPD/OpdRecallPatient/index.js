@@ -5262,6 +5262,8 @@ const OpdRRecallPatient = () => {
                         <Dental
                           patientId={selectedPatient?.patientId}
                           visitId={selectedPatient?.visitId}
+                          patientAge={selectedPatient?.age}
+                          patientDob={selectedPatient?.dob}
                           hideHeader={true}
                           hideButtons={true}
                         />

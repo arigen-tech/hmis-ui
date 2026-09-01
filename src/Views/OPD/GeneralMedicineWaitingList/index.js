@@ -74,7 +74,6 @@ import {
   putRequest,
   postRequest,
 } from "../../../service/apiService";
-import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
 import MasFamilyModel from "./FamilyHistryModel";
@@ -167,6 +166,7 @@ const GeneralMedicineWaitingList = () => {
   const visionRef = useRef();
   const earExaminationRef = useRef();
   const pregnancyRef = useRef();
+  const dentalRef = useRef();
   const departmentName =
     localStorage.getItem("departmentName") ||
     sessionStorage.getItem("departmentName") ||
@@ -1950,6 +1950,7 @@ const GeneralMedicineWaitingList = () => {
   const [procedureCareItems, setProcedureCareItems] = useState([
     { id: "", name: "", frequency: "", days: "", remarks: "" },
   ]);
+  const [procedureCareErrors, setProcedureCareErrors] = useState([]);
 
   // console.log("procedureCareItems", procedureCareItems);
 
@@ -3300,6 +3301,10 @@ const GeneralMedicineWaitingList = () => {
     isDentalDepartment ||
     selectedPatientDepartmentCode === DENTAL_DEPARTMENT_CODE ||
     selectedPatientDepartmentCode.includes("DENT");
+  const dentalDetails =
+    shouldShowDentalExamination && dentalRef.current
+      ? dentalRef.current.getDentalPayload?.()
+      : null;
 
   const validateSubmitForm = () => {
     const nextErrors = {};
@@ -3666,25 +3671,27 @@ const GeneralMedicineWaitingList = () => {
           investigationDate: item.date,
         }));
 
-      const surgeryAdvicePayload = {
-        otId: selectedOT || null,
-        surgeryDate: surgeryDate || null,
-        surgeryStartTime: surgeryStartTime || null,
-        surgeryEndTime: surgeryEndTime || null,
-        surgeryDetails: surgeryItems
-          .filter((item) => item.surgery && item.surgery.trim() !== "")
-          .map((item) => ({
-            surgeryItemId: item.surgeryId,
-            surgeryName: item.surgery,
-          })),
-      };
+      const validSurgeryItems = getValidSurgeryItems();
+
+      const surgeryAdvicePayload = validSurgeryItems.length
+        ? {
+            otId: selectedOT || null,
+            surgeryDate: surgeryDate || null,
+            surgeryStartTime: surgeryStartTime || null,
+            surgeryEndTime: surgeryEndTime || null,
+            surgeryDetails: validSurgeryItems.map((item) => ({
+              surgeryId: item.surgeryId,
+              surgeryName: item.surgeryName,
+            })),
+          }
+        : null;
 
       const hasSurgeryData =
         selectedOT ||
         surgeryDate ||
         surgeryStartTime ||
         surgeryEndTime ||
-        surgeryItems.some((item) => item.surgery && item.surgery.trim() !== "");
+        validSurgeryItems.length > 0;
 
       const treatmentList = treatmentItems
         .filter((item) => {
@@ -3749,6 +3756,27 @@ const GeneralMedicineWaitingList = () => {
         return;
       }
 
+      const dentalDetailsPayload =
+        dentalDetails
+          ? {
+              ...dentalDetails,
+              patientId: selectedPatient.patientId,
+              visitId: selectedPatient.visitId,
+              proceduresDetails: dentalDetails.proceduresDetails
+                ? {
+                    patientId: selectedPatient.patientId,
+                    visitId: selectedPatient.visitId,
+                    departmentId: mappedDepartmentId,
+                    hospitalId: mappedHospitalId,
+                    doctorId: mappedDoctorId,
+                    diagnosis: workingDiagnosis,
+                    procedureTypeCode: "DENTAL",
+                    procedureDetails: dentalDetails.proceduresDetails,
+                  }
+                : null,
+            }
+          : null;
+
       const payload = {
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvailable
@@ -3770,6 +3798,11 @@ const GeneralMedicineWaitingList = () => {
         ...(shouldShowVisionExamination && {
           ophthalmologyExaminationDetails,
         }),
+
+        ...(shouldShowDentalExamination &&
+          dentalDetailsPayload && {
+            dentalDetails: dentalDetailsPayload,
+          }),
 
         ...(isObgynDepartment &&
           obgDetailsData && {
@@ -3818,13 +3851,32 @@ const GeneralMedicineWaitingList = () => {
         surgeryAdvice: hasSurgeryData ? surgeryAdvicePayload : null,
 
         // ======== procedureCare =======
-        // procedureCare: procedureCareItems.map(item => ({
-        //   procedureId: Number(item.id),
-        //   procedureName: item.name,
-        //   frequencyId: Number(item.frequency),
-        //   noOfDays: Number(item.days),
-        //   remarks: item.remarks
-        // })),
+        procedureCare: procedureCareItems
+          .filter(
+            (item) =>
+              item.id &&
+              item.name &&
+              item.name.trim() !== "" &&
+              item.frequency &&
+              String(item.frequency).trim() !== "" &&
+              item.days &&
+              String(item.days).trim() !== "" &&
+              item.remarks &&
+              String(item.remarks).trim() !== "",
+          )
+          .map((item) => ({
+            procedureId: Number(item.id),
+            procedureName: item.name,
+            frequencyId: Number(item.frequency),
+            noOfDays: Number(item.days),
+            remarks: item.remarks,
+            patientId: selectedPatient.patientId,
+            visitId: selectedPatient.visitId,
+            departmentId: mappedDepartmentId,
+            hospitalId: mappedHospitalId,
+            doctorId: mappedDoctorId,
+            diagnosis: workingDiagnosis,
+          })),
 
         // ===== Doctor's Remarks =====
         doctorRemarks: doctorRemarksText,
@@ -3858,25 +3910,7 @@ const GeneralMedicineWaitingList = () => {
           : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
-        surgeryAdvice: hasSurgeryData
-          ? {
-              otId: selectedOT || null,
-              surgeryDate: surgeryDate || null,
-              surgeryStartTime: surgeryStartTime || null,
-              surgeryEndTime: surgeryEndTime || null,
-              surgeryDetails: surgeryItems
-                .filter(
-                  (item) =>
-                    item.surgeryId &&
-                    item.surgeryName &&
-                    item.surgeryName.trim() !== "",
-                )
-                .map((item) => ({
-                  surgeryId: item.surgeryId,
-                  surgeryName: item.surgeryName,
-                })),
-            }
-          : null,
+        surgeryAdvice: hasSurgeryData ? surgeryAdvicePayload : null,
         // ================= Referal ================
         referralFlag:
           referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
@@ -4671,6 +4705,7 @@ const GeneralMedicineWaitingList = () => {
         remarks: "",
       },
     ]);
+    setProcedureCareErrors((prev) => [...prev, {}]);
   };
 
   const handleRemoveProcedureCareItem = (index) => {
@@ -4703,6 +4738,7 @@ const GeneralMedicineWaitingList = () => {
     }
 
     setProcedureCareItems(newItems);
+    setProcedureCareErrors((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleProcedureCareChange = (index, field, value) => {
@@ -5032,6 +5068,14 @@ const GeneralMedicineWaitingList = () => {
       }
     }
   };
+
+  const getValidSurgeryItems = () =>
+    surgeryItems.filter(
+      (item) =>
+        item.surgeryId &&
+        item.surgeryName &&
+        item.surgeryName.trim() !== "",
+    );
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
@@ -5768,8 +5812,11 @@ const GeneralMedicineWaitingList = () => {
                     {expandedSections.dentalExamination && (
                       <div className="card-body">
                         <Dental
+                          ref={dentalRef}
                           patientId={selectedPatient?.patientId}
                           visitId={selectedPatient?.visitId}
+                          patientAge={selectedPatient?.age}
+                          patientDob={selectedPatient?.dob}
                           hideHeader={true}
                           hideButtons={true}
                         />
@@ -6925,7 +6972,7 @@ const GeneralMedicineWaitingList = () => {
                                     >
                                       <input
                                         type="text"
-                                        className="form-control"
+                                        className={`form-control ${procedureCareErrors[index]?.name ? "is-invalid" : ""}`}
                                         placeholder="Search Procedure..."
                                         value={
                                           procedureCareItems[index].name ||
@@ -7034,7 +7081,7 @@ const GeneralMedicineWaitingList = () => {
 
                                   <td>
                                     <select
-                                      className="form-select"
+                                      className={`form-select ${procedureCareErrors[index]?.frequency ? "is-invalid" : ""}`}
                                       value={row.frequency || ""}
                                       onChange={(e) =>
                                         handleProcedureCareChange(
@@ -7058,7 +7105,7 @@ const GeneralMedicineWaitingList = () => {
                                   <td>
                                     <input
                                       type="number"
-                                      className="form-control"
+                                      className={`form-control ${procedureCareErrors[index]?.days ? "is-invalid" : ""}`}
                                       value={row.days}
                                       onChange={(e) =>
                                         handleProcedureCareChange(
@@ -7074,7 +7121,7 @@ const GeneralMedicineWaitingList = () => {
                                   <td>
                                     <input
                                       type="text"
-                                      className="form-control"
+                                      className={`form-control ${procedureCareErrors[index]?.remarks ? "is-invalid" : ""}`}
                                       value={row.remarks}
                                       onChange={(e) =>
                                         handleProcedureCareChange(
@@ -7409,6 +7456,7 @@ const GeneralMedicineWaitingList = () => {
                           </label>
                           <button
                             className="btn btn-sm btn-primary"
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowOtCalendarModal(true);
@@ -7559,6 +7607,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-success"
+                                    type="button"
                                     onClick={handleAddSurgeryItem}
                                   >
                                     +
@@ -7567,6 +7616,7 @@ const GeneralMedicineWaitingList = () => {
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
+                                    type="button"
                                     onClick={() =>
                                       handleRemoveSurgeryItem(index)
                                     }
@@ -8811,7 +8861,6 @@ const GeneralMedicineWaitingList = () => {
                     : "Waiting List"}
                 </h4>
               </div>
-              {loading && <LoadingScreen />}
             </div>
             <div className="card-body">
               <div className="card mb-3">
@@ -8935,7 +8984,20 @@ const GeneralMedicineWaitingList = () => {
                   </thead>
 
                   <tbody>
-                    {currentItems.length > 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-4">
+                          <div className="d-flex justify-content-center align-items-center gap-2">
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            <span>Loading waiting list...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : currentItems.length > 0 ? (
                       currentItems.map((item, index) => (
                         <tr
                           key={item.id}

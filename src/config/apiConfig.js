@@ -1,5 +1,6 @@
+export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
-export const API_HOST = 'https://103.133.215.182:9090/hims';
+// export const API_HOST = 'https://103.133.215.182:9090/hims';
 // export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
@@ -841,8 +842,8 @@ export const GET_NURSING_CARE_PROCEDURE = '/ipd/getNursingCareProcedure';
 export const SAVE_ADVERSE_REACTION = '/ipd/saveAdverseReaction';
 export const GET_ADVERSE_REACTION_DETAILS = '/ipd/getAdverseReactionDetails';
 
-export const GET_PENDING_PRESCRIPTION_HEADERS = "/dispensary/pendingPrescriptionHeaders"; 
-export const GET_PRESCRIPTION_DETAILS = "/dispensary/pendingPrescriptionDetails";        
+export const GET_PENDING_PRESCRIPTION_HEADERS = "/dispensary/pendingPrescriptionHeaders";
+export const GET_PRESCRIPTION_DETAILS = "/dispensary/pendingPrescriptionDetails";
 export const APPROVE_PRESCRIPTION_URL = "/dispensary/approvePrescription";
 export const GET_ITEM_BATCHES_EXCEPT_STOCK = "/inventory/item/batchesExceptGivenStock";
 export const IP_SUMMARY_BILL_REPORT_API = `${ALL_REPORTS}/ipSummaryBill`;
@@ -854,3 +855,6 @@ export const GET_CURRENT_ACTIVE_DIET_SCHEDULE = "/ipd/getCurrentActiveDietSchedu
 export const SAVE_SHIFT_HANDOVER = '/ipd/saveShiftHandover';
 export const GET_SHIFT_HANDOVER = '/ipd/getShiftHandover';
 export const ACTIVE_ADMISSION_LIST_OT = '/otController/activeAdmissionList';
+
+export const MAS_TOOTH_BY_TYPE = `${MASTERS}/masToothByToothType`;
+export const GET_PROCEDURE_WORKLIST = `/procedure/getProcedureWorkList`;
