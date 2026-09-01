@@ -1448,6 +1448,76 @@ export const INTAKE_OUTPUT_SAVE_FAILURE = "Failed to save Intake/Output details.
 export const INTAKE_OUTPUT_SAVE_ERROR = "Error saving Intake/Output details. Please try again.";
 export const CANCEL_PATIENT_CONFIRMATION = "This will permanently close the OPD visit for this patient. Do you want to continue?"
 
+// -------------------- Operation Theatre Master --------------------
+export const FETCH_OT = "Failed to fetch Operation Theatre data.";
+export const ADD_OT = "Operation Theatre added successfully!";
+export const UPDATE_OT = "Operation Theatre updated successfully!";
+export const UPDATE_STATUS_OT = "Status updated successfully!";
+export const FAIL_OT = "Operation failed. Please try again.";
+export const DUPLICATE_OT = "Operation Theatre with this code or name already exists.";
+export const UPDATE_FAIL_OT = "Failed to update status.";
+
+// -------------------- OT Day Allocation --------------------
+export const FETCH_OT_DAY_ALLOC = "Failed to fetch OT Day Allocation data.";
+export const ADD_OT_DAY_ALLOC = "OT Day Allocation added successfully!";
+export const UPDATE_OT_DAY_ALLOC = "OT Day Allocation updated successfully!";
+export const UPDATE_STATUS_OT_DAY_ALLOC = "Status updated successfully!";
+export const FAIL_OT_DAY_ALLOC = "Operation failed. Please try again.";
+export const DUPLICATE_OT_DAY_ALLOC = "This allocation already exists for the selected OT, Day & Department.";
+export const UPDATE_FAIL_OT_DAY_ALLOC = "Failed to update status.";
+export const FETCH_OT_DAY_ALLOC_DETAIL = "Failed to fetch allocation details.";
+export const FETCH_OT_MASTER_LIST = "Failed to fetch Operation Theatre list.";
+export const FETCH_DEPARTMENT_MASTER_LIST = "Failed to fetch Department list.";
+
+// ========== Anaesthesia Type Master ==========
+export const FETCH_ANAESTHESIA_TYPE = "Failed to fetch anaesthesia types";
+export const ADD_ANAESTHESIA_TYPE = "Anaesthesia type added successfully";
+export const UPDATE_ANAESTHESIA_TYPE = "Anaesthesia type updated successfully";
+export const UPDATE_STATUS_ANAESTHESIA_TYPE = "Status updated successfully";
+export const FAIL_ANAESTHESIA_TYPE = "Failed to save anaesthesia type";
+export const DUPLICATE_ANAESTHESIA_TYPE = "Anaesthesia type code already exists";
+export const UPDATE_FAIL_ANAESTHESIA_TYPE = "Failed to update status";
+export const FETCH_ANAESTHESIA_TYPE_DETAIL = "Failed to fetch anaesthesia type details";
+
+// -------------------- Anaesthesia Instruction Master --------------------
+export const FETCH_ANAESTHESIA_INSTRUCTION = "Failed to fetch Anaesthesia Instruction data.";
+export const ADD_ANAESTHESIA_INSTRUCTION = "Anaesthesia Instruction added successfully!";
+export const UPDATE_ANAESTHESIA_INSTRUCTION = "Anaesthesia Instruction updated successfully!";
+export const UPDATE_STATUS_ANAESTHESIA_INSTRUCTION = "Status updated successfully!";
+export const FAIL_ANAESTHESIA_INSTRUCTION = "Operation failed. Please try again.";
+export const DUPLICATE_ANAESTHESIA_INSTRUCTION = "This instruction already exists for the selected type.";
+export const UPDATE_FAIL_ANAESTHESIA_INSTRUCTION = "Failed to update status.";
+export const FETCH_ANAESTHESIA_INSTRUCTION_DETAIL = "Failed to fetch instruction details.";
+
+// -------------------- OT Schedule Change Reason Master --------------------
+export const FETCH_OT_SCHEDULE_CHANGE_REASON = "Failed to fetch OT Schedule Change Reason data.";
+export const ADD_OT_SCHEDULE_CHANGE_REASON = "Reason added successfully!";
+export const UPDATE_OT_SCHEDULE_CHANGE_REASON = "Reason updated successfully!";
+export const UPDATE_STATUS_OT_SCHEDULE_CHANGE_REASON = "Status updated successfully!";
+export const FAIL_OT_SCHEDULE_CHANGE_REASON = "Operation failed. Please try again.";
+export const DUPLICATE_OT_SCHEDULE_CHANGE_REASON = "This reason already exists for the selected 'Applicable For' value.";
+export const UPDATE_FAIL_OT_SCHEDULE_CHANGE_REASON = "Failed to update status.";
+export const FETCH_OT_SCHEDULE_CHANGE_REASON_DETAIL = "Failed to fetch reason details.";
+
+export const FETCH_OT_TEAM_ROLE = "Failed to fetch OT Team Roles. Please try again.";
+export const FETCH_OT_TEAM_ROLE_DETAIL = "Failed to fetch role details. Please try again.";
+export const ADD_OT_TEAM_ROLE = "OT Team Role added successfully!";
+export const UPDATE_OT_TEAM_ROLE = "OT Team Role updated successfully!";
+export const UPDATE_STATUS_OT_TEAM_ROLE = "Role status updated successfully!";
+export const FAIL_OT_TEAM_ROLE = "Failed to save OT Team Role. Please try again.";
+export const DUPLICATE_OT_TEAM_ROLE = "A role with the same code or name already exists.";
+export const UPDATE_FAIL_OT_TEAM_ROLE = "Failed to update role status. Please try again.";
+
+
+export const FETCH_OT_BOOKING_STATUS = "Failed to fetch OT Booking Status data. Please try again.";
+export const FETCH_OT_BOOKING_STATUS_DETAIL = "Failed to fetch booking status details. Please try again.";
+export const ADD_OT_BOOKING_STATUS = "OT Booking Status added successfully!";
+export const UPDATE_OT_BOOKING_STATUS = "OT Booking Status updated successfully!";
+export const UPDATE_STATUS_OT_BOOKING_STATUS = "Booking status updated successfully!";
+export const FAIL_OT_BOOKING_STATUS = "Failed to save OT Booking Status. Please try again.";
+export const DUPLICATE_OT_BOOKING_STATUS = "A booking status with the same code already exists.";
+export const UPDATE_FAIL_OT_BOOKING_STATUS = "Failed to update booking status. Please try again.";
+
 // Item Type Codes
 export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";
 export const ITEM_TYPE_CODE_MED_CON = "MED_CON";

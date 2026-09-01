@@ -2,6 +2,18 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import { MAS_OT_SCHEDULE_CHANGE_REASON } from "../../../config/apiConfig";
+import {
+  FETCH_OT_SCHEDULE_CHANGE_REASON,
+  ADD_OT_SCHEDULE_CHANGE_REASON,
+  UPDATE_OT_SCHEDULE_CHANGE_REASON,
+  UPDATE_STATUS_OT_SCHEDULE_CHANGE_REASON,
+  FAIL_OT_SCHEDULE_CHANGE_REASON,
+  DUPLICATE_OT_SCHEDULE_CHANGE_REASON,
+  UPDATE_FAIL_OT_SCHEDULE_CHANGE_REASON,
+  FETCH_OT_SCHEDULE_CHANGE_REASON_DETAIL,
+} from "../../../config/constants";
 
 const OTScheduleChangeReasonMaster = () => {
   // ----- State -----
@@ -25,32 +37,31 @@ const OTScheduleChangeReasonMaster = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const [process, setProcess] = useState(false);
 
   // ----- Constants for validation -----
   const REASON_MAX_LENGTH = 255;
 
-  // ----- Dummy data -----
-  const dummyData = [
-    { id: 1, reason: "Patient not available", applicableFor: "Cancel", status: "Y" },
-    { id: 2, reason: "Surgeon not available", applicableFor: "Reschedule", status: "Y" },
-    { id: 3, reason: "Equipment malfunction", applicableFor: "Both", status: "Y" },
-    { id: 4, reason: "Emergency case added", applicableFor: "Cancel", status: "N" }
-  ];
-
-  // ----- Effects -----
-  useEffect(() => {
+  // ----- Fetch data (flag=0 = all) -----
+  const fetchData = async (flag = 0) => {
     setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
+    try {
+      const { response } = await getRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/getAll/${flag}`);
+      setData(response || []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      showPopup(FETCH_OT_SCHEDULE_CHANGE_REASON, "error");
+      setData([]);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
+  // ----- Form validation -----
   useEffect(() => {
     const { reason, applicableFor } = formData;
     setIsFormValid(reason.trim() !== "" && applicableFor !== "");
@@ -62,72 +73,14 @@ const OTScheduleChangeReasonMaster = () => {
     item.applicableFor?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ----- Handlers -----
+  // ----- Pagination -----
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
   const handlePageChange = (page) => setCurrentPage(page);
 
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setFormData({
-      reason: item.reason || "",
-      applicableFor: item.applicableFor || ""
-    });
-    setShowForm(true);
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-    setProcess(true);
-
-    setTimeout(() => {
-      setProcess(false);
-      showPopup(editingItem ? "Updated successfully" : "Added successfully", "success", () => {
-        resetForm();
-        setData(dummyData);
-      });
-    }, 500);
-  };
-
-  const resetForm = () => {
-    setEditingItem(null);
-    setShowForm(false);
-    setFormData({ reason: "", applicableFor: "" });
-    setPopupMessage(null);
-  };
-
-  const showPopup = (message, type = "info", onCloseCallback = null) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-        if (onCloseCallback) onCloseCallback();
-      },
-    });
-  };
-
-  const handleSwitchChange = (id, name, newStatus) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, name });
-  };
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.id !== null) {
-      setProcess(true);
-      setTimeout(() => {
-        setProcess(false);
-        showPopup(
-          `Reason ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
-          "success",
-          () => {
-            setData(dummyData);
-            setCurrentPage(1);
-          }
-        );
-      }, 500);
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
-  };
-
+  // ----- Handlers -----
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
@@ -143,31 +96,152 @@ const OTScheduleChangeReasonMaster = () => {
     setCurrentPage(1);
   };
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    setData(dummyData);
+  const resetForm = () => {
+    setEditingItem(null);
+    setShowForm(false);
+    setFormData({ reason: "", applicableFor: "" });
+    setPopupMessage(null);
   };
 
-  const handleActivate = () => {
-    if (editingItem && editingItem.status?.toLowerCase() === "n") {
-      setProcess(true);
-      setTimeout(() => {
-        setProcess(false);
-        showPopup("Reason activated successfully!", "success", () => {
-          setData(dummyData);
-          resetForm();
-        });
-      }, 500);
+  const handleCancel = () => resetForm();
+
+  // ----- Edit -----
+  // Pulls the record fresh via GET /master/masOtScheduleChangeReason/getById/{id}
+  // on the primary key (reasonId) rather than trusting the locally cached
+  // row, so the form always reflects the latest server state.
+  const handleEdit = async (item) => {
+    setProcess(true);
+    try {
+      const { response } = await getRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/getById/${item.reasonId}`);
+      const record = response || item;
+
+      setEditingItem(record);
+      setFormData({
+        reason: record.reason || "",
+        applicableFor: record.applicableFor || "",
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error("Fetch by id error:", error);
+      showPopup(FETCH_OT_SCHEDULE_CHANGE_REASON_DETAIL, "error");
+    } finally {
+      setProcess(false);
     }
   };
 
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  // ----- Save (Add / Update) -----
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-  // ----- Render -----
+    setProcess(true);
+
+    // Check duplicate (same reason text + applicable-for combination)
+    const duplicate = data.find(
+      (rec) =>
+        rec.reason?.trim().toLowerCase() === formData.reason.trim().toLowerCase() &&
+        rec.applicableFor === formData.applicableFor &&
+        (!editingItem || rec.reasonId !== editingItem.reasonId)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_OT_SCHEDULE_CHANGE_REASON, "error");
+      setProcess(false);
+      return;
+    }
+
+    // Matches the create/update request body exactly: { reason, applicableFor }
+    const payload = {
+      reason: formData.reason.trim(),
+      applicableFor: formData.applicableFor,
+    };
+
+    try {
+      if (editingItem) {
+        await putRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/update/${editingItem.reasonId}`, payload);
+        showPopup(UPDATE_OT_SCHEDULE_CHANGE_REASON, "success", () => {
+          fetchData();
+          resetForm();
+        });
+      } else {
+        await postRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/create`, payload);
+        showPopup(ADD_OT_SCHEDULE_CHANGE_REASON, "success", () => {
+          fetchData();
+          resetForm();
+        });
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      showPopup(FAIL_OT_SCHEDULE_CHANGE_REASON, "error");
+    } finally {
+      setProcess(false);
+    }
+  };
+
+  // ----- Status toggle -----
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ isOpen: true, id, newStatus, name });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
+      return;
+    }
+
+    setProcess(true);
+    try {
+      await putRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`);
+      showPopup(UPDATE_STATUS_OT_SCHEDULE_CHANGE_REASON, "success", () => {
+        fetchData();
+      });
+    } catch (error) {
+      console.error("Status update error:", error);
+      showPopup(UPDATE_FAIL_OT_SCHEDULE_CHANGE_REASON, "error");
+    } finally {
+      setProcess(false);
+      setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
+    }
+  };
+
+  // ----- Activate (from edit form) -----
+  const handleActivate = async () => {
+    if (!editingItem) return;
+    setProcess(true);
+    try {
+      await putRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/status/${editingItem.reasonId}?status=Y`);
+      showPopup(UPDATE_STATUS_OT_SCHEDULE_CHANGE_REASON, "success", () => {
+        fetchData();
+        resetForm();
+      });
+    } catch (error) {
+      console.error("Activation error:", error);
+      showPopup(UPDATE_FAIL_OT_SCHEDULE_CHANGE_REASON, "error");
+    } finally {
+      setProcess(false);
+    }
+  };
+
+  // ----- Refresh -----
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
+  };
+
+  // ----- Popup helper -----
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
+  };
+
+  // ====================== RENDER ======================
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -212,7 +286,7 @@ const OTScheduleChangeReasonMaster = () => {
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                  <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                     <i className="mdi mdi-arrow-left"></i> Back
                   </button>
                 )}
@@ -236,7 +310,7 @@ const OTScheduleChangeReasonMaster = () => {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((item) => (
-                            <tr key={item.id}>
+                            <tr key={item.reasonId}>
                               <td>{item.reason || '-'}</td>
                               <td>
                                   {item.applicableFor || '-'}
@@ -248,13 +322,13 @@ const OTScheduleChangeReasonMaster = () => {
                                     type="checkbox"
                                     checked={item.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
-                                      item.id,
+                                      item.reasonId,
                                       item.reason,
                                       item.status?.toLowerCase() === "y" ? "n" : "y"
                                     )}
-                                    id={`switch-${item.id}`}
+                                    id={`switch-${item.reasonId}`}
                                   />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>
+                                  <label className="form-check-label px-0" htmlFor={`switch-${item.reasonId}`}>
                                     {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
@@ -263,7 +337,7 @@ const OTScheduleChangeReasonMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status?.toLowerCase() !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y" || process}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -352,7 +426,7 @@ const OTScheduleChangeReasonMaster = () => {
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={resetForm}
+                      onClick={handleCancel}
                       disabled={process}
                     >
                       Cancel

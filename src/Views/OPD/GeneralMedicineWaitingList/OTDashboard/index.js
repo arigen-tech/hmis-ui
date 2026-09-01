@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 
 const OTDashboard = () => {
@@ -33,7 +31,6 @@ const OTDashboard = () => {
     return slots[Math.floor(Math.random() * slots.length)];
   };
 
-  // ----- Dummy data generation with detailed surgeries -----
   const generateDummyData = (month, year, otFilter, deptFilter) => {
     const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
     const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -77,53 +74,58 @@ const OTDashboard = () => {
     const daysData = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, monthIndex, d);
-      const dayOfWeek = dateObj.getDay();
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        const numSurgeries = Math.floor(Math.random() * 4) + 1;
-        const surgeriesForDay = [];
-        for (let i = 0; i < numSurgeries; i++) {
-          const status = statuses[Math.floor(Math.random() * statuses.length)];
-          surgeriesForDay.push({
-            time: getRandomTimeSlot(),
-            ot: `OT-${String(Math.floor(Math.random() * 5) + 1).padStart(2, "0")}`,
-            uhid: `IPD/26/${String(Math.floor(Math.random() * 10000) + 1000).padStart(5, "0")}`,
-            patient: patientNames[Math.floor(Math.random() * patientNames.length)],
-            surgery: surgeries[Math.floor(Math.random() * surgeries.length)],
-            surgeon: surgeons[Math.floor(Math.random() * surgeons.length)],
-            status: status,
-          });
-        }
-
-        const scheduled = surgeriesForDay.filter(s => s.status === "Scheduled").length;
-        const completed = surgeriesForDay.filter(s => s.status === "Completed").length;
-        const cancelled = surgeriesForDay.filter(s => s.status === "Cancelled").length;
-        const otList = [...new Set(surgeriesForDay.map(s => s.ot))];
-
-        daysData.push({
-          date: `${d}-${month.substring(0, 3)}-${year}`,
-          scheduled,
-          completed,
-          cancelled,
-          otList,
-          surgeries: surgeriesForDay,
+      const dayOfWeek = dateObj.getDay(); 
+      const numSurgeries = Math.floor(Math.random() * 4) + 1;
+      const surgeriesForDay = [];
+      for (let i = 0; i < numSurgeries; i++) {
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        surgeriesForDay.push({
+          time: getRandomTimeSlot(),
+          ot: `OT-${String(Math.floor(Math.random() * 5) + 1).padStart(2, "0")}`,
+          uhid: `IPD/26/${String(Math.floor(Math.random() * 10000) + 1000).padStart(5, "0")}`,
+          patient: patientNames[Math.floor(Math.random() * patientNames.length)],
+          surgery: surgeries[Math.floor(Math.random() * surgeries.length)],
+          surgeon: surgeons[Math.floor(Math.random() * surgeons.length)],
+          status: status,
         });
       }
+
+      const scheduled = surgeriesForDay.filter(s => s.status === "Scheduled").length;
+      const completed = surgeriesForDay.filter(s => s.status === "Completed").length;
+      const cancelled = surgeriesForDay.filter(s => s.status === "Cancelled").length;
+      const otList = [...new Set(surgeriesForDay.map(s => s.ot))];
+
+      daysData.push({
+        date: `${d}-${month.substring(0, 3)}-${year}`,
+        scheduled,
+        completed,
+        cancelled,
+        otList,
+        surgeries: surgeriesForDay,
+        dayOfWeek, 
+      });
     }
 
-    // Group into weeks (Mon-Fri)
+    let firstDay = new Date(year, monthIndex, 1).getDay(); // 0=Sun
+    let firstMondayOffset = (firstDay === 0) ? 6 : firstDay - 1; // days to subtract to get Monday
+
     const weeks = [];
-    let dayCounter = 0;
-    while (dayCounter < daysData.length) {
-      const weekDays = [];
-      for (let i = 0; i < 5; i++) {
-        if (dayCounter < daysData.length) {
-          weekDays.push(daysData[dayCounter]);
-          dayCounter++;
-        } else {
-          weekDays.push(null);
-        }
+    let currentWeek = [];
+    for (let i = 0; i < firstMondayOffset; i++) {
+      currentWeek.push(null);
+    }
+    for (let i = 0; i < daysData.length; i++) {
+      currentWeek.push(daysData[i]);
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
       }
-      weeks.push(weekDays);
+    }
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push(null);
+      }
+      weeks.push(currentWeek);
     }
 
     let totalCases = 0,
@@ -332,18 +334,15 @@ const OTDashboard = () => {
                 </div>
               </div>
 
-              {/* Weekly Calendar – day cards with yellow background and click handler */}
               <div className="calendar-container">
-                {/* Weekday Headers */}
                 <div className="row g-2 mb-2">
-                  {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"].map((day) => (
+                  {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((day) => (
                     <div key={day} className="col text-center fw-bold">
                       {day}
                     </div>
                   ))}
                 </div>
 
-                {/* Week Rows */}
                 {weeksData.map((week, weekIndex) => (
                   <div key={weekIndex} className="row g-2 mb-3">
                     {week.map((day, dayIndex) => (

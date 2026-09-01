@@ -1,7 +1,7 @@
 export const API_HOST = 'https://api.arigenhmis.com/hims';
-// export const API_HOST = 'http://103.133.215.182:8081/hims';
+// // export const API_HOST = 'http://103.133.215.182:8081/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
-// export const API_HOST = "http://localhost:8080";
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -95,6 +95,14 @@ export const DASHBOARD_STATS_API = `/dashboard`;
 export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
 
 export const DEPARTMENT = `/department`;
+
+export const MAS_OPERATION_THEATRE = `${MASTERS}/operationTheatre`;
+export const MAS_OT_DAY_ALLOCATION = `${MASTERS}/otDayAllocation`;
+export const MAS_ANAESTHESIA_TYPE = `${MASTERS}/masAnaesthesiaType`;
+export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction`;
+export const MAS_OT_SCHEDULE_CHANGE_REASON = `${MASTERS}/masOtScheduleChangeReason`;
+export const MAS_OT_TEAM_ROLE = `${MASTERS}/otTeamRole`;
+export const MAS_OT_BOOKING_STATUS = `${MASTERS}/otBookingStatus`;
 
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
