@@ -188,6 +188,7 @@ export const RADIOLOGY = `/radiology`;
 export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
 export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
+export const CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/cancelOrCompleteInvestigationRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
@@ -494,6 +495,7 @@ export const STATUS_N = `N`;
 export const STATUS_S = `S`;
 export const STATUS_P = `P`;
 export const STATUS_D = `D`;
+export const STATUS_X = `x`;
 export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
 export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;

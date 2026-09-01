@@ -18,6 +18,7 @@ const DoctorRoaster = () => {
   const [popupMessage, setPopupMessage] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [originalRosterData, setOriginalRosterData] = useState(null); 
+  const [loadedDepartment, setLoadedDepartment] = useState(null);
 
   const jwtToken = sessionStorage.getItem("token") || localStorage.getItem("token");
 
@@ -41,15 +42,16 @@ const DoctorRoaster = () => {
 
   useEffect(() => {
     if (department) {
+      setDoctor("");
       fetchDoctorData();
     }
   }, [department]);
 
   useEffect(() => {
-    if (department && fromDate) {
+    if (department && fromDate && loadedDepartment === department) {
       prepareRosterData();
     }
-  }, [department, doctor, fromDate, doctorData]);
+  }, [department, doctor, fromDate, doctorData, loadedDepartment]);
 
 
 
@@ -84,7 +86,9 @@ const DoctorRoaster = () => {
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } 
+    } finally {
+      setLoadedDepartment(department);
+    }
   };
 
   const generateDatesFromSelectedDate = () => {

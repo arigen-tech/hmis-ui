@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest } from "../../../service/apiService";
-import { CT_MODALITY } from "../../../config/apiConfig";
+import { CT_MODALITY, CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION, STATUS_X } from "../../../config/apiConfig";
 
 const CTInvestigation = () => {
   const [ctData, setCtData] = useState([]);
@@ -20,7 +20,7 @@ const CTInvestigation = () => {
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     id: null,
-    action: "", // "complete" or "cancel"
+    action: "", // "complete" or "close"
     patientName: "",
     investigationName: ""
   });
@@ -168,12 +168,12 @@ const CTInvestigation = () => {
     });
   };
 
-  /* ---------------- CANCEL INVESTIGATION ---------------- */
-  const handleCancelClick = (row) => {
+  /* ---------------- CLOSE INVESTIGATION ---------------- */
+  const handleCloseClick = (row) => {
     setConfirmDialog({
       isOpen: true,
       id: row.id,
-      action: "cancel",
+      action: "close",
       patientName: row.patientName,
       investigationName: row.investigationName
     });
@@ -185,15 +185,15 @@ const CTInvestigation = () => {
       try {
         setActionLoading(true);
 
-        const status = confirmDialog.action === "complete" ? "y" : "c";
+        const status = confirmDialog.action === "complete" ? "y" : STATUS_X;
 
         const response = await putRequest(
-          `/radiology/cancelOrCompleteInvestigationRadiology?id=${confirmDialog.id}&status=${status}`
+          `${CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION}?id=${confirmDialog.id}&status=${status}`
         );
 
         if (response?.status === 200) {
           showPopup(
-            `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
+            `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Closed"} Successfully`,
             "success",
             () => {
               // Refresh the list to reflect the change
@@ -371,14 +371,14 @@ const CTInvestigation = () => {
 
                               <button
                                 className="btn btn-sm btn-danger"
-                                onClick={() => handleCancelClick(item)}
+                                onClick={() => handleCloseClick(item)}
                                 disabled={loading || searchLoading || actionLoading}
-                                title="Cancel Investigation"
+                                title="Close Investigation"
                               >
                                 {actionLoading && confirmDialog.id === item.id ? (
                                   <span className="spinner-border spinner-border-sm me-1" />
                                 ) : null}
-                                Cancel
+                                Close
                               </button>
                             </div>
                           </td>
@@ -427,7 +427,7 @@ const CTInvestigation = () => {
                 <div className="modal-content">
                   <div className="modal-header">
                     <h5 className="modal-title">
-                      Confirm {confirmDialog.action === "complete" ? "Complete" : "Cancel"}
+                      Confirm {confirmDialog.action === "complete" ? "Complete" : "Close"}
                     </h5>
                     <button
                       type="button"
@@ -439,7 +439,7 @@ const CTInvestigation = () => {
                   <div className="modal-body">
                     <p>
                       Are you sure you want to{" "}
-                      {confirmDialog.action === "complete" ? "Complete" : "Cancel"}{" "}
+                      {confirmDialog.action === "complete" ? "Complete" : "Close"}{" "}
                       this Request?
                     </p>
                   </div>
@@ -459,7 +459,7 @@ const CTInvestigation = () => {
                       {actionLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" />
-                          {confirmDialog.action === "complete" ? "Completing..." : "Cancelling..."}
+                          {confirmDialog.action === "complete" ? "Completing..." : "Closing..."}
                         </>
                       ) : (
                         "Yes"
