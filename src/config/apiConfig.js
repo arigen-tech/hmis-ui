@@ -520,6 +520,7 @@ export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
 export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
 export const REQUEST_PARAM_PATIENT_ID = "patientId";
 export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE = "departmentTypeCode";
+export const REQUEST_PARAM_DEPARTMENT_TYPE = "departmentType";
 export const REQUEST_PARAM_GENDER_ID = "genderId";
 export const REQUEST_PARAM_ICD_ID = "icdId";
 export const REQUEST_PARAM_PAGE = "page";

@@ -19,7 +19,8 @@ const AnaesthesiaTypeMaster = () => {
   // ----- State -----
   const [formData, setFormData] = useState({
     anaesthesiaTypeCode: "",
-    anaesthesiaTypeName: ""
+    anaesthesiaTypeName: "",
+    price: ""
   });
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -64,9 +65,11 @@ const AnaesthesiaTypeMaster = () => {
 
   // ----- Form validation -----
   useEffect(() => {
-    const { anaesthesiaTypeCode, anaesthesiaTypeName } = formData;
+    const { anaesthesiaTypeCode, anaesthesiaTypeName, price } = formData;
     setIsFormValid(
-      anaesthesiaTypeCode.trim() !== "" && anaesthesiaTypeName.trim() !== ""
+      anaesthesiaTypeCode.trim() !== "" && 
+      anaesthesiaTypeName.trim() !== "" && 
+      price.toString().trim() !== ""
     );
   }, [formData]);
 
@@ -97,7 +100,7 @@ const AnaesthesiaTypeMaster = () => {
   const resetForm = () => {
     setEditingItem(null);
     setShowForm(false);
-    setFormData({ anaesthesiaTypeCode: "", anaesthesiaTypeName: "" });
+    setFormData({ anaesthesiaTypeCode: "", anaesthesiaTypeName: "", price: "" });
     setPopupMessage(null);
   };
 
@@ -114,6 +117,7 @@ const AnaesthesiaTypeMaster = () => {
       setFormData({
         anaesthesiaTypeCode: record.anaesthesiaTypeCode || "",
         anaesthesiaTypeName: record.anaesthesiaTypeName || "",
+        price: record.price !== null && record.price !== undefined ? record.price : "",
       });
       setShowForm(true);
     } catch (error) {
@@ -147,6 +151,7 @@ const AnaesthesiaTypeMaster = () => {
     const payload = {
       anaesthesiaTypeCode: formData.anaesthesiaTypeCode.trim(),
       anaesthesiaTypeName: formData.anaesthesiaTypeName.trim(),
+      price: formData.price === "" ? null : Number(formData.price),
     };
 
     console.log("Sending payload:", payload);
@@ -278,7 +283,7 @@ const AnaesthesiaTypeMaster = () => {
                       className="btn btn-success"
                       onClick={() => {
                         setEditingItem(null);
-                        setFormData({ anaesthesiaTypeCode: "", anaesthesiaTypeName: "" });
+                        setFormData({ anaesthesiaTypeCode: "", anaesthesiaTypeName: "", price: "" });
                         setShowForm(true);
                       }}
                     >
@@ -303,6 +308,7 @@ const AnaesthesiaTypeMaster = () => {
                         <tr>
                           <th>Code</th>
                           <th>Name</th>
+                          <th>Price</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
@@ -313,6 +319,7 @@ const AnaesthesiaTypeMaster = () => {
                             <tr key={item.anaesthesiaTypeId}>
                               <td>{item.anaesthesiaTypeCode || '-'}</td>
                               <td style={{ textTransform: "capitalize" }}>{item.anaesthesiaTypeName || '-'}</td>
+                              <td>{item.price !== null && item.price !== undefined ? item.price : '-'}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -392,6 +399,23 @@ const AnaesthesiaTypeMaster = () => {
                         onChange={handleInputChange}
                         value={formData.anaesthesiaTypeName}
                         maxLength={NAME_MAX_LENGTH}
+                        required
+                        disabled={process}
+                      />
+                    </div>
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Price <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        id="price"
+                        placeholder="Enter price"
+                        onChange={handleInputChange}
+                        value={formData.price}
+                        min="0"
+                        step="0.01"
                         required
                         disabled={process}
                       />

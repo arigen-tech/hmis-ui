@@ -18,6 +18,7 @@ import {
   REQUEST_PARAM_CANCELLATION_REASON_ID,
   REQUEST_PARAM_DEPARTMENT_ID,
   REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  REQUEST_PARAM_DEPARTMENT_TYPE,
   REQUEST_PARAM_DOCTOR_ID,
   REQUEST_PARAM_FLAG,
   REQUEST_PARAM_FROM_DATE,
@@ -88,6 +89,8 @@ const DailyCancellationReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isDepartmentLoading, setIsDepartmentLoading] = useState(false);
+  const [isDoctorLoading, setIsDoctorLoading] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [doctorOptions, setDoctorOptions] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState("");
@@ -149,7 +152,6 @@ const DailyCancellationReport = () => {
   // ======================================================================
   useEffect(() => {
     fetchDepartment(selectedDeptTypeCode);
-    fetchCancellationReasons();
   }, [selectedDeptTypeCode]);
 
   useEffect(() => {
@@ -158,11 +160,13 @@ const DailyCancellationReport = () => {
     daysAgo.setDate(today.getDate() - DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
     setToDate(formatDateForInput(today));
     setFromDate(formatDateForInput(daysAgo));
+    
+    fetchCancellationReasons();
   }, []);
 
   async function fetchDepartment(departmentTypeCode = selectedDeptTypeCode) {
     try {
-      setLoading(true);
+      setIsDepartmentLoading(true);
       const data = await getRequest(
         `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${departmentTypeCode}`,
       );
@@ -175,7 +179,7 @@ const DailyCancellationReport = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     } finally {
-      setLoading(false);
+      setIsDepartmentLoading(false);
     }
   }
 
@@ -190,9 +194,10 @@ const DailyCancellationReport = () => {
         setReasonOptions([]);
       }
     } catch (error) {
-      setLoading(false);
       console.error(FETCH_CANCELLATION_REASONS_ERROR_LOG, error);
       setReasonOptions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -271,11 +276,14 @@ const DailyCancellationReport = () => {
       return;
     }
     try {
+      setIsDoctorLoading(true);
       const { status, response } = await getRequest(`${DOCTOR_BY_SPECIALITY}${deptId}`);
       setDoctorOptions(status === 200 && Array.isArray(response) ? response : []);
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
       setDoctorOptions([]);
+    } finally {
+      setIsDoctorLoading(false);
     }
   };
 
@@ -301,6 +309,7 @@ const DailyCancellationReport = () => {
       const hospitalId = sessionStorage.getItem("hospitalId");
       const params = new URLSearchParams({
         [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+        [REQUEST_PARAM_DEPARTMENT_TYPE]: selectedDeptTypeCode,
         [REQUEST_PARAM_FROM_DATE]: fromDate,
         [REQUEST_PARAM_TO_DATE]: toDate,
         ...(selectedDepartment && { [REQUEST_PARAM_DEPARTMENT_ID]: selectedDepartment }),
@@ -333,6 +342,7 @@ const DailyCancellationReport = () => {
       const hospitalId = sessionStorage.getItem("hospitalId");
       const params = new URLSearchParams({
         [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+        [REQUEST_PARAM_DEPARTMENT_TYPE]: selectedDeptTypeCode,
         [REQUEST_PARAM_FROM_DATE]: fromDate,
         [REQUEST_PARAM_TO_DATE]: toDate,
         [REQUEST_PARAM_FLAG]: flag,
@@ -449,8 +459,8 @@ const DailyCancellationReport = () => {
                 </div>
                 <div className="col-md-2 mb-3">
                   <label className="form-label fw-bold">Department</label>
-                  <select className="form-select mt-1" value={selectedDepartment} onChange={handleDepartmentChange}>
-                    <option value="">All Departments</option>
+                  <select className="form-select mt-1" value={selectedDepartment} onChange={handleDepartmentChange} disabled={isDepartmentLoading}>
+                    <option value="">{isDepartmentLoading ? "Loading..." : "All Departments"}</option>
                     {departmentData.map((dept) => (
                       <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
                     ))}
@@ -458,8 +468,8 @@ const DailyCancellationReport = () => {
                 </div>
                 <div className="col-md-2 mb-3">
                   <label className="form-label fw-bold">Doctor</label>
-                  <select className="form-select mt-1" value={selectedDoctor} onChange={handleDoctorChange} disabled={!isDoctorSelectionEnabled || !selectedDepartment}>
-                    <option value="">All Doctors</option>
+                  <select className="form-select mt-1" value={selectedDoctor} onChange={handleDoctorChange} disabled={!isDoctorSelectionEnabled || !selectedDepartment || isDoctorLoading}>
+                    <option value="">{isDoctorLoading ? "Loading..." : "All Doctors"}</option>
                     {doctorOptions.map((doctor) => (
                       <option key={doctor.userId} value={doctor.userId}>{`${doctor.firstName} ${doctor.middleName || ""} ${doctor.lastName || ""}`.trim()}</option>
                     ))}
