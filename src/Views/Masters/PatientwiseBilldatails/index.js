@@ -120,13 +120,13 @@ const PatientwiseBilldatails = () => {
       let apiUrl = "";
 
       if (record.serviceCategoryId === 1) {
-        apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
+        apiUrl = `${OPD_INVOICE_API}?billHdId=${record.headerId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 2) {
-        apiUrl = `${LAB_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
+        apiUrl = `${LAB_INVOICE_API}?billHdId=${record.headerId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 4) {
-        apiUrl = `${RADIOLOGY_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
+        apiUrl = `${RADIOLOGY_INVOICE_API}?billHdId=${record.headerId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 3) {
-        apiUrl = `${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${record.prescriptionHeaderId}&flag=${flag}`;
+        apiUrl = `${PRESCRIPTION_INVOICE_REPORT}?billHdId=${record.headerId}&flag=${flag}`;
       } else {
         showPopup(
           "Report type not supported for this service category",
@@ -226,6 +226,7 @@ const PatientwiseBilldatails = () => {
           billNo: item.billNo,
           billDate: item.billDate || "",
           serviceCategoryId: item.serviceCategoryId || null,
+          headerId: item.headerId,
           registrationNo: item.registrationNo || null,
         }));
 
