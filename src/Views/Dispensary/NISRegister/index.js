@@ -2,38 +2,37 @@ import { useState } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import { NIS_MEDICINE_REGISTER_REPORT_URL, STATUS_D } from "../../../config/apiConfig";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const NISRegister = () => {
   // ----- State -----
-  const [department, setDepartment] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [reportGenerated, setReportGenerated] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-
-  // Dummy department options (can be replaced with real data later)
-  const departmentOptions = [
-    "Pharmacy",
-    "General Store",
-    "CSSD",
-    "Lab",
-    "Radiology",
-  ];
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
 
   // ----- Handlers -----
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     setLoading(true);
-    // Simulate a short delay (no API call)
-    setTimeout(() => {
+    const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
+    try {
+      const reportUrl = `${NIS_MEDICINE_REGISTER_REPORT_URL}?hospitalId=${hospitalId}&fromDate=${fromDate}&toDate=${toDate}`;
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+      const fileURL = window.URL.createObjectURL(blob);
+      setReportPdfUrl(fileURL);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      showPopup("Failed to generate report", "error");
+    } finally {
       setLoading(false);
-      setReportGenerated(true);
-      showPopup("Report generated successfully!", "success");
-    }, 500);
+    }
   };
 
   const handleReset = () => {
-    setDepartment("");
     setFromDate("");
     setToDate("");
     setReportGenerated(false);
@@ -49,6 +48,7 @@ const NISRegister = () => {
 
   return (
     <div className="content-wrapper">
+      {loading && <LoadingScreen />}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -58,22 +58,6 @@ const NISRegister = () => {
             <div className="card-body">
               {/* Filter Section */}
               <div className="row mb-4 align-items-end">
-                <div className="col-md-3">
-                  <label className="form-label">Department</label>
-                  <select
-                    className="form-select"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                  >
-                    <option value="">Select Department</option>
-                    {departmentOptions.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 <div className="col-md-3">
                   <label className="form-label">From Date</label>
                   <input
@@ -98,7 +82,7 @@ const NISRegister = () => {
                   <button
                     className="btn btn-primary"
                     onClick={handleGenerateReport}
-                    disabled={loading || !department || !fromDate || !toDate}
+                    disabled={loading || !fromDate || !toDate}
                   >
                     {loading ? (
                       <>
@@ -167,6 +151,15 @@ const NISRegister = () => {
           message={popupMessage.message}
           type={popupMessage.type}
           onClose={popupMessage.onClose}
+        />
+      )}
+
+      {/* Report PDF Viewer */}
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          name="NIS Register Report"
+          onClose={() => setReportPdfUrl(null)}
         />
       )}
     </div>
