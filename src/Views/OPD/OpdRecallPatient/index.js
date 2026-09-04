@@ -3412,9 +3412,9 @@ const OpdRRecallPatient = () => {
               ],
         );
 
-        const labInvestigations = patientData.labOrderHds?.length
+        const labInvestigations = Array.isArray(patientData.labOrderHds)
           ? patientData.labOrderHds.flatMap((hd) =>
-              hd.labOrderDts.map((dt) => ({
+              (Array.isArray(hd?.labOrderDts) ? hd.labOrderDts : []).map((dt) => ({
                 id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
@@ -3426,9 +3426,9 @@ const OpdRRecallPatient = () => {
             )
           : [];
 
-        const radInvestigations = patientData.radOrderHds?.length
+        const radInvestigations = Array.isArray(patientData.radOrderHds)
           ? patientData.radOrderHds.flatMap((hd) =>
-              hd.radOrderDts.map((dt) => ({
+              (Array.isArray(hd?.radOrderDts) ? hd.radOrderDts : []).map((dt) => ({
                 id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
@@ -3602,7 +3602,7 @@ const OpdRRecallPatient = () => {
                   surgeryName:
                     item.surgeryName ||
                     (() => {
-                      const surgery = surgeryMasterData.find(
+                      const surgery = (surgeryMasterData || []).find(
                         (s) => Number(s.surgeryId) === Number(item.surgeryId),
                       );
 
@@ -3718,7 +3718,11 @@ const OpdRRecallPatient = () => {
       }
     } catch (error) {
       console.error("Error fetching patient details:", error);
-      showPopup("Error fetching patient details. Please try again.", "error");
+      const errorMessage =
+        error?.message ||
+        error?.response?.message ||
+        "Error fetching patient details. Please try again.";
+      showPopup(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -4782,6 +4786,12 @@ const OpdRRecallPatient = () => {
     }
   };
 
+  const getDentalInitialData = () =>
+    selectedPatient?.dentalDetailsResponse ||
+    selectedPatient?.dentalDetails ||
+    selectedPatient?.dentalDetailResponse ||
+    null;
+
   if (showDetailView && selectedPatient) {
     return (
       <div className="content-wrapper">
@@ -5244,33 +5254,7 @@ const OpdRRecallPatient = () => {
                     )}
                   </div>
                 )}
-                {/* Dental Section */}
-                {isDentalDepartment && (
-                  <div className="card mb-3">
-                    <div
-                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => toggleSection("dentalExamination")}
-                    >
-                      <h6 className="mb-0 fw-bold">Dental</h6>
-                      <span style={{ fontSize: "18px" }}>
-                        {expandedSections.dentalExamination ? "−" : "+"}
-                      </span>
-                    </div>
-                    {expandedSections.dentalExamination && (
-                      <div className="card-body">
-                        <Dental
-                          patientId={selectedPatient?.patientId}
-                          visitId={selectedPatient?.visitId}
-                          patientAge={selectedPatient?.age}
-                          patientDob={selectedPatient?.dob}
-                          hideHeader={true}
-                          hideButtons={true}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+
                 <MasFamilyModel
                   show={showModelPopup}
                   popupType={popupType}
@@ -5482,6 +5466,35 @@ const OpdRRecallPatient = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Dental Section */}
+                {isDentalDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("dentalExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">Dental</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.dentalExamination ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.dentalExamination && (
+                      <div className="card-body">
+                        <Dental
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          patientAge={selectedPatient?.age}
+                          patientDob={selectedPatient?.dob}
+                          initialDentalData={getDentalInitialData()}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>

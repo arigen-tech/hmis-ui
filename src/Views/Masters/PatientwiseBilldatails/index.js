@@ -228,6 +228,7 @@ const PatientwiseBilldatails = () => {
           serviceCategoryId: item.serviceCategoryId || null,
           headerId: item.headerId,
           registrationNo: item.registrationNo || null,
+          headerId: item.headerId || null,
         }));
 
         setPatientList(mappedData);
