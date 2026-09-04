@@ -133,18 +133,18 @@ const OpdPaymentSuccess = () => {
   };
 
   // Generic function to generate report
-  const generateReport = async (visitId, receiptType = "bill", flag = "d") => {
-    if (!visitId) {
-      alert(`Missing visit ID for generating ${receiptType} receipt`);
+  const generateReport = async (billHeaderId, receiptType = "bill", flag = "d") => {
+    if (!billHeaderId) {
+      alert(`Missing bill header ID for generating ${receiptType} receipt`);
       return;
     }
 
-    setLoading("generating", `${receiptType}-${visitId}`);
+    setLoading("generating", `${receiptType}-${billHeaderId}`);
     setPdfUrl(null);
 
     try {
       const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
-      const url = `${ALL_REPORTS}/${endpoint}?visit=${visitId}&flag=${flag}`;
+      const url = `${ALL_REPORTS}/${endpoint}?billHdId=${billHeaderId}&flag=${flag}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -167,17 +167,17 @@ const OpdPaymentSuccess = () => {
   };
 
   // Generic function to print
-  const handlePrint = async (visitId, receiptType = "bill") => {
-    if (!visitId) {
-      alert(`Missing visit ID for printing ${receiptType} receipt`);
+  const handlePrint = async (billHeaderId, receiptType = "bill") => {
+    if (!billHeaderId) {
+      alert(`Missing bill header ID for printing ${receiptType} receipt`);
       return;
     }
 
-    setLoading("printing", `${receiptType}-${visitId}`);
+    setLoading("printing", `${receiptType}-${billHeaderId}`);
 
     try {
       const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
-      const url = `${ALL_REPORTS}/${endpoint}?visit=${visitId}&flag=p`;
+      const url = `${ALL_REPORTS}/${endpoint}?billHdId=${billHeaderId}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -202,8 +202,8 @@ const OpdPaymentSuccess = () => {
     generateReport(visitId, "token", "d");
   };
 
-  const handleViewDownloadBill = (visitId) => {
-    generateReport(visitId, "bill", "d");
+  const handleViewDownloadBill = (billHeaderId) => {
+    generateReport(billHeaderId, "bill", "d");
   };
 
   // Print functions
@@ -211,8 +211,8 @@ const OpdPaymentSuccess = () => {
     handlePrint(visitId, "token");
   };
 
-  const handlePrintBill = (visitId) => {
-    handlePrint(visitId, "bill");
+  const handlePrintBill = (billHeaderId) => {
+    handlePrint(billHeaderId, "bill");
   };
 
   // Download all billing receipts
@@ -223,7 +223,7 @@ const OpdPaymentSuccess = () => {
       for (const bp of receiptRows.filter(
         (row) => row.billHeaderId != null || row.billingHdId != null,
       )) {
-        const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=d`;
+        const url = `${OPD_INVOICE_API}?billHdId=${bp.billHeaderId}&flag=d`;
         const response = await fetch(url, {
           method: "GET",
           headers: { Accept: "application/pdf" },
@@ -269,7 +269,7 @@ const OpdPaymentSuccess = () => {
       for (const bp of receiptRows.filter(
         (row) => row.billHeaderId != null || row.billingHdId != null,
       )) {
-        const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=p`;
+        const url = `${OPD_INVOICE_API}?billHdId=${bp.billHeaderId}&flag=p`;
         const response = await fetch(url, {
           method: "GET",
           headers: { Accept: "application/pdf" },
@@ -476,7 +476,7 @@ const OpdPaymentSuccess = () => {
                             <div className="d-flex flex-column align-items-center gap-2">
                               <button
                                 className="btn btn-success d-flex align-items-center gap-2"
-                                onClick={() => handleViewDownloadBill(bp.visitId)}
+                                onClick={() => handleViewDownloadBill(bp.billHeaderId)}
                                 disabled={loadingStates.generating || loadingStates.printing}
                               >
                                 {isGenerating(bp.visitId, "bill") ? (
@@ -497,10 +497,10 @@ const OpdPaymentSuccess = () => {
 
                               <button
                                 className="btn btn-warning d-flex align-items-center gap-2"
-                                onClick={() => handlePrintBill(bp.visitId)}
+                                onClick={() => handlePrintBill(bp.billHeaderId)}
                                 disabled={loadingStates.generating || loadingStates.printing}
                               >
-                                {isPrinting(bp.visitId, "bill") ? (
+                                {isPrinting(bp.billHeaderId, "bill") ? (
                                   <>
                                     <span
                                       className="spinner-border spinner-border-sm"

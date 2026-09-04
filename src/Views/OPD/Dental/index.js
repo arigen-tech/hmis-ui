@@ -18,6 +18,7 @@ const DentalSection = forwardRef(
       visitId,
       patientAge,
       patientDob,
+      initialDentalData = null,
       hideHeader = false,
       hideButtons = false,
     },
@@ -146,6 +147,8 @@ const DentalSection = forwardRef(
     const [showSessionModal, setShowSessionModal] = useState(false);
     const [sessionSelectRowId, setSessionSelectRowId] = useState(null);
     const [sessionRowErrors, setSessionRowErrors] = useState({});
+    const [hasHydratedInitialDentalData, setHasHydratedInitialDentalData] =
+      useState(false);
 
     const buildToothLayout = (items = []) => {
       const grouped = items.reduce((acc, item) => {
@@ -183,7 +186,7 @@ const DentalSection = forwardRef(
 
   };
 
-      const buildToothIdMap = (items = []) =>
+    const buildToothIdMap = (items = []) =>
       items.reduce((acc, item) => {
         const toothNumber = Number(item.toothNumber);
         const toothId = Number(item.toothId);
@@ -478,6 +481,119 @@ const DentalSection = forwardRef(
         setProcedures([]);
       }
     };
+
+    const hydrateFromInitialDentalData = () => {
+      if (!initialDentalData) return;
+
+      const examination = initialDentalData.dentalExamination || {};
+      const procedureHeaders = Array.isArray(
+        initialDentalData.procedureHdDetails,
+      )
+        ? initialDentalData.procedureHdDetails
+        : [];
+
+      const sourceToothIdMap =
+        resolvedDentalType === "adult" ? adultToothIdMap : childToothIdMap;
+      const toothNumberByIdMap = Object.entries(sourceToothIdMap).reduce(
+        (acc, [toothNumber, toothId]) => {
+          acc[Number(toothId)] = Number(toothNumber);
+          return acc;
+        },
+        {},
+      );
+
+      const conditionLookup = new Map(
+        toothConditions.map((condition) => [
+          Number(condition.conditionId),
+          condition,
+        ]),
+      );
+
+      const mappedToothConditions = (Array.isArray(examination.toothConditions)
+        ? examination.toothConditions
+        : []
+      ).reduce((acc, item) => {
+        const toothNumber = toothNumberByIdMap[Number(item.toothId)];
+        const condition = conditionLookup.get(Number(item.conditionId));
+
+        if (!toothNumber || !condition) return acc;
+
+        if (!acc[toothNumber]) acc[toothNumber] = [];
+        acc[toothNumber].push(condition);
+        return acc;
+      }, {});
+
+      const mappedProcedures = procedureHeaders.flatMap((header, headerIndex) => {
+        const details = Array.isArray(header.procedureDetails)
+          ? header.procedureDetails
+          : [];
+
+        return details.map((procedure, procedureIndex) => ({
+          id: procedure.procedureDtId ?? `${headerIndex}-${procedureIndex}`,
+          arch: resolvedDentalType,
+          toothNumbers: Array.isArray(procedure.dentalProcedureTeeth)
+            ? procedure.dentalProcedureTeeth
+                .map((tooth) => toothNumberByIdMap[Number(tooth.toothId)])
+                .filter(Boolean)
+            : [],
+          procedureId: procedure.procedureId ? String(procedure.procedureId) : "",
+          procedureName: procedure.procedureName || "",
+          remarks: procedure.remarks || "",
+          sessions: Array.isArray(procedure.sessions)
+            ? procedure.sessions.map((session, sessionIndex) => ({
+                id: session.sessionNo ?? sessionIndex + 1,
+                scheduledDate: session.scheduledDateTime
+                  ? String(session.scheduledDateTime).split("T")[0]
+                  : "",
+                scheduledTime: session.scheduledDateTime
+                  ? String(session.scheduledDateTime).includes("T")
+                    ? String(session.scheduledDateTime).split("T")[1].slice(0, 5)
+                    : ""
+                  : "",
+                remarks: session.remarks || "",
+              }))
+            : [buildDefaultSessionRow()],
+        }));
+      });
+
+      const nextSummary = {
+        totalTeeth: examination.totalTeeth || (resolvedDentalType === "child" ? 20 : 32),
+        missingTeeth: examination.missingTeeth || 0,
+        unsalvageableTeeth: examination.unsalvageableTeeth || 0,
+        otherConditionsCount: examination.otherConditionsCount || 0,
+        affectedTeeth: examination.affectedTeeth || 0,
+        procedureCount:
+          examination.ongoingProcedures || mappedProcedures.length || 0,
+        dentalPoints: examination.dentalDiseaseScore || 0,
+        notes: examination.notes || "",
+      };
+
+      if (resolvedDentalType === "adult") {
+        setAdultDentalSummary(nextSummary);
+        setTeethData(mappedToothConditions);
+      } else {
+        setChildDentalSummary(nextSummary);
+        setChildTeethData(mappedToothConditions);
+      }
+
+      setSavedProcedures(mappedProcedures);
+      setProcedureRows(
+        mappedProcedures.length > 0
+          ? mappedProcedures
+          : [
+              {
+                id: 1,
+                arch: resolvedDentalType,
+                toothNumbers: [],
+                procedureId: "",
+                remarks: "",
+                sessions: [buildDefaultSessionRow()],
+              },
+            ],
+      );
+
+      setHasHydratedInitialDentalData(true);
+    };
     // ==================== INITIALIZATION ====================
 
     useEffect(() => {
@@ -485,6 +601,23 @@ const DentalSection = forwardRef(
       fetchProcedures();
       fetchToothCatalog();
     }, [resolvedDentalType]);
+
+    useEffect(() => {
+      if (!initialDentalData || toothConditions.length === 0) return;
+      if (hasHydratedInitialDentalData) return;
+
+      if (Object.keys(adultToothIdMap).length === 0 && Object.keys(childToothIdMap).length === 0) {
+        return;
+      }
+
+      hydrateFromInitialDentalData();
+    }, [
+      initialDentalData,
+      toothConditions,
+      adultToothIdMap,
+      childToothIdMap,
+      hasHydratedInitialDentalData,
+    ]);
 
     useEffect(() => {
       if (showAdultDashboard || showChildDashboard) {
@@ -891,9 +1024,10 @@ const DentalSection = forwardRef(
         sessions: getSessionRows(r),
       }));
 
-      setSavedProcedures((prev) => [...prev, ...newlySaved]);
+      // Keep the saved rows in the editor so recalled procedures remain editable.
+      // The table below mirrors the current editor instead of appending duplicates.
+      setSavedProcedures(newlySaved);
       alert("Dental procedure(s) saved successfully!");
-      handleResetProcedureForm();
     };
 
     const getSelectedToothConditions = () => {

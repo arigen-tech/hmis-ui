@@ -2,6 +2,14 @@ import { data } from "react-router-dom";
 import { API_HOST } from "../config/apiConfig";
 const BASE_URL = API_HOST;
 
+const createRequestError = (status, message, response) => {
+  const error = new Error(message);
+  error.status = status;
+  error.message = message;
+  error.response = response;
+  return error;
+};
+
 /**
  * Function to call GET API
  * @param {string} endpoint - The API endpoint
@@ -37,11 +45,7 @@ export const getRequest = async (endpoint, headers = {}) => {
         response.statusText ||
         "Request failed";
 
-      throw {
-        status: response.status,
-        message,
-        response: data,
-      };
+      throw createRequestError(response.status, message, data);
     }
 
     return data;
@@ -131,11 +135,7 @@ export const postRequest = async (endpoint, data, options = {}) => {
         response.statusText ||
         "Request failed";
 
-      throw {
-        status: response.status,
-        message,
-        response: responseData,
-      };
+      throw createRequestError(response.status, message, responseData);
     }
 
     return responseData;
@@ -287,11 +287,7 @@ export const putRequest = async (endpoint, data, headers = {}) => {
         response.statusText ||
         `PUT request failed: ${response.status}`;
 
-      throw {
-        status: response.status,
-        message,
-        response: responseData,
-      };
+      throw createRequestError(response.status, message, responseData);
     }
 
     return {
