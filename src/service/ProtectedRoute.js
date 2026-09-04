@@ -287,6 +287,9 @@ const validRoutes = [
   "/OTBookingHistory",
   "/OTBookingStatusMaster",
   "/OTPatientReceiptPending",
+  "/OTPreOperativeChecklist",
+  "/NISRegister",
+  "/OTSurgeryExecution",
 ];
 
 // Routes that should bypass authorization
