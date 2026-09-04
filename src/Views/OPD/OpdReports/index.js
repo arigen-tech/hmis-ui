@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getRequest } from "../../../service/apiService";
+import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading";
 import Popup from "../../../Components/popup";
 import Pagination from "../../../Components/Pagination";
@@ -8,6 +8,8 @@ import {
   GET_OPD_REPORTS_LIST,
   OPD_CASE_SHEET_REPORT,
   OPD_PRESCRIPTION_SLIP_REPORT,
+  NIS_MEDICINE_REPORT_URL,
+  STATUS_D,
 } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
@@ -17,8 +19,8 @@ const OPDReports = () => {
   const [tableLoading, setTableLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [downloadingOPDVisitId, setDownloadingOPDVisitId] = useState(null);
-  const [downloadingPrescriptionId, setDownloadingPrescriptionId] =
-    useState(null);
+  const [downloadingPrescriptionId, setDownloadingPrescriptionId] = useState(null);
+  const [downloadingNISVisitId, setDownloadingNISVisitId] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfTitle, setPdfTitle] = useState("");
   const [pdfFileName, setPdfFileName] = useState("");
@@ -242,6 +244,30 @@ const OPDReports = () => {
     }
   };
 
+  // ============= VIEW NIS SLIP =============
+  const handleViewNIS = async (visitId, patientName) => {
+    if (!visitId) {
+      showPopup("Visit ID is required to view NIS Slip", "error");
+      return;
+    }
+
+    try {
+      setDownloadingNISVisitId(visitId);
+      const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
+      const reportUrl = `${NIS_MEDICINE_REPORT_URL}?hospitalId=${hospitalId}&visitId=${visitId}`;
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      setPdfTitle(`NIS Slip - ${patientName || "Patient"}`);
+      setPdfFileName(`NIS_Slip_${patientName || "patient"}_${visitId}`);
+    } catch (error) {
+      console.error("Error viewing NIS Slip:", error);
+      showPopup(`Failed to view NIS Slip`, "error");
+    } finally {
+      setDownloadingNISVisitId(null);
+    }
+  };
+
   // ============= CLOSE PDF VIEWER =============
   const handleClosePdfViewer = () => {
     setPdfUrl(null);
@@ -253,7 +279,7 @@ const OPDReports = () => {
   const renderSkeletonRows = () => {
     return Array.from({ length: itemsPerPage }).map((_, index) => (
       <tr key={`skeleton-${index}`} className="skeleton-row">
-        <td colSpan="11">
+        <td colSpan="12">
           <div className="d-flex justify-content-center align-items-center py-4">
             <div className="spinner-border text-primary me-2" role="status">
               <span className="visually-hidden">Loading...</span>
@@ -400,6 +426,7 @@ const OPDReports = () => {
                           <th>Specialty</th>
                           <th>Doctor Name</th>
                           <th>Visit Date/Time</th>
+                          <th>NIS Slip</th>
                           <th>OPD Slip</th>
                           <th>Prescription Slip</th>
                         </tr>
@@ -408,7 +435,7 @@ const OPDReports = () => {
                         {tableLoading ? (
                           // Show loading spinner in table body
                           <tr>
-                            <td colSpan="11">
+                            <td colSpan="12">
                               <div className="text-center py-5">
                                 <div className="d-flex justify-content-center">
                                   <div
@@ -432,8 +459,9 @@ const OPDReports = () => {
                             const isOPDDownloading =
                               downloadingOPDVisitId === patient.visitId;
                             const isPrescriptionDownloading =
-                              downloadingPrescriptionId ===
-                              patient.prescriptionHdId;
+                              downloadingPrescriptionId === patient.prescriptionHdId;
+                            const isNISDownloading =
+                              downloadingNISVisitId === patient.visitId;
 
                             return (
                               <tr key={patient.id}>
@@ -448,6 +476,33 @@ const OPDReports = () => {
                                 <td>{patient.specialty}</td>
                                 <td>{patient.doctorName}</td>
                                 <td>{patient.visitDateTime}</td>
+                                <td className="text-center">
+                                  {patient.nisNo ? (
+                                    <button
+                                      className="btn btn-primary btn-sm"
+                                      onClick={() => handleViewNIS(patient.visitId, patient.patientName)}
+                                      disabled={isNISDownloading || tableLoading}
+                                    >
+                                      {isNISDownloading ? (
+                                        <>
+                                          <span
+                                            className="spinner-border spinner-border-sm me-1"
+                                            role="status"
+                                            aria-hidden="true"
+                                          ></span>
+                                          Loading...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <i className="mdi mdi-eye me-1"></i>
+                                          View
+                                        </>
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <span className="text-muted">NA</span>
+                                  )}
+                                </td>
                                 <td className="text-center">
                                   <button
                                     className="btn btn-primary btn-sm"
@@ -526,7 +581,7 @@ const OPDReports = () => {
                         ) : (
                           // Show empty state
                           <tr>
-                            <td colSpan="11">
+                            <td colSpan="12">
                               <div className="text-center py-5">
                                 <div className="text-muted">
                                   <i
