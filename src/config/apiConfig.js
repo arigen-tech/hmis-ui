@@ -542,6 +542,7 @@ export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
 export const LAB_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/labBillingRegister`;
 export const RADIOLOGY_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/radiologyBillingRegister`;
 export const NIS_MEDICINE_REGISTER_REPORT_URL = `${ALL_REPORTS}/nisMedicineRegister`;
+export const NIS_MEDICINE_REPORT_URL = `${ALL_REPORTS}/nisMedicineReport`;
 export const DAILY_CASH_COLLECTION_END_URL = `${ALL_REPORTS}/dailyCashCollection`;
 export const CASHIER_WISE_COLLECTION_END_URL = `${ALL_REPORTS}/cashierWiseCollection`;
 // Update path as needed
