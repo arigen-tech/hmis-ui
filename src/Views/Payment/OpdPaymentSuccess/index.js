@@ -67,24 +67,38 @@ const OpdPaymentSuccess = () => {
       : visitRowsFromAppointments;
   const receiptSourceRows = billPayments.length > 0 ? billPayments : visitData;
   const receiptRows = receiptSourceRows.map((row, index) => {
+    const visitDataRow = visitData[index] || {};
+    const billPaymentsRow = billPayments[index] || {};
+    
     const mergedRow = {
-      ...(visitData[index] || {}),
-      ...(billPayments[index] || {}),
+      ...visitDataRow,
+      ...billPaymentsRow,
       ...row,
     };
 
     return {
       ...mergedRow,
-      visitId: mergedRow.visitId ?? mergedRow.id,
+      visitId: mergedRow.visitId ?? mergedRow.id ?? mergedRow.visitId,
+      billHeaderId: mergedRow.billHeaderId ?? 
+                    mergedRow.billingHdId ?? 
+                    mergedRow.billinghdid ?? 
+                    mergedRow.billingHeaderId ?? 
+                    null,
       tokenNo: mergedRow.tokenNo ?? mergedRow.tokenNumber ?? "N/A",
-      doctorName:
-        mergedRow.doctorName ?? mergedRow.consultedDoctorName ?? "N/A",
+      doctorName: mergedRow.doctorName ?? mergedRow.consultedDoctorName ?? "N/A",
       patientName: mergedRow.patientName ?? state.patientName ?? "N/A",
       netAmount: Number(mergedRow.netAmount ?? mergedRow.amount ?? 0),
-      billHeaderId:
-        mergedRow.billHeaderId ?? mergedRow.billingHdId ?? mergedRow.billinghdid ?? null,
     };
   });
+
+  // Debug: Verify each row has both IDs
+  console.log('Processed receipt rows:', receiptRows.map(row => ({
+    visitId: row.visitId,
+    billHeaderId: row.billHeaderId,
+    hasVisitId: !!row.visitId,
+    hasBillHeaderId: !!row.billHeaderId
+  })));
+
   const hasBillingData =
     state.hasBillingData ??
     receiptRows.some((bp) => bp.billHeaderId != null || bp.billingHdId != null);
@@ -133,18 +147,20 @@ const OpdPaymentSuccess = () => {
   };
 
   // Generic function to generate report
-  const generateReport = async (billHeaderId, receiptType = "bill", flag = "d") => {
-    if (!billHeaderId) {
-      alert(`Missing bill header ID for generating ${receiptType} receipt`);
+  const generateReport = async (id, receiptType = "bill", flag = "d") => {
+    if (!id) {
+      alert(`Missing ID for generating ${receiptType} receipt`);
       return;
     }
 
-    setLoading("generating", `${receiptType}-${billHeaderId}`);
+    setLoading("generating", `${receiptType}-${id}`);
     setPdfUrl(null);
 
     try {
       const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
-      const url = `${ALL_REPORTS}/${endpoint}?billHdId=${billHeaderId}&flag=${flag}`;
+      // Use different parameter names based on receipt type
+      const paramName = receiptType === "token" ? "visit" : "billHdId";
+      const url = `${ALL_REPORTS}/${endpoint}?${paramName}=${id}&flag=${flag}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -167,17 +183,19 @@ const OpdPaymentSuccess = () => {
   };
 
   // Generic function to print
-  const handlePrint = async (billHeaderId, receiptType = "bill") => {
-    if (!billHeaderId) {
-      alert(`Missing bill header ID for printing ${receiptType} receipt`);
+  const handlePrint = async (id, receiptType = "bill") => {
+    if (!id) {
+      alert(`Missing ID for printing ${receiptType} receipt`);
       return;
     }
 
-    setLoading("printing", `${receiptType}-${billHeaderId}`);
+    setLoading("printing", `${receiptType}-${id}`);
 
     try {
       const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
-      const url = `${ALL_REPORTS}/${endpoint}?billHdId=${billHeaderId}&flag=p`;
+      // Use different parameter names based on receipt type
+      const paramName = receiptType === "token" ? "visit" : "billHdId";
+      const url = `${ALL_REPORTS}/${endpoint}?${paramName}=${id}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -197,7 +215,6 @@ const OpdPaymentSuccess = () => {
     }
   };
 
-  // View/Download functions
   const handleViewDownloadToken = (visitId) => {
     generateReport(visitId, "token", "d");
   };
@@ -304,11 +321,11 @@ const OpdPaymentSuccess = () => {
   };
 
   // Check if a specific button is loading
-  const isGenerating = (visitId, type) =>
-    loadingStates.generating === `${type}-${visitId}`;
+  const isGenerating = (id, type) =>
+    loadingStates.generating === `${type}-${id}`;
 
-  const isPrinting = (visitId, type) =>
-    loadingStates.printing === `${type}-${visitId}`;
+  const isPrinting = (id, type) =>
+    loadingStates.printing === `${type}-${id}`;
 
   return (
     <div className="body d-flex py-3">
@@ -342,11 +359,11 @@ const OpdPaymentSuccess = () => {
                 </div>
 
                 <div className="border border-success border-2 rounded-3 p-3 mb-4 text-center">
-  <p className="text-muted mb-1 small">{showBillActions ? "Total Amount Paid" : "Token Slip Generated"}</p>
-  <h2 className="text-success fw-bold mb-0">
-    {showBillActions ? `Rs. ${amount.toFixed(2)}` : "Token Only"}
-  </h2>
-</div>
+                  <p className="text-muted mb-1 small">{showBillActions ? "Total Amount Paid" : "Token Slip Generated"}</p>
+                  <h2 className="text-success fw-bold mb-0">
+                    {showBillActions ? `Rs. ${amount.toFixed(2)}` : "Token Only"}
+                  </h2>
+                </div>
 
                 <div className="mb-4">
                   <div className="d-flex align-items-center mb-3">
@@ -479,7 +496,7 @@ const OpdPaymentSuccess = () => {
                                 onClick={() => handleViewDownloadBill(bp.billHeaderId)}
                                 disabled={loadingStates.generating || loadingStates.printing}
                               >
-                                {isGenerating(bp.visitId, "bill") ? (
+                                {isGenerating(bp.billHeaderId, "bill") ? (
                                   <>
                                     <span
                                       className="spinner-border spinner-border-sm"
