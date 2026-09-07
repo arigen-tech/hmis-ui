@@ -93,6 +93,7 @@ export const LAB_INVOICE_API = `${ALL_REPORTS}/labInvoice`;
 export const RADIOLOGY_INVOICE_API = `${ALL_REPORTS}/radiologyInvoice`;
 export const DASHBOARD_STATS_API = `/dashboard`;
 export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
+export const DASHBOARD_INPATIENT_SUMMARY_API = `/dashboard/inpatient-summary`;
 
 export const DEPARTMENT = `/department`;
 
