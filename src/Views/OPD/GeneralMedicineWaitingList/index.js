@@ -5757,17 +5757,21 @@ const GeneralMedicineWaitingList = () => {
                         {expandedSections.obgDetails ? "−" : "+"}
                       </span>
                     </div>
-                    {expandedSections.obgDetails && (
-                      <div className="card-body">
-                        <OBGDetails
-                          ref={obgDetailsRef}
-                          patientId={selectedPatient?.patientId}
-                          visitId={selectedPatient?.visitId}
-                          hideHeader={true}
-                          hideButtons={true}
-                        />
-                      </div>
-                    )}
+                    <div
+                      className="card-body p-0"
+                      style={{
+                        display: expandedSections.obgDetails ? "block" : "none",
+                      }}
+                    >
+                      <OBGDetails
+                        ref={obgDetailsRef}
+                        key={`obg-${selectedPatient?.visitId}`}
+                        patientId={selectedPatient?.patientId}
+                        visitId={selectedPatient?.visitId}
+                        hideHeader={true}
+                        hideButtons={true}
+                      />
+                    </div>
                   </div>
                 )}
                 {/* Ear Examination Section */}
