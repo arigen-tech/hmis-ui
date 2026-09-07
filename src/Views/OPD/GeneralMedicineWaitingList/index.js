@@ -5135,16 +5135,16 @@ const GeneralMedicineWaitingList = () => {
                 onClose={() => setShowDuplicatePopup(false)}
               />
 
-              <div className="mb-3 card" style={{ border: "none" }}>
+              <div className="mb-1 card" style={{ border: "none" }}>
                 <div className="card-header py-3">
                   <h6 className="mb-0 fw-bold">Personal Details</h6>
                 </div>
-                <div className="card-body">
-                  <div className="row g-3">
-                    <div className="col-md-9">
-                      <div className="row g-3">
+                <div className="card-body py-2 px-3">
+                  <div className="row g-2 align-items-center">
+                    <div className="col-md-10">
+                      <div className="row g-2">
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="mobileNo">
+                          <label className="form-label mb-1" htmlFor="mobileNo">
                             Mobile No.
                           </label>
                           <input
@@ -5159,7 +5159,7 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="gender">
+                          <label className="form-label mb-1" htmlFor="gender">
                             Gender
                           </label>
                           <input
@@ -5173,7 +5173,7 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="relation">
+                          <label className="form-label mb-1" htmlFor="relation">
                             Relation
                           </label>
                           <input
@@ -5187,7 +5187,7 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="dob">
+                          <label className="form-label mb-1" htmlFor="dob">
                             DOB
                           </label>
                           <input
@@ -5201,7 +5201,7 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label" htmlFor="age">
+                          <label className="form-label mb-1" htmlFor="age">
                             Age
                           </label>
                           <input
@@ -5216,27 +5216,23 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="col-md-3">
-                      <div className="text-center">
-                        <div className="card p-3 shadow">
-                          <img
-                            src={placeholderImage || "/placeholder.svg"}
-                            alt="Profile photo"
-                            className="img-fluid border"
-                            style={{
-                              width: "100%",
-                              height: "150px",
-                              objectFit: "cover",
-                            }}
-                          />
-                        </div>
-                      </div>
+                    <div className="col-md-2 text-center d-flex justify-content-center align-items-center">
+                      <img
+                        src={placeholderImage || "/placeholder.svg"}
+                        alt="Profile photo"
+                        className="img-fluid rounded border shadow-sm"
+                        style={{
+                          width: "90px",
+                          height: "90px",
+                          objectFit: "cover",
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="card-body">
+              <div className="card-body pt-1">
                 {/* Clinical History Section */}
                 <div className="card mb-3 shadow-sm">
                   <div
