@@ -61,7 +61,7 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 const DischargeFromWard = ({ selectedPatient }) => {
   const navigate = useNavigate();
   const { id } = useParams();
-  
+
   // Extract dynamic inpatientId from dashboard row data
   const inpatientId = selectedPatient?.ipdPatientId || selectedPatient?.inpatientId || id;
 
@@ -276,7 +276,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
       } catch (error) {
         console.error("Error fetching route:", error);
       }
-      
+
       // Fetch Discharge Summary
       try {
         if (inpatientId) {
@@ -327,7 +327,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
             .map((d) => d.diagnosis)
             .filter(Boolean)
             .join(", ");
-          
+
           const primaryDiags = diagRes.response
             .filter((d) => d.diagnosisType === "W")
             .map((d) => d.diagnosis)
@@ -446,16 +446,16 @@ const DischargeFromWard = ({ selectedPatient }) => {
     setDischargeData((prev) => {
       const updated = [...prev.medicationOnDischarge];
       const med = { ...updated[index] };
-      
+
       let newDeleteIds = prev.deleteMedicationIds || [];
       if (med.id) {
         newDeleteIds = [...newDeleteIds, med.id];
         delete med.id;
       }
-      
+
       med[field] = value;
       updated[index] = med;
-      
+
       // Auto-calculate total if dosage, frequency, or durationDays are present
       if (field === "dosage" || field === "frequency" || field === "durationDays") {
         const dosage = parseFloat(med.dosage) || 0;
@@ -513,17 +513,17 @@ const DischargeFromWard = ({ selectedPatient }) => {
     setDischargeData((prev) => {
       const updated = [...prev.medicationOnDischarge];
       const med = { ...updated[index] };
-      
+
       let newDeleteIds = prev.deleteMedicationIds || [];
       if (med.id) {
         newDeleteIds = [...newDeleteIds, med.id];
         delete med.id;
       }
-      
+
       med.medicineName = name;
       med.dropdownOpen = false;
       updated[index] = med;
-      
+
       return { ...prev, medicationOnDischarge: updated, deleteMedicationIds: newDeleteIds };
     });
   };
@@ -558,8 +558,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
     }
     setDischargeData((prev) => {
       const rowToRemove = prev.medicationOnDischarge[index];
-      const newDeleteIds = rowToRemove.id 
-        ? [...(prev.deleteMedicationIds || []), rowToRemove.id] 
+      const newDeleteIds = rowToRemove.id
+        ? [...(prev.deleteMedicationIds || []), rowToRemove.id]
         : (prev.deleteMedicationIds || []);
 
       return {
@@ -637,19 +637,19 @@ const DischargeFromWard = ({ selectedPatient }) => {
         "patientCondition",
         "dischargeReason",
       ];
-  
+
       const missing = requiredFields.filter(
         (field) =>
           !dischargeData[field] ||
           dischargeData[field] === "<p>&nbsp;</p>" ||
           dischargeData[field].trim() === ""
       );
-  
+
       if (missing.length > 0) {
         showConfirmationPopup(`Please fill all required fields for submission: ${missing.join(", ")}`, "warning", () => { }, null, "OK", "");
         return;
       }
-  
+
       const invalidMedRows = dischargeData.medicationOnDischarge.some(
         (med) =>
           !med.medicineName.trim() ||
@@ -658,12 +658,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
           !med.frequency ||
           !med.route
       );
-  
+
       if (invalidMedRows) {
         showConfirmationPopup("Please ensure each medication row has a valid Medicine Name, Dosage (>0), Frequency, and Route.", "warning", () => { }, null, "OK", "");
         return;
       }
-  
+
       if (dischargeData.dischargeTo === "otherHospital" && !dischargeData.otherHospitalName.trim()) {
         showConfirmationPopup("Please enter the name of the hospital for transfer.", "warning", () => { }, null, "OK", "");
         return;
@@ -776,13 +776,38 @@ const DischargeFromWard = ({ selectedPatient }) => {
 
   return (
     <div>
+      <style>{`
+        .discharge-section-scroll {
+          max-height: 550px;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          scrollbar-width: thin;
+          scrollbar-color: #6c757d #f1f1f1;
+        }
+
+        .discharge-section-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .discharge-section-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+
+        .discharge-section-scroll::-webkit-scrollbar-thumb {
+          background: #6c757d;
+          border-radius: 4px;
+        }
+
+        .discharge-section-scroll::-webkit-scrollbar-thumb:hover {
+          background: #495057;
+        }
+      `}</style>
       {/* ======================= DISCHARGE SUMMARY TAB ======================= */}
       {activeTab === "summary" && (
-        <div className="card shadow-sm">
-          <div className="card-header bg-primary text-white py-2">
-            <strong>Discharge Summary</strong>
-          </div>
-          <div className="card-body">
+        <div className="">
+
+          <div className=" discharge-section-scroll">
             {/* Clinical Information */}
             <div className="row g-3">
               {/* Final Diagnosis - Regular Textarea */}
