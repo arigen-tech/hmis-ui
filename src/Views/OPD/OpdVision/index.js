@@ -1107,12 +1107,12 @@ const handleReset = async (e) => {
                                     </tr>
                                     <tr>
                                       <th>Keratometry (D)</th>
-                                      <th>Pachymetry (µm)</th>
+                                      <th>Pachymetry (<span style={{ fontStyle: "italic", fontFamily: "serif" }}>&mu;</span>m)</th>
                                       <th>Non-Contact Tonometry (mmHg)</th>
                                       <th>Field of VN (deg)</th>
                                       <th>IOL (D)</th>
                                       <th>Keratometry (D)</th>
-                                      <th>Pachymetry (µm)</th>
+                                      <th>Pachymetry (<span style={{ fontStyle: "italic", fontFamily: "serif" }}>&mu;</span>m)</th>
                                       <th>Non-Contact Tonometry (mmHg)</th>
                                       <th>Field of VN (deg)</th>
                                       <th>IOL (D)</th>
