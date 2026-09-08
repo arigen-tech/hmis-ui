@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { getRequest, postRequest } from "../../../service/apiService";
-import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION } from "../../../config/apiConfig";
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION, ADVANCE_RECEIPT_REPORT_API, STATUS_D } from "../../../config/apiConfig";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const COLLECTION_TYPES = ["Advance", "Final"];
 
@@ -34,8 +35,10 @@ const IPDAdvanceCollection = () => {
   const [paymentModeOptions, setPaymentModeOptions] = useState([]);
   const [paymentRows, setPaymentRows] = useState([
     { id: 1, mode: "", amount: "" },
-    { id: 2, mode: "", amount: "" },
   ]);
+
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // --- NEW: Payment History state ---
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -140,7 +143,6 @@ const IPDAdvanceCollection = () => {
           // Reset payment rows
           setPaymentRows([
             { id: 1, mode: "", amount: "" },
-            { id: 2, mode: "", amount: "" },
           ]);
         },
         null,
@@ -247,7 +249,6 @@ const IPDAdvanceCollection = () => {
     setCollectionType("Advance");
     setPaymentRows([
       { id: 1, mode: "", amount: "" },
-      { id: 2, mode: "", amount: "" },
     ]);
     setShowDetails(true);
   };
@@ -293,13 +294,36 @@ const IPDAdvanceCollection = () => {
     });
   };
 
-  // --- NEW: Handler for Report button (placeholder) ---
-  const handleReport = (historyItem) => {
-    alert(`Report for payment ID: ${historyItem.id}\nYou can implement print or download logic here.`);
+  // --- NEW: Handler for Report button ---
+  const handleReport = async (historyItem) => {
+    const receiptId = Number(historyItem?.id);
+    if (receiptId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${ADVANCE_RECEIPT_REPORT_API}?receiptId=${receiptId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      showConfirmationPopup("Receipt ID not found", "error", () => {}, null, "OK", "");
+    }
   };
 
   return (
     <div className="content-wrapper">
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          name="IPD Advance Receipt Report"
+          onClose={() => setReportPdfUrl(null)}
+        />
+      )}
       {isLoading && <LoadingScreen />}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
@@ -623,6 +647,7 @@ const IPDAdvanceCollection = () => {
                                           className="btn btn-sm btn-outline-info"
                                           onClick={() => handleReport(item)}
                                           title="View Report"
+                                          disabled={isGeneratingReport}
                                         >
                                           <i className="mdi mdi-file-document"></i> Report
                                         </button>

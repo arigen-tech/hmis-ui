@@ -124,7 +124,6 @@ const PendingIpdBillList = () => {
   const [collectionType, setCollectionType] = useState("Advance");
   const [paymentRows, setPaymentRows] = useState([
     { id: 1, mode: "", amount: "" },
-    { id: 2, mode: "", amount: "" },
   ]);
 
   // Payment History state
@@ -251,7 +250,6 @@ const PendingIpdBillList = () => {
     setCollectionType("Advance");
     setPaymentRows([
       { id: 1, mode: "", amount: "" },
-      { id: 2, mode: "", amount: "" },
     ]);
     setShowDetails(true);
   };
@@ -390,7 +388,6 @@ const PendingIpdBillList = () => {
           // Reset payment rows
           setPaymentRows([
             { id: 1, mode: "", amount: "" },
-            { id: 2, mode: "", amount: "" },
           ]);
         },
         null,
