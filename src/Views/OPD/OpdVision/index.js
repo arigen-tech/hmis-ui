@@ -21,6 +21,7 @@ const anteriorApiKeys = {
   anteriorChamber: "Ant. Chamber",
   iris: "Iris",
   pupil: "Pupils",
+  lens: "Lens",
 };
 
 const posteriorApiKeys = {
@@ -88,6 +89,7 @@ const defaultVisionForm = {
   reAnteriorChamber: "N",
   reIris: "N",
   rePupil: "N",
+  reLens: "N",
   leEyebrow: "N",
   leEyelid: "N",
   leCornea: "N",
@@ -98,6 +100,7 @@ const defaultVisionForm = {
   leAnteriorChamber: "N",
   leIris: "N",
   lePupil: "N",
+  leLens: "N",
   reOpticDisc: "N",
   reFoveaMacula: "N",
   reVitreousPosterior: "N",
@@ -1071,39 +1074,40 @@ const handleReset = async (e) => {
                                       </th>
                                     </tr>
                                     <tr>
-                                      <th>Keratometry</th>
-                                      <th>Pachymetry</th>
-                                      <th>Non-Contact Tonometry</th>
-                                      <th>Field of VN</th>
-                                      <th>IOL</th>
-                                      <th>Keratometry</th>
-                                      <th>Pachymetry</th>
-                                      <th>Non-Contact Tonometry</th>
-                                      <th>Field of VN</th>
-                                      <th>ICL</th>
+                                      <th>Keratometry (D)</th>
+                                      <th>Pachymetry (µm)</th>
+                                      <th>Non-Contact Tonometry (mmHg)</th>
+                                      <th>Field of VN (deg)</th>
+                                      <th>IOL (D)</th>
+                                      <th>Keratometry (D)</th>
+                                      <th>Pachymetry (µm)</th>
+                                      <th>Non-Contact Tonometry (mmHg)</th>
+                                      <th>Field of VN (deg)</th>
+                                      <th>IOL (D)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
                                       {[
-                                        "reKeratometry",
-                                        "rePachymetry",
-                                        "reTonometry",
-                                        "reFieldOfVision",
-                                        "reIolPower",
-                                        "leKeratometry",
-                                        "lePachymetry",
-                                        "leTonometry",
-                                        "leFieldOfVision",
-                                        "leIolPower",
-                                      ].map((f) => (
-                                        <td key={f}>
+                                        { name: "reKeratometry", unit: "D" },
+                                        { name: "rePachymetry", unit: "µm" },
+                                        { name: "reTonometry", unit: "mmHg" },
+                                        { name: "reFieldOfVision", unit: "deg" },
+                                        { name: "reIolPower", unit: "D" },
+                                        { name: "leKeratometry", unit: "D" },
+                                        { name: "lePachymetry", unit: "µm" },
+                                        { name: "leTonometry", unit: "mmHg" },
+                                        { name: "leFieldOfVision", unit: "deg" },
+                                        { name: "leIolPower", unit: "D" },
+                                      ].map(({ name, unit }) => (
+                                        <td key={name}>
                                           <input
                                             type="text"
                                             className="form-control form-control-sm"
-                                            name={f}
-                                            value={formData[f] || ""}
+                                            name={name}
+                                            value={formData[name] || ""}
                                             onChange={handleChange}
+                                            placeholder={unit}
                                           />
                                         </td>
                                       ))}
@@ -1399,14 +1403,12 @@ const handleReset = async (e) => {
                                 <table className="table table-bordered table-sm w-auto">
                                   <thead className="table-light">
                                     <tr>
-                                      <th style={{ width: "80px" }}></th>
                                       <th className="text-center">R.E.</th>
                                       <th className="text-center">L.E.</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
-                                      <td className="fw-semibold">Select</td>
                                       <td>
                                         <select
                                           className="form-select form-select-sm"
