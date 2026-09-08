@@ -93,6 +93,7 @@ export const LAB_INVOICE_API = `${ALL_REPORTS}/labInvoice`;
 export const RADIOLOGY_INVOICE_API = `${ALL_REPORTS}/radiologyInvoice`;
 export const DASHBOARD_STATS_API = `/dashboard`;
 export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
+export const DASHBOARD_INPATIENT_SUMMARY_API = `/dashboard/inpatient-summary`;
 
 export const DEPARTMENT = `/department`;
 
@@ -519,6 +520,7 @@ export const REQUEST_PARAM_DEPARTMENT_ID = "departmentId";
 export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
 export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
 export const REQUEST_PARAM_PATIENT_ID = "patientId";
+export const REQUEST_PARAM_IN_PATIENT_ID = "inPatientId";
 export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE = "departmentTypeCode";
 export const REQUEST_PARAM_DEPARTMENT_TYPE = "departmentType";
 export const REQUEST_PARAM_GENDER_ID = "genderId";

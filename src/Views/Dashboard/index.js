@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./dashboard.css";
 import { getRequest } from "../../service/apiService";
-import { DASHBOARD_STATS_API, DASHBOARD_BILLING_FINANCE_API } from "../../config/apiConfig";
+import { DASHBOARD_STATS_API, DASHBOARD_BILLING_FINANCE_API, DASHBOARD_INPATIENT_SUMMARY_API } from "../../config/apiConfig";
 
 const Dashboard = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -29,6 +29,7 @@ const Dashboard = () => {
   const [billingSummary, setBillingSummary] = useState({ todayBilling: "₹0", collectedAmount: "₹0", pendingBilling: "₹0" });
   const [billingStats, setBillingStats] = useState([]);
   const [paymentModes, setPaymentModes] = useState([]);
+  const [ipdSummary, setIpdSummary] = useState({ totalAdmission: 0, todayAdmission: 0, discharges: 0, todayDischarge: 0, currentIpd: 0 });
 
   const getFormattedDate = (date) => {
     const year = date.getFullYear();
@@ -175,6 +176,17 @@ const Dashboard = () => {
           total_amount: item.total_amount
         })));
       }
+
+      const ipdRes = await getRequest(`${DASHBOARD_INPATIENT_SUMMARY_API}?fromDate=${fDate}&toDate=${tDate}`);
+      if (ipdRes?.response) {
+        setIpdSummary({
+          totalAdmission: ipdRes.response.totalAdmission || 0,
+          todayAdmission: ipdRes.response.todayNewAdmission || 0,
+          currentIpd: ipdRes.response.currentAdmittedPatient || 0,
+          discharges: ipdRes.response.totalDischarge || 0,
+          todayDischarge: ipdRes.response.todayDischarge || 0
+        });
+      }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
     }
@@ -201,13 +213,7 @@ const Dashboard = () => {
     { name: "Maternity Ward", occupied: 5, available: 2, cleaning: 2, maintenance: 0, total: 9 }
   ];
 
-  // IPD Admission Summary
-  const ipdSummary = {
-    todayAdmission: 22,
-    discharges: 18,
-    currentIpd: 126,
-    icuPatients: 14
-  };
+  // IPD Admission Summary (now using state)
 
   // Billing data is now dynamic using states
 
@@ -395,7 +401,7 @@ const Dashboard = () => {
           <div className="card-content-wrapper">
             <div className="metric-details">
               <span className="metric-label">Total Admission</span>
-              <span className="metric-value">{ipdSummary.todayAdmission}</span>
+              <span className="metric-value">{ipdSummary.totalAdmission}</span>
               <span className="metric-meta text-primary">+{ipdSummary.todayAdmission} new today</span>
             </div>
             <div className="metric-icon-box bg-info-light">
@@ -410,7 +416,7 @@ const Dashboard = () => {
             <div className="metric-details">
               <span className="metric-label">Discharges</span>
               <span className="metric-value">{ipdSummary.discharges}</span>
-              <span className="metric-meta text-success">-{ipdSummary.discharges} checked out</span>
+              <span className="metric-meta text-success">-{ipdSummary.todayDischarge} checked out today</span>
             </div>
             <div className="metric-icon-box bg-available-light">
               <i className="icofont-sign-out" />
