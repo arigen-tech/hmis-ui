@@ -971,10 +971,10 @@ const handleReset = async (e) => {
                                     </tr>
                                     <tr>
                                       <th></th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
+                                      <th className="text-center">Power(D)</th>
+                                      <th className="text-center">Axis(°)</th>
+                                      <th className="text-center">Power(D)</th>
+                                      <th className="text-center">AXIS(°)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -989,7 +989,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyAxis || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1001,7 +1001,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyV || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                       <td>
@@ -1013,7 +1013,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyAxis || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1025,7 +1025,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyV || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                     </tr>
@@ -1040,7 +1040,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyH || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1052,7 +1052,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyHValue || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                       <td>
@@ -1064,7 +1064,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyH || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1076,7 +1076,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyHValue || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                     </tr>
