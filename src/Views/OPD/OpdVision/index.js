@@ -542,7 +542,39 @@ const handleReset = async (e) => {
   );
 
   return (
-    <div className="content-wrapper">
+    <div className={hideHeader ? "p-0" : "content-wrapper"}>
+      <style>{`
+        .ophthal-section-scroll,
+        .obg-section-scroll {
+          max-height: 550px;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          scrollbar-width: thin;
+          scrollbar-color: #6c757d #f1f1f1;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar,
+        .obg-section-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-track,
+        .obg-section-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-thumb,
+        .obg-section-scroll::-webkit-scrollbar-thumb {
+          background: #6c757d;
+          border-radius: 4px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-thumb:hover,
+        .obg-section-scroll::-webkit-scrollbar-thumb:hover {
+          background: #495057;
+        }
+      `}</style>
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -755,7 +787,7 @@ const handleReset = async (e) => {
               {showForm && selectedPatient && (
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
-                    <div className="card-body p-2 pb-0">
+                    <div className="card-body p-2 pb-0 ophthal-section-scroll">
                       {formLoading ? (
                         <div className="text-center py-5">
                           <div

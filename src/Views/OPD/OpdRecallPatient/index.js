@@ -4816,9 +4816,7 @@ const OpdRRecallPatient = () => {
               />
 
               <div className="mb-1 card" style={{ border: "none" }}>
-                <div className="card-header py-2">
-                  <h6 className="mb-0 fw-bold">Personal Details</h6>
-                </div>
+              
                 <div className="card-body py-2 px-3">
                   <div className="row g-2 align-items-center">
                     <div className="col-md-10">

@@ -938,7 +938,7 @@ const GeneralMedicineWaitingList = () => {
         pachymetry: "",
         nonContactTonometry: "",
         fieldOfVN: "",
-        icl: "",
+        iol: "",
       },
     },
     spectacle: {
@@ -5714,7 +5714,7 @@ const GeneralMedicineWaitingList = () => {
                       style={{ cursor: "pointer" }}
                       onClick={() => toggleSection("visionExamination")}
                     >
-                      <h6 className="mb-0 fw-bold">Opthal Examination</h6>
+                      <h6 className="mb-0 fw-bold">Ophthal Examination</h6>
 
                       <span style={{ fontSize: "18px" }}>
                         {expandedSections.visionExamination ? "−" : "+"}
