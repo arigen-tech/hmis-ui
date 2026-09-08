@@ -2,9 +2,38 @@ import { useState, useMemo, useEffect } from "react";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import LoadingScreen from "../../../../Components/Loading";
 import { fetchPdfReportForViewAndPrint, getRequest } from "../../../../service/apiService";
-import { IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, STATUS_D, IP_INITIAL_ASSESSMENT_REPORT_URL, GET_NURSING_MEDICAL_ASSESSMENT, IP_VITALS_REPORT_URL, IP_DAILY_CASE_SHEET_REPORT_URL, GET_DISCHARGE_SUMMARY_REPORT_URL, ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST } from "../../../../config/apiConfig";
+import {
+  IP_SUMMARY_BILL_REPORT_API,
+  IP_DETAILED_BILL_REPORT_API,
+  STATUS_D,
+  IP_INITIAL_ASSESSMENT_REPORT_URL,
+  GET_NURSING_MEDICAL_ASSESSMENT,
+  IP_VITALS_REPORT_URL,
+  IP_DAILY_CASE_SHEET_REPORT_URL,
+  GET_DISCHARGE_SUMMARY_REPORT_URL,
+  ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST,
+  LAB_REPORT_URL_WRT_ORDER_HD,
+  REQUEST_PARAM_ORDER_HD_ID,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_IN_PATIENT_ID,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_SIZE,
+  LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
+  RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID,
+  GET_WEASIS_LAUNCH_URL_API,
+  RADIOLOGY_REPORT_END_URL,
+  REQUEST_PARAM_RAD_ORDER_DT_ID,
+  STATUS_Y,
+  STATUS_N,
+  STATUS_S
+} from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
+import { formatDateTimeForDisplay, formatDateForDisplay } from "../../../../utils/dateUtils";
+import { HOSPITAL_ID } from "../../../../config/constants";
+import Swal from "sweetalert2";
+
+const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 const dummyAdmissions = [
   {
     admissionNo: "IPD-1001",
@@ -194,6 +223,20 @@ const IPDDischargeRecords = () => {
 
   // Report tab state (only main tabs)
   const [activeReportTab, setActiveReportTab] = useState("admission"); // admission | clinicalNursing | investigation | discharge | billing
+
+  // ---------- Tracking state ----------
+  const [trackingType, setTrackingType] = useState("lab");
+  const [trackingData, setTrackingData] = useState([]);
+  const [trackingTotalElements, setTrackingTotalElements] = useState(0);
+  const [trackingCurrentPage, setTrackingCurrentPage] = useState(1);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const trackingItemsPerPage = 5;
+
+  const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
+  const [isViewLoading, setIsViewLoading] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [isDicomLoading, setIsDicomLoading] = useState(false);
+  const [selectedDicomRow, setSelectedDicomRow] = useState(null);
 
   // ---------- FORMATTING HELPERS ----------
   const formatDate = (dateString) => {
@@ -411,6 +454,222 @@ const IPDDischargeRecords = () => {
       }
     } else {
       showConfirmationPopup("Patient ID not found", "error", () => { }, null, "OK", "");
+    }
+  };
+
+  // ---------- TRACKING FETCH LOGIC ----------
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case `${STATUS_Y}`.toLowerCase(): return 'badge bg-success';
+      case `${STATUS_N}`.toLowerCase(): return 'badge bg-warning';
+      case `${STATUS_S}`.toLowerCase(): return 'badge bg-info';
+      default: return 'badge bg-secondary';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status?.toLowerCase()) {
+      case `${STATUS_Y}`.toLowerCase(): return 'Completed';
+      case `${STATUS_N}`.toLowerCase(): return 'Pending';
+      case `${STATUS_S}`.toLowerCase(): return 'Draft';
+      default: return 'Unknown';
+    }
+  };
+
+  const fetchTrackingData = async (page = 1) => {
+    setTrackingLoading(true);
+    try {
+      if (trackingType === "lab") {
+        if (!selectedAdmission?.uhid && !selectedAdmission?.patientId) {
+          setTrackingData([]);
+          setTrackingTotalElements(0);
+          return;
+        }
+        const patientId = selectedAdmission.inpatientId;
+        const queryString = new URLSearchParams({
+          [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || HOSPITAL_ID,
+          [REQUEST_PARAM_IN_PATIENT_ID]: patientId,
+          [REQUEST_PARAM_PAGE]: String(page - 1),
+          [REQUEST_PARAM_SIZE]: String(trackingItemsPerPage),
+        }).toString();
+        const url = `${LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL}?${queryString}`;
+        const response = await getRequest(url);
+
+        if (response?.status === 200 && response?.response) {
+          const pageData = response.response;
+          const content = pageData.content || [];
+          const total = pageData.totalElements || 0;
+
+          const mappedData = content.map((item) => ({
+            dgOrderHdId: item.dgOrderHdId,
+            orderNo: item.orderNum || "",
+            orderDate: formatDateTimeForDisplay(item.orderDate) || "",
+            patientName: item.patientName || "",
+            mobileNo: item.mobileNum || "",
+            ageGender: `${item.age || ""} / ${item.gender || ""}`,
+            sampleId: item.generatedSampleId || "",
+            investigationName: item.investigationName || "",
+            investigationStatus: item.orderStatusName || "N/A",
+            report: item.orderStatusId === 6 ? "View / Download" : "—",
+          }));
+
+          setTrackingData(mappedData);
+          setTrackingTotalElements(total);
+        } else {
+          setTrackingData([]);
+          setTrackingTotalElements(0);
+        }
+      } else if (trackingType === "radiology") {
+        const inpatientId = selectedAdmission?.inpatientId;
+        if (!inpatientId) {
+          setTrackingData([]);
+          setTrackingTotalElements(0);
+          return;
+        }
+        const url = `${RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID}?inpatientId=${inpatientId}`;
+        const response = await getRequest(url);
+
+        if (response?.status === 200 && Array.isArray(response?.response)) {
+          const content = response.response;
+          const mappedData = content.map((item) => {
+            return {
+              id: item.radorderdtid,
+              accessionNo: item.orderaccessionno || "-",
+              uhidNo: item.uhid || "-",
+              patientName: item.patientname || "-",
+              orderDate: item.orderdate ? formatDateTimeForDisplay(item.orderdate) : "-",
+              studyDate: item.studydatetime ? formatDateTimeForDisplay(item.studydatetime) : "-",
+              modalityName: item.modalityname || "-",
+              investigationName: item.investigationname || "-",
+              studyStatus: item.studystatus || "n",
+              reportStatus: item.reportstatus || "n",
+            };
+          });
+
+          setTrackingData(mappedData);
+          setTrackingTotalElements(mappedData.length);
+        } else {
+          setTrackingData([]);
+          setTrackingTotalElements(0);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching tracking data:", error);
+      setTrackingData([]);
+      setTrackingTotalElements(0);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeReportTab === "investigation") {
+      fetchTrackingData(trackingCurrentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReportTab, trackingType, trackingCurrentPage, selectedAdmission]);
+
+  const handleTrackingTypeChange = (type) => {
+    setTrackingType(type);
+    setTrackingCurrentPage(1);
+  };
+
+  const isGeneratingPdf = (dgOrderHdId) => generatingPdfIds.has(dgOrderHdId);
+
+  const handleViewReport = async (record) => {
+    const dgOrderHdId = record.dgOrderHdId;
+    if (!dgOrderHdId) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Order ID",
+        text: "Cannot generate report without an order ID.",
+      });
+      return;
+    }
+
+    setGeneratingPdfIds((prev) => new Set(prev).add(dgOrderHdId));
+    setReportPdfUrl(null);
+
+    try {
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${dgOrderHdId}`;
+      const blob = await fetchPdfReportForViewAndPrint(url, STATUS_D);
+      const fileURL = window.URL.createObjectURL(blob);
+      setReportPdfUrl(fileURL);
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      Swal.fire({
+        icon: "error",
+        title: "PDF Generation Failed",
+        text: "Could not generate lab report. Please try again.",
+      });
+    } finally {
+      setGeneratingPdfIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(dgOrderHdId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleRadiologyViewReport = async (radOrderDtId) => {
+    try {
+      setIsViewLoading(true);
+      setSelectedReportId(radOrderDtId);
+
+      const reportUrl = `${RADIOLOGY_REPORT_END_URL}?${REQUEST_PARAM_RAD_ORDER_DT_ID}=${radOrderDtId}`;
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, "d");
+      const fileURL = window.URL.createObjectURL(blob);
+      setReportPdfUrl(fileURL);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Report Generation Failed",
+        text: "Could not generate report. Please try again.",
+      });
+    } finally {
+      setIsViewLoading(false);
+      setSelectedReportId(null);
+    }
+  };
+
+  const handleDicomView = async (item) => {
+    try {
+      setIsDicomLoading(true);
+      setSelectedDicomRow(item.id);
+
+      const params = new URLSearchParams({
+        uhid: item.uhidNo,
+        orderNo: item.accessionNo,
+      });
+
+      const response = await getRequest(
+        `${GET_WEASIS_LAUNCH_URL_API}?${params.toString()}`
+      );
+
+      const payload = response?.response ?? response;
+      const weasisUrl = payload?.weasisUrl;
+
+      if (!weasisUrl) {
+        Swal.fire({
+          icon: "info",
+          title: "Info",
+          text: `No DICOM study found for ${item.patientName}.`,
+        });
+        return;
+      }
+
+      window.open(weasisUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error launching Weasis:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to open DICOM study. Please try again.",
+      });
+    } finally {
+      setIsDicomLoading(false);
+      setSelectedDicomRow(null);
     }
   };
 
@@ -794,56 +1053,184 @@ const IPDDischargeRecords = () => {
                             </div>
                           )}
 
-                          {/* Investigation – table with new headings */}
+                          {/* Investigation – tracking component */}
                           {activeReportTab === "investigation" && (
                             <div className="border p-3">
-                              <h6 className="fw-bold"> Order Tracking</h6>
+                              <div className="d-flex align-items-center justify-content-between mb-3">
+                                <h6 className="fw-bold mb-0">Order Tracking</h6>
+                                <div className="d-flex align-items-center">
+                                  <label className="me-3 mb-0">
+                                    <input
+                                      type="radio"
+                                      name="trackingType"
+                                      value="lab"
+                                      checked={trackingType === "lab"}
+                                      onChange={() => handleTrackingTypeChange("lab")}
+                                      className="me-1"
+                                    />
+                                    Lab Orders
+                                  </label>
+                                  <label className="mb-0">
+                                    <input
+                                      type="radio"
+                                      name="trackingType"
+                                      value="radiology"
+                                      checked={trackingType === "radiology"}
+                                      onChange={() => handleTrackingTypeChange("radiology")}
+                                      className="me-1"
+                                    />
+                                    Radiology Orders
+                                  </label>
+                                </div>
+                              </div>
 
-                              <table className="table table-bordered table-hover">
-                                <thead>
-                                  <tr>
-                                    <th>Order No</th>
-                                    <th>Order Date</th>
-                                    <th>Patient Name</th>
-                                    <th>Mobile No</th>
-                                    <th>Age / Gender</th>
-                                    <th>Sample ID</th>
-                                    <th>Investigation Name</th>
-                                    <th>Investigation Status</th>
-                                    <th>Report</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {sampleInvestigations.map((inv) => (
-                                    <tr key={inv.orderId}>
-                                      <td>{inv.orderId}</td>
-                                      <td>{formatDate(inv.orderedAt)}</td>
-                                      <td>{inv.patientName}</td>
-                                      <td>{inv.mobileNo}</td>
-                                      <td>{inv.age} / {inv.gender}</td>
-                                      <td>{inv.sampleId}</td>
-                                      <td>{inv.testName}</td>
-                                      <td>
-                                        <span
-                                          className={`badge ${inv.status === "Report Generated"
-                                            ? "bg-success"
-                                            : inv.status === "In Progress"
-                                              ? "bg-warning text-dark"
-                                              : inv.status === "Sample Collected"
-                                                ? "bg-info"
-                                                : "bg-secondary"
-                                            }`}
-                                        >
-                                          {inv.status}
-                                        </span>
-                                      </td>
-                                      <td>{inv.report || "-"}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-
-
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-hover">
+                                  <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                                    {trackingType === "lab" ? (
+                                      <tr>
+                                        <th>Order No</th>
+                                        <th>Order Date</th>
+                                        <th>Sample ID</th>
+                                        <th>Investigation Name</th>
+                                        <th>Investigation Status</th>
+                                        <th>Report</th>
+                                      </tr>
+                                    ) : (
+                                      <tr>
+                                        <th>Accession NO</th>
+                                        <th>Order Date/Time</th>
+                                        <th>Study Date/Time</th>
+                                        <th>Modality Name</th>
+                                        <th>Investigation name</th>
+                                        <th>Study Status</th>
+                                        <th>Report Status</th>
+                                        <th>Report</th>
+                                        <th>DICOM</th>
+                                      </tr>
+                                    )}
+                                  </thead>
+                                  <tbody>
+                                    {trackingLoading ? (
+                                      <tr>
+                                        <td colSpan={trackingType === "lab" ? "6" : "9"} className="text-center py-4">
+                                          Loading...
+                                        </td>
+                                      </tr>
+                                    ) : trackingData.length > 0 ? (
+                                      trackingData.map((row, index) => (
+                                        <tr key={index}>
+                                          {trackingType === "lab" ? (
+                                            <>
+                                              <td>{row.orderNo}</td>
+                                              <td>{row.orderDate}</td>
+                                              <td>{row.sampleId}</td>
+                                              <td>{row.investigationName}</td>
+                                              <td>{row.investigationStatus}</td>
+                                              <td>
+                                                {row.report === "View / Download" ? (
+                                                  <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => handleViewReport(row)}
+                                                    disabled={isGeneratingPdf(row.dgOrderHdId)}
+                                                  >
+                                                    {isGeneratingPdf(row.dgOrderHdId) ? (
+                                                      <>
+                                                        <span
+                                                          className="spinner-border spinner-border-sm me-1"
+                                                          role="status"
+                                                          aria-hidden="true"
+                                                        ></span>
+                                                        Generating...
+                                                      </>
+                                                    ) : (
+                                                      "View"
+                                                    )}
+                                                  </button>
+                                                ) : (
+                                                  <span>{row.report}</span>
+                                                )}
+                                              </td>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <td>{row.accessionNo}</td>
+                                              <td>{row.orderDate}</td>
+                                              <td>{row.studyDate}</td>
+                                              <td>{row.modalityName}</td>
+                                              <td>{row.investigationName}</td>
+                                              <td>
+                                                <span className={getStatusBadgeClass(row.studyStatus)}>
+                                                  {getStatusText(row.studyStatus)}
+                                                </span>
+                                              </td>
+                                              <td>
+                                                <span className={getStatusBadgeClass(row.reportStatus)}>
+                                                  {getStatusText(row.reportStatus)}
+                                                </span>
+                                              </td>
+                                              <td className="text-center">
+                                                {row.reportStatus?.toLowerCase() === `${STATUS_Y}`.toLowerCase() && (
+                                                  <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={() => handleRadiologyViewReport(row.id)}
+                                                    disabled={isViewLoading && selectedReportId === row.id}
+                                                  >
+                                                    {isViewLoading && selectedReportId === row.id ? (
+                                                      <>
+                                                        <span className="spinner-border spinner-border-sm me-1" />
+                                                        Generating...
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <i className="fa fa-eye me-1"></i>
+                                                        View
+                                                      </>
+                                                    )}
+                                                  </button>
+                                                )}
+                                              </td>
+                                              <td className="text-center">
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-sm btn-success"
+                                                  onClick={() => handleDicomView(row)}
+                                                  disabled={isDicomLoading && selectedDicomRow === row.id}
+                                                >
+                                                  {isDicomLoading && selectedDicomRow === row.id ? (
+                                                    <>
+                                                      <span className="spinner-border spinner-border-sm me-1" />
+                                                    </>
+                                                  ) : (
+                                                    <i className="fa fa-eye"></i>
+                                                  )}
+                                                </button>
+                                              </td>
+                                            </>
+                                          )}
+                                        </tr>
+                                      ))
+                                    ) : (
+                                      <tr>
+                                        <td colSpan={trackingType === "lab" ? "6" : "9"} className="text-center py-4">
+                                          No records found
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                              {/* Pagination */}
+                              {trackingTotalElements > 0 && (
+                                <Pagination
+                                  totalItems={trackingTotalElements}
+                                  itemsPerPage={trackingItemsPerPage}
+                                  currentPage={trackingCurrentPage}
+                                  onPageChange={(page) => setTrackingCurrentPage(page)}
+                                />
+                              )}
                             </div>
                           )}
 
