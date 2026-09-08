@@ -1,7 +1,7 @@
-export const API_HOST = 'https://api.arigenhmis.com/hims';
+// export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
-// export const API_HOST = "http://localhost:8080";
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -93,6 +93,7 @@ export const LAB_INVOICE_API = `${ALL_REPORTS}/labInvoice`;
 export const RADIOLOGY_INVOICE_API = `${ALL_REPORTS}/radiologyInvoice`;
 export const DASHBOARD_STATS_API = `/dashboard`;
 export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
+export const DASHBOARD_INPATIENT_SUMMARY_API = `/dashboard/inpatient-summary`;
 
 export const DEPARTMENT = `/department`;
 
@@ -519,6 +520,7 @@ export const REQUEST_PARAM_DEPARTMENT_ID = "departmentId";
 export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
 export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
 export const REQUEST_PARAM_PATIENT_ID = "patientId";
+export const REQUEST_PARAM_IN_PATIENT_ID = "inPatientId";
 export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE = "departmentTypeCode";
 export const REQUEST_PARAM_DEPARTMENT_TYPE = "departmentType";
 export const REQUEST_PARAM_GENDER_ID = "genderId";

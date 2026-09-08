@@ -21,6 +21,7 @@ const anteriorApiKeys = {
   anteriorChamber: "Ant. Chamber",
   iris: "Iris",
   pupil: "Pupils",
+  lens: "Lens",
 };
 
 const posteriorApiKeys = {
@@ -88,6 +89,7 @@ const defaultVisionForm = {
   reAnteriorChamber: "N",
   reIris: "N",
   rePupil: "N",
+  reLens: "N",
   leEyebrow: "N",
   leEyelid: "N",
   leCornea: "N",
@@ -98,6 +100,7 @@ const defaultVisionForm = {
   leAnteriorChamber: "N",
   leIris: "N",
   lePupil: "N",
+  leLens: "N",
   reOpticDisc: "N",
   reFoveaMacula: "N",
   reVitreousPosterior: "N",
@@ -539,7 +542,39 @@ const handleReset = async (e) => {
   );
 
   return (
-    <div className="content-wrapper">
+    <div className={hideHeader ? "p-0" : "content-wrapper"}>
+      <style>{`
+        .ophthal-section-scroll,
+        .obg-section-scroll {
+          max-height: 550px;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          scrollbar-width: thin;
+          scrollbar-color: #6c757d #f1f1f1;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar,
+        .obg-section-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-track,
+        .obg-section-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-thumb,
+        .obg-section-scroll::-webkit-scrollbar-thumb {
+          background: #6c757d;
+          border-radius: 4px;
+        }
+
+        .ophthal-section-scroll::-webkit-scrollbar-thumb:hover,
+        .obg-section-scroll::-webkit-scrollbar-thumb:hover {
+          background: #495057;
+        }
+      `}</style>
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -752,7 +787,7 @@ const handleReset = async (e) => {
               {showForm && selectedPatient && (
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
-                    <div className="card-body p-2 pb-0">
+                    <div className="card-body p-2 pb-0 ophthal-section-scroll">
                       {formLoading ? (
                         <div className="text-center py-5">
                           <div
@@ -936,10 +971,10 @@ const handleReset = async (e) => {
                                     </tr>
                                     <tr>
                                       <th></th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
-                                      <th className="text-center">AXIS</th>
+                                      <th className="text-center">Power(D)</th>
+                                      <th className="text-center">Axis(°)</th>
+                                      <th className="text-center">Power(D)</th>
+                                      <th className="text-center">AXIS(°)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -954,7 +989,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyAxis || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -966,7 +1001,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyV || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                       <td>
@@ -978,7 +1013,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyAxis || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -990,7 +1025,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyV || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                     </tr>
@@ -1005,7 +1040,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyH || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1017,7 +1052,7 @@ const handleReset = async (e) => {
                                             formData.reRetinoscopyHValue || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                       <td>
@@ -1029,7 +1064,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyH || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Power(D)"
                                         />
                                       </td>
                                       <td>
@@ -1041,7 +1076,7 @@ const handleReset = async (e) => {
                                             formData.leRetinoscopyHValue || ""
                                           }
                                           onChange={handleChange}
-                                          placeholder="Axis"
+                                          placeholder="Axis(°)"
                                         />
                                       </td>
                                     </tr>
@@ -1071,39 +1106,40 @@ const handleReset = async (e) => {
                                       </th>
                                     </tr>
                                     <tr>
-                                      <th>Keratometry</th>
-                                      <th>Pachymetry</th>
-                                      <th>Non-Contact Tonometry</th>
-                                      <th>Field of VN</th>
-                                      <th>IOL</th>
-                                      <th>Keratometry</th>
-                                      <th>Pachymetry</th>
-                                      <th>Non-Contact Tonometry</th>
-                                      <th>Field of VN</th>
-                                      <th>ICL</th>
+                                      <th>Keratometry (D)</th>
+                                      <th>Pachymetry (<span style={{ fontStyle: "italic", fontFamily: "serif" }}>&mu;</span>m)</th>
+                                      <th>Non-Contact Tonometry (mmHg)</th>
+                                      <th>Field of VN (deg)</th>
+                                      <th>IOL (D)</th>
+                                      <th>Keratometry (D)</th>
+                                      <th>Pachymetry (<span style={{ fontStyle: "italic", fontFamily: "serif" }}>&mu;</span>m)</th>
+                                      <th>Non-Contact Tonometry (mmHg)</th>
+                                      <th>Field of VN (deg)</th>
+                                      <th>IOL (D)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
                                       {[
-                                        "reKeratometry",
-                                        "rePachymetry",
-                                        "reTonometry",
-                                        "reFieldOfVision",
-                                        "reIolPower",
-                                        "leKeratometry",
-                                        "lePachymetry",
-                                        "leTonometry",
-                                        "leFieldOfVision",
-                                        "leIolPower",
-                                      ].map((f) => (
-                                        <td key={f}>
+                                        { name: "reKeratometry", unit: "D" },
+                                        { name: "rePachymetry", unit: "µm" },
+                                        { name: "reTonometry", unit: "mmHg" },
+                                        { name: "reFieldOfVision", unit: "deg" },
+                                        { name: "reIolPower", unit: "D" },
+                                        { name: "leKeratometry", unit: "D" },
+                                        { name: "lePachymetry", unit: "µm" },
+                                        { name: "leTonometry", unit: "mmHg" },
+                                        { name: "leFieldOfVision", unit: "deg" },
+                                        { name: "leIolPower", unit: "D" },
+                                      ].map(({ name, unit }) => (
+                                        <td key={name}>
                                           <input
                                             type="text"
                                             className="form-control form-control-sm"
-                                            name={f}
-                                            value={formData[f] || ""}
+                                            name={name}
+                                            value={formData[name] || ""}
                                             onChange={handleChange}
+                                            placeholder={unit}
                                           />
                                         </td>
                                       ))}
@@ -1399,14 +1435,12 @@ const handleReset = async (e) => {
                                 <table className="table table-bordered table-sm w-auto">
                                   <thead className="table-light">
                                     <tr>
-                                      <th style={{ width: "80px" }}></th>
                                       <th className="text-center">R.E.</th>
                                       <th className="text-center">L.E.</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
-                                      <td className="fw-semibold">Select</td>
                                       <td>
                                         <select
                                           className="form-select form-select-sm"
