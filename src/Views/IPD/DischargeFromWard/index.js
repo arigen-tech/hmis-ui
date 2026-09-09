@@ -61,10 +61,10 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 const DischargeFromWard = ({ selectedPatient }) => {
   const navigate = useNavigate();
   const { id } = useParams();
-
-  // Extract dynamic inpatientId from dashboard row data
+  
   const inpatientId = selectedPatient?.ipdPatientId || selectedPatient?.inpatientId || id;
 
+  const [missingFields, setMissingFields] = useState([]);
   const [activeTab, setActiveTab] = useState("summary");
   const [isSaving, setIsSaving] = useState(false);
   const [confirmationPopup, setConfirmationPopup] = useState(null);
@@ -432,12 +432,14 @@ const DischargeFromWard = ({ selectedPatient }) => {
   const handleCKEditorChange = (fieldName) => (event, editor) => {
     const data = editor.getData();
     setDischargeData((prev) => ({ ...prev, [fieldName]: data }));
+    setMissingFields((prev) => prev.filter((f) => f !== fieldName));
   };
 
   // Regular change handler for non-CKEditor fields (except medication array)
   const handleDischargeChange = (e) => {
     const { name, value } = e.target;
     setDischargeData((prev) => ({ ...prev, [name]: value }));
+    setMissingFields((prev) => prev.filter((f) => f !== name));
   };
 
   // ---------- Medication on Discharge Handlers (table) ----------
@@ -624,32 +626,43 @@ const DischargeFromWard = ({ selectedPatient }) => {
       return;
     }
 
+    const requiredFields = [
+      "finalDiagnosis",
+      "primaryDiagnosis",
+      "presentComplaints",
+      "historyPresentIllness",
+      "onExamination",
+      "courseOfHospitalStay",
+      "adviseOnDischarge",
+      "dischargeDateTime",
+      "patientCondition",
+      "dischargeReason",
+    ];
+
+    const missing = requiredFields.filter(
+      (field) =>
+        !dischargeData[field] ||
+        dischargeData[field] === "<p>&nbsp;</p>" ||
+        dischargeData[field].trim() === ""
+    );
+
+    if (missing.length > 0) {
+      setMissingFields(missing);
+      showConfirmationPopup(`Please fill all required fields: ${missing.join(", ")}`, "warning", () => { }, null, "OK", "");
+      
+      setTimeout(() => {
+        const firstMissingId = `field-${missing[0]}`;
+        const el = document.getElementById(firstMissingId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return;
+    } else {
+      setMissingFields([]);
+    }
+
     if (status === "S") {
-      const requiredFields = [
-        "finalDiagnosis",
-        "primaryDiagnosis",
-        "presentComplaints",
-        "historyPresentIllness",
-        "onExamination",
-        "courseOfHospitalStay",
-        "adviseOnDischarge",
-        "dischargeDateTime",
-        "patientCondition",
-        "dischargeReason",
-      ];
-
-      const missing = requiredFields.filter(
-        (field) =>
-          !dischargeData[field] ||
-          dischargeData[field] === "<p>&nbsp;</p>" ||
-          dischargeData[field].trim() === ""
-      );
-
-      if (missing.length > 0) {
-        showConfirmationPopup(`Please fill all required fields for submission: ${missing.join(", ")}`, "warning", () => { }, null, "OK", "");
-        return;
-      }
-
       const invalidMedRows = dischargeData.medicationOnDischarge.some(
         (med) =>
           !med.medicineName.trim() ||
@@ -777,30 +790,13 @@ const DischargeFromWard = ({ selectedPatient }) => {
   return (
     <div>
       <style>{`
-        .discharge-section-scroll {
-          max-height: 550px;
-          overflow-y: auto !important;
-          overflow-x: hidden !important;
-          scrollbar-width: thin;
-          scrollbar-color: #6c757d #f1f1f1;
+        .blink-error {
+          animation: blinker 1s linear infinite;
+          border: 1px solid red !important;
+          box-shadow: 0 0 5px red;
         }
-
-        .discharge-section-scroll::-webkit-scrollbar {
-          width: 10px;
-        }
-
-        .discharge-section-scroll::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 4px;
-        }
-
-        .discharge-section-scroll::-webkit-scrollbar-thumb {
-          background: #6c757d;
-          border-radius: 4px;
-        }
-
-        .discharge-section-scroll::-webkit-scrollbar-thumb:hover {
-          background: #495057;
+        @keyframes blinker {
+          50% { opacity: 0.5; border-color: red; }
         }
       `}</style>
       {/* ======================= DISCHARGE SUMMARY TAB ======================= */}
@@ -816,7 +812,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
                   Final Diagnosis <span className="text-danger">*</span>
                 </label>
                 <textarea
-                  className="form-control"
+                  id="field-finalDiagnosis"
+                  className={`form-control ${missingFields.includes("finalDiagnosis") ? "blink-error" : ""}`}
                   rows="2"
                   name="finalDiagnosis"
                   value={dischargeData.finalDiagnosis}
@@ -831,7 +828,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
                   Primary Diagnosis <span className="text-danger">*</span>
                 </label>
                 <textarea
-                  className="form-control"
+                  id="field-primaryDiagnosis"
+                  className={`form-control ${missingFields.includes("primaryDiagnosis") ? "blink-error" : ""}`}
                   rows="2"
                   name="primaryDiagnosis"
                   value={dischargeData.primaryDiagnosis}
@@ -846,7 +844,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
                   Present Complaints <span className="text-danger">*</span>
                 </label>
                 <textarea
-                  className="form-control"
+                  id="field-presentComplaints"
+                  className={`form-control ${missingFields.includes("presentComplaints") ? "blink-error" : ""}`}
                   rows="2"
                   name="presentComplaints"
                   value={dischargeData.presentComplaints}
@@ -856,13 +855,13 @@ const DischargeFromWard = ({ selectedPatient }) => {
               </div>
 
               {/* History of Present Illness - CKEditor */}
-              <div className="col-12">
+              <div className="col-12" id="field-historyPresentIllness">
                 <label className="form-label">
                   History of Present Illness{" "}
                   <span className="text-danger">*</span>
                 </label>
                 <div
-                  className="form-label"
+                  className={`form-label ${missingFields.includes("historyPresentIllness") ? "blink-error" : ""}`}
                   style={{
                     border: "1px solid #ced4da",
                     borderRadius: "6px",
@@ -919,12 +918,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
               </div>
 
               {/* On Examination - CKEditor */}
-              <div className="col-12">
+              <div className="col-12" id="field-onExamination">
                 <label className="form-label">
                   On Examination <span className="text-danger">*</span>
                 </label>
                 <div
-                  className="form-label"
+                  className={`form-label ${missingFields.includes("onExamination") ? "blink-error" : ""}`}
                   style={{
                     border: "1px solid #ced4da",
                     borderRadius: "6px",
@@ -983,13 +982,13 @@ const DischargeFromWard = ({ selectedPatient }) => {
               </div>
 
               {/* Course of Hospital Stay - CKEditor */}
-              <div className="col-12">
+              <div className="col-12" id="field-courseOfHospitalStay">
                 <label className="form-label">
                   Course of Hospital Stay{" "}
                   <span className="text-danger">*</span>
                 </label>
                 <div
-                  className="form-label"
+                  className={`form-label ${missingFields.includes("courseOfHospitalStay") ? "blink-error" : ""}`}
                   style={{
                     border: "1px solid #ced4da",
                     borderRadius: "6px",
@@ -1214,12 +1213,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
               </div>
 
               {/* Advise on Discharge - CKEditor */}
-              <div className="col-12">
+              <div className="col-12" id="field-adviseOnDischarge">
                 <label className="form-label">
                   Advise on Discharge <span className="text-danger">*</span>
                 </label>
                 <div
-                  className="form-label"
+                  className={`form-label ${missingFields.includes("adviseOnDischarge") ? "blink-error" : ""}`}
                   style={{
                     border: "1px solid #ced4da",
                     borderRadius: "6px",
@@ -1322,8 +1321,9 @@ const DischargeFromWard = ({ selectedPatient }) => {
                       <span className="text-danger">*</span>
                     </label>
                     <input
+                      id="field-dischargeDateTime"
                       type="datetime-local"
-                      className="form-control"
+                      className={`form-control ${missingFields.includes("dischargeDateTime") ? "blink-error" : ""}`}
                       name="dischargeDateTime"
                       value={dischargeData.dischargeDateTime}
                       onChange={handleDischargeChange}
@@ -1335,7 +1335,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
                       <span className="text-danger">*</span>
                     </label>
                     <select
-                      className="form-select"
+                      id="field-patientCondition"
+                      className={`form-select ${missingFields.includes("patientCondition") ? "blink-error" : ""}`}
                       name="patientCondition"
                       value={dischargeData.patientCondition}
                       onChange={handleDischargeChange}
@@ -1353,7 +1354,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
                       Discharge Reason <span className="text-danger">*</span>
                     </label>
                     <select
-                      className="form-select"
+                      id="field-dischargeReason"
+                      className={`form-select ${missingFields.includes("dischargeReason") ? "blink-error" : ""}`}
                       name="dischargeReason"
                       value={dischargeData.dischargeReason}
                       onChange={handleDischargeChange}
@@ -1424,7 +1426,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
                   onClick={handleSaveDraft}
                   disabled={isSaving}
                 >
-                  <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save (Draft)"}
+                  <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Ready For Discharge (Draft)"}
                 </button>
                 <button
                   className="btn btn-info btn-sm text-white"
