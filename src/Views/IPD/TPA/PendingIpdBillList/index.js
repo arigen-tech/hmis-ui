@@ -247,10 +247,18 @@ const PendingIpdBillList = () => {
   const handleRowClick = (item) => {
     setSelectedAdmission(item);
     setCollectionDate(new Date().toISOString().split("T")[0]);
-    setCollectionType("Advance");
-    setPaymentRows([
-      { id: 1, mode: "", amount: "" },
-    ]);
+    
+    if (item.billStatus === "FINAL") {
+      setCollectionType("Final");
+      setPaymentRows([
+        { id: 1, mode: "", amount: item.outStandingAmount || "" },
+      ]);
+    } else {
+      setCollectionType("Advance");
+      setPaymentRows([
+        { id: 1, mode: "", amount: "" },
+      ]);
+    }
     setShowDetails(true);
   };
 
@@ -804,6 +812,76 @@ const PendingIpdBillList = () => {
                                 value={selectedAdmission.billingType || ""}
                                 readOnly
                               />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Billing Summary Section */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
+                          <h6 className="mb-0 fw-bold">Billing Summary</h6>
+                          {selectedAdmission.billStatus && (
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: selectedAdmission.billStatus === "FINAL" ? "#28a745" : selectedAdmission.billStatus === "OPEN" ? "#ffc107" : "#6c757d",
+                                color: selectedAdmission.billStatus === "OPEN" ? "#000" : "#fff"
+                              }}
+                            >
+                              {selectedAdmission.billStatus}
+                            </span>
+                          )}
+                        </div>
+                        <div className="card-body">
+                          <div className="row g-3">
+                            <div className="form-group col-md-3">
+                              <label className="fw-semibold">Billing Type</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.billingType || "N/A"}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3">
+                              <label className="fw-semibold">Total Amount</label>
+                              <div className="input-group">
+                                <span className="input-group-text bg-light fw-bold">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control fw-bold text-end"
+                                  value={selectedAdmission.totalAmount || "0.00"}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group col-md-3">
+                              <label className="fw-semibold">Patient Paid</label>
+                              <div className="input-group">
+                                <span className="input-group-text bg-light text-success fw-bold">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control fw-bold text-end text-success"
+                                  value={selectedAdmission.patientPaid || "0.00"}
+                                  readOnly
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group col-md-3">
+                              <label className="fw-semibold">Pending Amount</label>
+                              <div className="input-group">
+                                <span className="input-group-text bg-light text-danger fw-bold">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control fw-bold text-end text-danger"
+                                  value={selectedAdmission.outStandingAmount || "0.00"}
+                                  readOnly
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
