@@ -25,7 +25,9 @@ import {
   REQUEST_PARAM_RAD_ORDER_DT_ID,
   STATUS_Y,
   STATUS_N,
-  STATUS_S
+  STATUS_S,
+  GET_PREVIOUS_PAYMENT_HISTORY,
+  ADVANCE_RECEIPT_REPORT_API
 } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
@@ -237,6 +239,10 @@ const IPDDischargeRecords = () => {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [isDicomLoading, setIsDicomLoading] = useState(false);
   const [selectedDicomRow, setSelectedDicomRow] = useState(null);
+
+  // ---------- Payment History state ----------
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // ---------- FORMATTING HELPERS ----------
   const formatDate = (dateString) => {
@@ -457,6 +463,56 @@ const IPDDischargeRecords = () => {
     }
   };
 
+  const fetchPaymentHistory = (billingHeaderId) => {
+    if (!billingHeaderId) {
+      setPaymentHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${billingHeaderId}`)
+      .then(res => {
+        if (res && res.response) {
+          const mappedHistory = res.response.map((item, idx) => ({
+            id: item.receiptId || idx,
+            date: item.dateTime,
+            paymentType: item.paymentType,
+            paymentMode: item.paymentMode,
+            amount: item.amount
+          }));
+          setPaymentHistory(mappedHistory);
+        } else {
+          setPaymentHistory([]);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching payment history:", error);
+        setPaymentHistory([]);
+      })
+      .finally(() => {
+        setHistoryLoading(false);
+      });
+  };
+
+  const handleAdvanceReceiptReport = async (historyItem) => {
+    const receiptId = Number(historyItem?.id);
+    if (receiptId) {
+      try {
+        setGeneratingReportType("advance_receipt");
+        const reportUrl = `${ADVANCE_RECEIPT_REPORT_API}?receiptId=${receiptId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+      } finally {
+        setGeneratingReportType(null);
+      }
+    } else {
+      showConfirmationPopup("Receipt ID not found", "error", () => {}, null, "OK", "");
+    }
+  };
+
   // ---------- TRACKING FETCH LOGIC ----------
   const getStatusBadgeClass = (status) => {
     switch (status?.toLowerCase()) {
@@ -568,6 +624,12 @@ const IPDDischargeRecords = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReportTab, trackingType, trackingCurrentPage, selectedAdmission]);
+
+  useEffect(() => {
+    if (activeReportTab === "billing" && selectedAdmission?.billingHeaderId) {
+      fetchPaymentHistory(selectedAdmission.billingHeaderId);
+    }
+  }, [activeReportTab, selectedAdmission]);
 
   const handleTrackingTypeChange = (type) => {
     setTrackingType(type);
@@ -1258,40 +1320,97 @@ const IPDDischargeRecords = () => {
 
                           {/* Billing – buttons only */}
                           {activeReportTab === "billing" && (
-                            <div className="d-flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={handleReportSummaryClick}
-                                disabled={generatingReportType !== null}
-                              >
-                                {generatingReportType === "summary" ? (
-                                  <>
-                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                    Generating...
-                                  </>
-                                ) : (
-                                  "Bill Summary"
-                                )}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={handleDetailedReportClick}
-                                disabled={generatingReportType !== null}
-                              >
-                                {generatingReportType === "detailed" ? (
-                                  <>
-                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                    Generating...
-                                  </>
-                                ) : (
-                                  "Detailed Billing Report"
-                                )}
-                              </button>
-                              <button type="button" className="btn btn-outline-primary">Advance Payment</button>
-                              <button type="button" className="btn btn-outline-primary">Final Payment</button>
-                              <button type="button" className="btn btn-outline-primary">Refund Receipt</button>
+                            <div className="d-flex flex-column gap-3">
+                              <div className="d-flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary"
+                                  onClick={handleReportSummaryClick}
+                                  disabled={generatingReportType !== null}
+                                >
+                                  {generatingReportType === "summary" ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                      Generating...
+                                    </>
+                                  ) : (
+                                    "Bill Summary"
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary"
+                                  onClick={handleDetailedReportClick}
+                                  disabled={generatingReportType !== null}
+                                >
+                                  {generatingReportType === "detailed" ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                      Generating...
+                                    </>
+                                  ) : (
+                                    "Detailed Billing Report"
+                                  )}
+                                </button>
+                              </div>
+
+                              <div className="card shadow-sm mt-2">
+                                <div className="card-header py-2 border-bottom-1 d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0 fw-bold">Payment History</h6>
+                                </div>
+                                <div className="card-body">
+                                  {historyLoading ? (
+                                    <div className="text-center py-3">
+                                      <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span className="visually-hidden">Loading...</span>
+                                      </div>
+                                      <span className="ms-2">Loading payment history...</span>
+                                    </div>
+                                  ) : paymentHistory.length === 0 ? (
+                                    <div className="text-muted text-center py-3">No payment history found for this admission.</div>
+                                  ) : (
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-hover align-middle mb-0">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th>Date</th>
+                                            <th>Payment Type</th>
+                                            <th>Payment Mode</th>
+                                            <th className="text-end">Amount</th>
+                                            <th style={{ width: "100px" }}>Action</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {paymentHistory.map((item) => (
+                                            <tr key={item.id}>
+                                              <td>{formatDate(item.date)}</td>
+                                              <td>{item.paymentType}</td>
+                                              <td>{item.paymentMode}</td>
+                                              <td className="text-end">₹{Number(item.amount).toFixed(2)}</td>
+                                              <td className="text-center">
+                                                <button
+                                                  className="btn btn-sm btn-outline-info"
+                                                  onClick={() => handleAdvanceReceiptReport(item)}
+                                                  title="View Report"
+                                                  disabled={generatingReportType !== null}
+                                                >
+                                                  {generatingReportType === "advance_receipt" ? (
+                                                    <span className="spinner-border spinner-border-sm" />
+                                                  ) : (
+                                                    <>
+                                                      <i className="mdi mdi-file-document"></i> Report
+                                                    </>
+                                                  )}
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>

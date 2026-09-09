@@ -10,7 +10,7 @@ import {
   REQUEST_PARAM_FLAG,
   STATUS_D,
   REQUEST_PARAM_HOSPITAL_ID,
-  REQUEST_PARAM_PATIENT_ID,
+  REQUEST_PARAM_IN_PATIENT_ID,
   REQUEST_PARAM_PAGE,
   REQUEST_PARAM_SIZE,
   LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
@@ -341,10 +341,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           setTotalElements(0);
           return;
         }
-        const patientId = selectedPatient.patientId;
+        const inpatientId = selectedPatient.inpatientId;
         const queryString = new URLSearchParams({
           [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || HOSPITAL_ID,
-          [REQUEST_PARAM_PATIENT_ID]: patientId,
+          [REQUEST_PARAM_IN_PATIENT_ID]: inpatientId,
           [REQUEST_PARAM_PAGE]: String(page - 1),
           [REQUEST_PARAM_SIZE]: String(itemsPerPage),
         }).toString();
