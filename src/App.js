@@ -291,6 +291,7 @@ import OTPatientReceiptPending from './Views/OperationTheatre/OTPatientReceiptPe
 import OTBookingStatusMaster from './Views/Masters/OTBookingStatusMaster';
 // import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
 import NISRegister from './Views/Dispensary/NISRegister';
+import PACClearance from './Views/OperationTheatre/PACClearance';
 // import OTSurgeryExecution from './Views/OperationTheatre/OTSurgeryExecution';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -615,6 +616,8 @@ function App() {
                 {/* <Route path="/OTPreOperativeChecklist" element={<OTPreOperativeChecklist/>} /> */}
                 <Route path="/NISRegister" element={<NISRegister/>} />
                 {/* <Route path="/OTSurgeryExecution" element={<OTSurgeryExecution/>} /> */}
+                <Route path="/PACClearance" element={<PACClearance/>} />
+
                 
                 </Route>
             </Route>

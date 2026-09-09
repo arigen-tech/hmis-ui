@@ -11,7 +11,6 @@ import {
   GET_OBG_EXAMINATION_DETAIL,
   GET_WAITING_LIST,
 } from "../../../config/apiConfig";
-import LoadingScreen from "../../../Components/Loading/index";
 import {
   MAS_OB_CONCEPTION,
   MAS_OB_CONSANGUINITY,
@@ -428,7 +427,9 @@ const OBGDetails = forwardRef(
     };
 
     useEffect(() => {
-      fetchWaitingList();
+      if (!patientId && !visitId) {
+        fetchWaitingList();
+      }
       fetchConceptionOptions();
       fetchConsanguinityOptions();
       fetchImmunisedStatusOptions();
@@ -937,7 +938,34 @@ const OBGDetails = forwardRef(
     const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
     return (
-      <div className="content-wrapper">
+      <div className={hideHeader ? "p-0" : "content-wrapper"}>
+        <style>{`
+          .obg-section-scroll {
+            max-height: 550px;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            scrollbar-width: thin;
+            scrollbar-color: #6c757d #f1f1f1;
+          }
+
+          .obg-section-scroll::-webkit-scrollbar {
+            width: 10px;
+          }
+
+          .obg-section-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+
+          .obg-section-scroll::-webkit-scrollbar-thumb {
+            background: #6c757d;
+            border-radius: 4px;
+          }
+
+          .obg-section-scroll::-webkit-scrollbar-thumb:hover {
+            background: #495057;
+          }
+        `}</style>
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -960,7 +988,6 @@ const OBGDetails = forwardRef(
                 </div>
               )}
               <div className="card-body p-2 pb-0">
-                {loading && <LoadingScreen />}
                 {popupMessage && (
                   <Popup
                     message={popupMessage.message}
@@ -1059,7 +1086,19 @@ const OBGDetails = forwardRef(
                           </tr>
                         </thead>
                         <tbody>
-                          {currentItems.length > 0 ? (
+                          {loading ? (
+                            <tr>
+                              <td colSpan="8" className="text-center text-muted py-4">
+                                <div
+                                  className="spinner-border spinner-border-sm text-primary me-2"
+                                  role="status"
+                                >
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                                Loading waiting list...
+                              </td>
+                            </tr>
+                          ) : currentItems.length > 0 ? (
                             currentItems.map((item) => (
                               <tr
                                 key={item.visitId}
@@ -1143,7 +1182,7 @@ const OBGDetails = forwardRef(
                 {showForm && selectedPatient && (
                   <div className="row mb-3 mt-3">
                     <div className="col-sm-12">
-                      <div className="card-body p-2 pb-0">
+                      <div className="card-body p-2 pb-0 obg-section-scroll">
                         {formLoading ? (
                           <div className="text-center py-5">
                             <div
