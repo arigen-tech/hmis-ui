@@ -1335,6 +1335,17 @@ const UpdatePatientRegistration = () => {
     loadMasterData();
   }, [location.key, location.pathname]);
 
+  const getCurrentLocalDateTime = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
   const handleEdit = async (patient) => {
     try {
       const patientId = patient.id;
@@ -1778,7 +1789,6 @@ const UpdatePatientRegistration = () => {
         return;
       }
 
-      debugger;
       const isMale =
         patientDetailForm.patientGender?.genderName?.trim().toLowerCase() === "male"|| patientDetailForm.patientGender?.name?.trim().toLowerCase() === "Male";
       const isMaleGynaeAppointment =
@@ -1948,8 +1958,8 @@ const UpdatePatientRegistration = () => {
 
     const hospitalId = Number(sessionStorage.getItem("hospitalId"));
     const username = sessionStorage.getItem("username");
-    const currentDate = new Date().toISOString();
-    const currentDateOnly = new Date().toISOString().split("T")[0];
+    const currentDate = getCurrentLocalDateTime();
+    const currentDateOnly = currentDate.split("T")[0];
 
     const toInstant = (dateStr, timeStr) => {
       if (!dateStr || !timeStr) return null;
@@ -1962,6 +1972,23 @@ const UpdatePatientRegistration = () => {
 
       return `${dateOnly}T${timeWithSeconds}Z`;
     };
+
+    const toLocalDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  
+  // Extract date part (handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss")
+  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  
+  // Ensure time has seconds (HH:mm -> HH:mm:ss)
+  let timeWithSeconds = timeStr;
+  if (timeStr && timeStr.split(":").length === 2) {
+    timeWithSeconds = `${timeStr}:00`;
+  }
+  
+  return `${dateOnly}T${timeWithSeconds}`;
+};
+
+
 
     const toNumber = (value) => {
       if (value === null || value === undefined || value === "") return null;
@@ -2153,8 +2180,8 @@ const UpdatePatientRegistration = () => {
             (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
           )
           .map((appt) => {
-            const startTime = toInstant(appt.selDate, appt.tokenStartTime);
-            const endTime = toInstant(appt.selDate, appt.tokenEndTime);
+            const startTime = toLocalDateTime(appt.selDate, appt.tokenStartTime);
+            const endTime = toLocalDateTime(appt.selDate, appt.tokenEndTime);
 
             return {
               id: appt.visitId || null,
