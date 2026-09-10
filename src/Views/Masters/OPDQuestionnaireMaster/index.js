@@ -44,7 +44,7 @@ const OPDQuestionnaireMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const fetchData = async (flag = 0) => {
+  const fetchData = async (flag = 1) => {
     setLoading(true);
     try {
       const { response } = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);

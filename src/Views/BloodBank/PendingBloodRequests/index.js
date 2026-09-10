@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { GET_BLOOD_REQUEST_TRACKING } from "../../../config/apiConfig";
 
 const PendingBloodRequests = () => {
   const [loading, setLoading] = useState(false);
@@ -18,11 +20,12 @@ const PendingBloodRequests = () => {
   // Search state
   const [searchFilters, setSearchFilters] = useState({
     patientName: "",
-    department: ""
+    ward: ""
   });
 
-  // Mock data for pending requests (from details table)
-  const [pendingRequests, setPendingRequests] = useState([
+  // Data is loaded from the blood request tracking API.
+  const [pendingRequests, setPendingRequests] = useState([]);
+  /*const [pendingRequests, setPendingRequests] = useState([
     {
       id: 1,
       requestId: "BR-101",
@@ -153,7 +156,7 @@ const PendingBloodRequests = () => {
         urgency: "Emergency"
       }
     }
-  ]);
+  ]);*/
 
   // Mock data for available PRBC units
   const [availableUnits, setAvailableUnits] = useState([
@@ -216,31 +219,69 @@ const PendingBloodRequests = () => {
   // Mock data for component details when viewing a request
   const [componentDetails, setComponentDetails] = useState([]);
 
-  // Department options for dropdown
-  const departmentOptions = [
-    { id: "", name: "All Departments" },
+  // Ward options for dropdown
+  const wardOptions = [
+    { id: "", name: "All Wards" },
     { id: "Ward", name: "Ward" },
     { id: "ICU", name: "ICU" },
     { id: "OT", name: "OT" },
     { id: "Emergency", name: "Emergency" }
   ];
 
-  // Filtered requests based on search
-  const [filteredRequests, setFilteredRequests] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const fetchPendingRequests = async (page = 0, patientName = "") => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        size: String(DEFAULT_ITEMS_PER_PAGE),
+      });
+      if (patientName.trim()) params.set("patientName", patientName.trim());
+
+      const response = await getRequest(`${GET_BLOOD_REQUEST_TRACKING}?${params.toString()}`);
+      const responsePage = response?.response;
+      const requests = Array.isArray(responsePage?.content) ? responsePage.content : [];
+      setPendingRequests(requests.map((request, index) => ({
+        id: `${request.inpatientId || "request"}-${request.component || "component"}-${request.requestedDateTime || index}-${index}`,
+        requestId: request.requestNo || "",
+        patientName: request.patientName || "",
+        ipNo: request.inpatientNo || "",
+        ward: request.requestedWard || request.ward || request.wardName || "",
+        doctor: request.requestedBy || "",
+        requestDate: request.requestedDateTime,
+        componentType: request.component || "",
+        units: request.units,
+        urgency: request.urgency,
+        requiredDateTime: request.requiredByDateTime,
+        indication: request.indication || "",
+        status: request.trackingStatus || "",
+        headerInfo: {
+          requestNo: request.requestNo || "",
+          patientName: request.patientName || "",
+          ipNo: request.inpatientNo || "",
+          ageGender: request.ageGender || "",
+          bloodGroup: request.bloodGroup || "",
+          ward: request.requestedWard || request.ward || request.wardName || "",
+          treatingDoctor: request.requestedBy || "",
+          requestDate: request.requestedDateTime,
+          urgency: request.urgency,
+        },
+      })));
+      setTotalItems(responsePage?.totalElements || 0);
+    } catch (error) {
+      console.error("Error fetching pending blood requests:", error);
+      setPendingRequests([]);
+      setTotalItems(0);
+      showPopup(error?.message || "Pending blood requests could not be loaded.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let filtered = [...pendingRequests];
-    if (searchFilters.patientName.trim()) {
-      filtered = filtered.filter(req =>
-        req.patientName.toLowerCase().includes(searchFilters.patientName.toLowerCase())
-      );
-    }
-    if (searchFilters.department) {
-      filtered = filtered.filter(req => req.department === searchFilters.department);
-    }
-    setFilteredRequests(filtered);
-    setCurrentPage(1);
-  }, [searchFilters, pendingRequests]);
+    fetchPendingRequests(0);
+  }, []);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -263,15 +304,20 @@ const PendingBloodRequests = () => {
   const handleReset = () => {
     setSearchFilters({
       patientName: "",
-      department: ""
+      ward: ""
     });
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchPendingRequests(0, searchFilters.patientName);
   };
 
   const handleRowClick = (request) => {
     setSelectedRequest(request);
-    const components = pendingRequests.filter(
-      req => req.requestId === request.requestId
-    );
+    const components = request.requestId
+      ? pendingRequests.filter((req) => req.requestId === request.requestId)
+      : [request];
     setComponentDetails(components);
     setCurrentView("detail");
   };
@@ -331,16 +377,11 @@ const PendingBloodRequests = () => {
   };
 
   const formatDateTime = (dateStr) => {
-    if (!dateStr) return "N/A";
+    if (!dateStr) return "";
     const date = new Date(dateStr);
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    if (Number.isNaN(date.getTime())) return dateStr;
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
   const getUrgencyBadge = (urgency) => {
@@ -380,11 +421,6 @@ const PendingBloodRequests = () => {
       return <span className="badge bg-danger">Incompatible</span>;
     }
   };
-
-  // Pagination
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredRequests.slice(indexOfFirstItem, indexOfLastItem);
 
   if (loading) {
     return <LoadingScreen />;
@@ -607,13 +643,13 @@ const PendingBloodRequests = () => {
                         />
                       </div>
                       
-                      {/* Request Department */}
+                      {/* Ward */}
                       <div className="col-md-4">
-                        <label className="form-label mb-1">Request Department</label>
+                        <label className="form-label mb-1">Ward</label>
                         <input
                           type="text"
                           className="form-control"
-                          value={selectedRequest.headerInfo.department}
+                          value={selectedRequest.headerInfo.ward}
                           readOnly
                           style={{ backgroundColor: "#e9ecef", fontWeight: "500" }}
                         />
@@ -739,14 +775,14 @@ const PendingBloodRequests = () => {
                           />
                         </div>
                         <div className="col-md-4">
-                          <label className="form-label fw-semibold">Requested Department</label>
+                          <label className="form-label fw-semibold">Requested Ward</label>
                           <select
                             className="form-select"
-                            name="department"
-                            value={searchFilters.department}
+                            name="requestedWard"
+                            value={searchFilters.requestedWard}
                             onChange={handleSearchChange}
                           >
-                            {departmentOptions.map(opt => (
+                            {wardOptions.map(opt => (
                               <option key={opt.id} value={opt.id}>{opt.name}</option>
                             ))}
                           </select>
@@ -755,7 +791,7 @@ const PendingBloodRequests = () => {
                           <button
                             type="button"
                             className="btn btn-primary me-2"
-                            onClick={() => setCurrentPage(1)}
+                            onClick={handleSearch}
                           >
                             Search
                           </button>
@@ -777,14 +813,14 @@ const PendingBloodRequests = () => {
                       <th>Blood Group</th>
                       <th>Component</th>
                       <th>Units</th>
-                      <th>Request Department</th>
+                      <th>Ward</th>
                       <th>Urgency</th>
                       <th>Requested Date & Time</th>
                       <th>Requested By (Due Date/Time)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length === 0 ? (
+                    {pendingRequests.length === 0 ? (
                       <tr>
                         <td colSpan={11} className="text-center py-4">
                           <div className="text-muted">
@@ -794,7 +830,7 @@ const PendingBloodRequests = () => {
                         </td>
                       </tr>
                     ) : (
-                      currentItems.map((request) => (
+                      pendingRequests.map((request) => (
                         <tr
                           key={request.id}
                           onClick={() => handleRowClick(request)}
@@ -809,7 +845,7 @@ const PendingBloodRequests = () => {
                           <td>{request.headerInfo.bloodGroup}</td>
                           <td>{request.componentType}</td>
                           <td className="text-center fw-bold">{request.units}</td>
-                          <td>{request.department}</td>
+                          <td>{request.ward}</td>
                           <td>{getUrgencyBadge(request.urgency)}</td>
                           <td>{formatDateTime(request.requestDate)}</td>
                           <td>{formatDateTime(request.requiredDateTime)}</td>
@@ -821,12 +857,15 @@ const PendingBloodRequests = () => {
               </div>
 
               {/* Pagination */}
-              {filteredRequests.length > 0 && (
+              {totalItems > 0 && (
                 <Pagination
-                  totalItems={filteredRequests.length}
+                  totalItems={totalItems}
                   itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                   currentPage={currentPage}
-                  onPageChange={setCurrentPage}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    fetchPendingRequests(page - 1, searchFilters.patientName);
+                  }}
                 />
               )}
             </div>
