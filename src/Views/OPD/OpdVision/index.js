@@ -823,7 +823,7 @@ const handleReset = async (e) => {
                           <div className="row mb-3">
                             <div className="col-12">
                               <h6 className="fw-bold bg-light text-primary border-bottom pb-1">
-                                VISION
+                                VISION <span className="text-danger">*</span>
                               </h6>
                             </div>
                             <div className="col-12">
@@ -842,25 +842,25 @@ const handleReset = async (e) => {
                                     <tr>
                                       <th></th>
                                       <th className="text-center">
-                                        UNCORRECTED
+                                        UNCORRECTED <span className="text-danger">*</span>
                                       </th>
                                       <th className="text-center">PINHOLE</th>
                                       <th className="text-center">
-                                        BEST CORRECTED
+                                        BEST CORRECTED <span className="text-danger">*</span>
                                       </th>
                                       <th className="text-center">
-                                        UNCORRECTED
+                                        UNCORRECTED <span className="text-danger">*</span>
                                       </th>
                                       <th className="text-center">PINHOLE</th>
                                       <th className="text-center">
-                                        BEST CORRECTED
+                                        BEST CORRECTED <span className="text-danger">*</span>
                                       </th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
                                       <td className="fw-semibold">
-                                        Distance
+                                        Distance <span className="text-danger">*</span>
                                       </td>
                                       {[
                                         "reDistanceUnaided",
@@ -1303,7 +1303,7 @@ const handleReset = async (e) => {
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
-                                Anterior Segment
+                                Anterior Segment <span className="text-danger">*</span>
                               </h6>
                             </div>
                             <div className="col-12">
@@ -1319,7 +1319,8 @@ const handleReset = async (e) => {
                                             className="text-center"
                                             style={{ fontSize: "12px" }}
                                           >
-                                            {label.toUpperCase()}
+                                            {label.toUpperCase()}{" "}
+                                            <span className="text-danger">*</span>
                                           </th>
                                         ),
                                       )}
@@ -1365,7 +1366,7 @@ const handleReset = async (e) => {
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
-                                Posterior Segment
+                                Posterior Segment <span className="text-danger">*</span>
                               </h6>
                             </div>
                             <div className="col-12">
@@ -1381,7 +1382,8 @@ const handleReset = async (e) => {
                                             className="text-center"
                                             style={{ fontSize: "12px" }}
                                           >
-                                            {label.toUpperCase()}
+                                            {label.toUpperCase()}{" "}
+                                            <span className="text-danger">*</span>
                                           </th>
                                         ),
                                       )}
