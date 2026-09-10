@@ -2,7 +2,38 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import "./sidebar.css";
 import { Link, useLocation } from "react-router-dom";
 import { getRequest } from "../../service/apiService";
-import { GET_URL_BY_ROLES } from "../../config/apiConfig";
+import {
+  GET_URL_BY_ROLES,
+  OPHTHALMOLOGY_DEPARTMENT_CODE,
+} from "../../config/apiConfig";
+
+const hiddenSidebarRoutes = new Set([
+  "/EarExamination",
+  "/OBGDetails",
+]);
+
+const departmentRestrictedSidebarRoutes = {
+  "/OpdVision": OPHTHALMOLOGY_DEPARTMENT_CODE,
+};
+
+const removeHiddenSidebarRoutes = (items, departmentCode) =>
+  items
+    .filter((item) => {
+      if (hiddenSidebarRoutes.has(item.url)) {
+        return false;
+      }
+
+      const requiredDepartmentCode = departmentRestrictedSidebarRoutes[item.url];
+      return (
+        !requiredDepartmentCode || requiredDepartmentCode === departmentCode
+      );
+    })
+    .map((item) => ({
+      ...item,
+      children: item.children
+        ? removeHiddenSidebarRoutes(item.children, departmentCode)
+        : item.children,
+    }));
 
 const iconMap = {
   DASHBOARD: "icofont-dashboard-web",
@@ -82,7 +113,14 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
     try {
       const data = await getRequest(`${GET_URL_BY_ROLES}/${rolesId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        let menuItems = data.response;
+        const departmentCode =
+          sessionStorage.getItem("departmentCode") ||
+          localStorage.getItem("departmentCode") ||
+          "";
+        let menuItems = removeHiddenSidebarRoutes(
+          data.response,
+          departmentCode
+        );
         const hasAbdmRoute = menuItems.some(
           item => item.url === "/abdm-milestone2" || (item.children && item.children.some(child => child.url === "/abdm-milestone2"))
         );

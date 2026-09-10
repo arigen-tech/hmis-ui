@@ -31,6 +31,7 @@ import {
   STATE_BY_COUNTRY,
   MAS_BLOODGROUP,
   MAS_GENDER,
+  OBG_DEPARTMENT_CODE,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -410,6 +411,53 @@ const UpdatePatientRegistration = () => {
 
   const handleSpecialityChange = async (rowId, value) => {
     const selectedDepartment = departmentData.find((d) => d.id == value);
+
+    const selectedGender =
+      patientDetailForm.patientGender &&
+      typeof patientDetailForm.patientGender === "object"
+        ? patientDetailForm.patientGender
+        : genderData.find(
+            (gender) =>
+              String(gender.id) === String(patientDetailForm.patientGender),
+          );
+    const genderName =
+      selectedGender?.genderName || selectedGender?.name || "";
+    const isMale = genderName.trim().toLowerCase() === "male";
+    const isGynaeDepartment =
+      selectedDepartment?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+      selectedDepartment?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE;
+
+    if (isMale && isGynaeDepartment) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not Applicable",
+        text: "Male Patient not applicable for this department",
+      });
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === rowId
+            ? {
+                ...appointment,
+                speciality: "",
+                selDoctorId: "",
+                selSession: "",
+                departmentName: "",
+                selDate: null,
+                tokenNo: null,
+                tokenStartTime: "",
+                tokenEndTime: "",
+                selectedTimeSlot: "",
+              }
+            : appointment,
+        ),
+      );
+      setDoctorDataMap((prev) => {
+        const updated = { ...prev };
+        delete updated[rowId];
+        return updated;
+      });
+      return;
+    }
 
     setAppointments((prev) =>
       prev.map((a) =>
@@ -1729,6 +1777,31 @@ const UpdatePatientRegistration = () => {
         Swal.fire("Error", ADD_AT_LEAST_ONE_APPOINTMENT_ERROR, "error");
         return;
       }
+
+      debugger;
+      const isMale =
+        patientDetailForm.patientGender?.genderName?.trim().toLowerCase() === "male"|| patientDetailForm.patientGender?.name?.trim().toLowerCase() === "Male";
+      const isMaleGynaeAppointment =
+        isMale &&
+        validAppointments.some((appointment) => {
+          const department = departmentData.find(
+            (item) => String(item.id) === String(appointment.speciality),
+          );
+          return (
+            department?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+            department?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE
+          );
+        });
+
+      if (isMaleGynaeAppointment) {
+        Swal.fire({
+          icon: "warning",
+          title: "Not Applicable",
+          text: "Male Patient not applicable for this department",
+        });
+        return;
+      }
+
       const duplicateAppointment = findDuplicateAppointment(validAppointments);
       if (duplicateAppointment) {
         Swal.fire("Error", DUPLICATE_APPOINTMENT_ERROR, "error");
