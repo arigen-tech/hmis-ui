@@ -290,6 +290,7 @@ const validRoutes = [
   "/OTPreOperativeChecklist",
   "/NISRegister",
   "/OTSurgeryExecution",
+  "/PACClearance",
 ];
 
 // Routes that should bypass authorization
