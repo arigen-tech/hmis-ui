@@ -13,6 +13,7 @@ import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import { formatDateTimeWithSecondsForDisplay } from "../../../utils/dateUtils";
 
 const SERVICE_CATEGORY_API = "/master/masServiceCategory/getAll/1";
 
@@ -537,7 +538,7 @@ const PatientwiseBilldatails = () => {
                           </td>
                           <td>{item.relation}</td>
                           <td>{item.department}</td>
-                          <td>{formatDate(item.billDate)}</td>
+                          <td>{formatDateTimeWithSecondsForDisplay(item.billDate)}</td>
                           <td>
                             ₹
                             {typeof item.amount === "number"

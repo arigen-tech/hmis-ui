@@ -17,6 +17,7 @@ import {
   FILTER_LAB_DEPT,
   FILTER_RADIO_DEPT,
   FILTER_OPD_DEPT,
+  RAZORPAY_REFUND,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -192,6 +193,12 @@ const APPOINTMENT_TYPE_OPTIONS = [
   { value: FILTER_RADIO_DEPT, label: "Radiology" },
 ];
 
+const PAYMENT_MODE_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "CASH", label: "Cash" },
+  { value: "RAZORPAY", label: "Online" },
+];
+
 const getAppointmentStatusLabel = (status) => {
   const normalizedStatus = String(status || "")
     .trim()
@@ -207,6 +214,12 @@ const getAppointmentStatusLabel = (status) => {
     default:
       return status ? String(status) : "Unknown";
   }
+};
+
+const toTitleCase = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  const str = String(value);
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
 const getAppointmentStatusBadgeClass = (status) => {
@@ -231,6 +244,69 @@ const isCancelledAppointment = (status) =>
     .trim()
     .toLowerCase() === "c";
 
+// ================================================================
+// Payment scenario helpers (used in Cancel popup)
+// ================================================================
+const getPaymentScenario = (patient) => {
+  const hasPaymentId = !!patient?.paymentId;
+  const gateway = String(patient?.paymentGatewayMode || "").toUpperCase();
+  const paymentStatus = String(
+    patient?.paymentV2PaymentStatusCode || "",
+  ).toUpperCase();
+
+  const isRazorpay = gateway === "RAZORPAY";
+  const isPaid = paymentStatus === "PAID";
+  const isCash = gateway === "CASH";
+
+  // Online + Paid  => cancel with refund
+  if (hasPaymentId && isRazorpay && isPaid) {
+    return "ONLINE_PAID";
+  }
+
+  // Online + NOT paid => cancel without refund
+  if (hasPaymentId && isRazorpay && !isPaid) {
+    return "ONLINE_NOT_PAID";
+  }
+
+  // Cash payment => cancel without refund
+  if (isCash) {
+    return "CASH";
+  }
+
+  // No payment at all
+  if (!hasPaymentId && !gateway && !paymentStatus) {
+    return "NO_PAYMENT";
+  }
+
+  return "OTHER";
+};
+
+const getPaymentMessageHtml = (patient) => {
+  const scenario = getPaymentScenario(patient);
+  const amount = patient?.billedAmount ?? 0;
+
+  switch (scenario) {
+    case "ONLINE_PAID":
+      return `<div class="alert alert-info p-2">
+        <p class="mb-0">This appointment was paid online. <strong>&#8377;${amount}</strong> will be refunded to the original payment method upon cancellation.</p>
+      </div>`;
+    case "ONLINE_NOT_PAID":
+      return `<div class="alert alert-warning p-2">
+        <p class="mb-0">This appointment was try to be paid online but failed. The appointment will be cancelled without any refund.</p>
+      </div>`;
+    case "NO_PAYMENT":
+      return `<div class="alert alert-secondary p-2">
+        <p class="mb-0">No payment has been made for this appointment. The appointment will be cancelled without any refund.</p>
+      </div>`;
+    case "CASH":
+      return `<div class="alert alert-info p-2">
+        <p class="mb-0">This appointment was paid in cash. Any eligible refund will be processed separately.</p>
+      </div>`;
+    default:
+      return "";
+  }
+};
+
 const BookingAppointmentHistory = () => {
   // UI States
   const [mobileNumber, setMobileNumber] = useState("");
@@ -243,6 +319,7 @@ const BookingAppointmentHistory = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedDeptTypeCode, setSelectedDeptTypeCode] =
     useState(FILTER_OPD_DEPT);
+  const [payment, setPayment] = useState(""); // Payment mode filter (optional)
 
   // Reschedule Popup States
   const [showReschedulePopup, setShowReschedulePopup] = useState(false);
@@ -272,6 +349,9 @@ const BookingAppointmentHistory = () => {
   const [patientToCancel, setPatientToCancel] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isOpdReschedule, setIsOpdReschedule] = useState(true);
+
+  // Cancellation submit-in-progress flag
+  const [cancelling, setCancelling] = useState(false);
 
   // Functionality States
   const [newDate, setNewDate] = useState("");
@@ -359,6 +439,8 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
+    // NOTE: payment filter is now OPTIONAL — no validation here
+
     if (trimmedMobile && !/^\d{10}$/.test(trimmedMobile)) {
       showPopup(`${INVALID_MOBILE_NUMBER}`, "error");
       return;
@@ -369,9 +451,20 @@ const BookingAppointmentHistory = () => {
 
     try {
       const hospitalId = sessionStorage.getItem("hospitalId");
-      const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${trimmedMobile}&patientName=${encodeURIComponent(trimmedName)}&deptTypeCode=${selectedDeptTypeCode}&includeAllHistory=false`,
-      );
+
+      // Build URL conditionally — send payment only if selected
+      let url =
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}` +
+        `&mobileNo=${trimmedMobile}` +
+        `&patientName=${encodeURIComponent(trimmedName)}` +
+        `&deptTypeCode=${selectedDeptTypeCode}` +
+        `&includeAllHistory=false`;
+
+      if (payment) {
+        url += `&payment=${payment}`;
+      }
+
+      const res = await getRequest(url);
 
       if (res.status === 200) {
         const appointments =
@@ -380,7 +473,7 @@ const BookingAppointmentHistory = () => {
           res.response ||
           [];
 
-        if (!appointments || appointments.length === 0  && flag !== 1) {
+        if (!appointments || (appointments.length === 0 && flag !== 1)) {
           setReportData([]);
           setShowReport(true);
           showPopup(`${NO_APPOINTMENTS_FOUND}`, "info");
@@ -403,10 +496,7 @@ const BookingAppointmentHistory = () => {
               "N/A"
             : "N/A";
 
-          const displayDate =
-            formatDateForDisplay(sourceDateTime) ||
-            formatDateForDisplay(appointment.appointmentDate) ||
-            "N/A";
+          const displayDate = appointment.appointmentDate || "N/A";
 
           const shortDate =
             getAppointmentIsoDate(sourceDateTime) ||
@@ -437,6 +527,11 @@ const BookingAppointmentHistory = () => {
               appointment.visitStatus,
             ),
             appointmentSlot: appointmentSlot,
+
+            
+           paymentMode: toTitleCase(appointment.paymentGatewayMode),
+           paymentStatusDisplay: toTitleCase(appointment.paymentV2PaymentStatusCode),
+
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
             originalDate: shortDate,
@@ -450,6 +545,15 @@ const BookingAppointmentHistory = () => {
             displayDate: displayDate,
             displayTime: appointmentSlot,
             shortDate: shortDate,
+
+            // ---- Payment / refund related fields ----
+            billingHeaderId: appointment.billingHeaderId || null,
+            billedAmount: appointment.billedAmount || 0,
+            visitPaymentStatus: appointment.visitPaymentStatus || "",
+            paymentId: appointment.paymentId || null,
+            paymentGatewayMode: appointment.paymentGatewayMode || null,
+            paymentV2PaymentStatusCode:
+              appointment.paymentV2PaymentStatusCode || null,
           };
         });
 
@@ -509,7 +613,7 @@ const BookingAppointmentHistory = () => {
       }
 
       if (dateInput.includes(" ") && dateInput.includes("/")) {
-        const datePart = dateInput.split(" ")[0]; // Get "DD/MM/YYYY"
+        const datePart = dateInput.split(" ")[0];
         const [day, month, year] = datePart.split("/");
         return `${year}-${month}-${day}`;
       }
@@ -519,7 +623,7 @@ const BookingAppointmentHistory = () => {
       }
       return getTodayDate();
     };
-    // Set initial data from existing appointment
+
     const initialDate = patientData.shortDate || getTodayDate();
     setRescheduleData({
       department: patientData.departmentName,
@@ -553,8 +657,6 @@ const BookingAppointmentHistory = () => {
   const handleDateChange = async (date) => {
     if (!date) return;
 
-    // date from DatePicker should be in YYYY-MM-DD format
-    // But ensure we only take the date part if it contains time
     let cleanDate = date;
     if (date.includes(" ")) {
       cleanDate = date.split(" ")[0];
@@ -575,7 +677,6 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
-    // Store only the date in YYYY-MM-DD format
     setRescheduleData((prev) => ({
       ...prev,
       date: cleanDate,
@@ -752,7 +853,6 @@ const BookingAppointmentHistory = () => {
       ? `${formatDateToDDMMYYYY(newDate)} at ${slotToUse.slot}`
       : formatDateToDDMMYYYY(newDate);
 
-    // Get session name for display
     const sessionName =
       sessions.find((s) => String(s.id) === String(newSession))?.sessionName ||
       "";
@@ -864,7 +964,9 @@ const BookingAppointmentHistory = () => {
     }
   };
 
-  // Submit Cancellation
+  // ==========================================================
+  // Submit Cancellation (updated for new payment logic)
+  // ==========================================================
   const submitCancellation = async () => {
     if (!selectedReason) {
       Swal.fire({
@@ -875,7 +977,6 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
-    // Get the full reason object
     const selectedReasonObj = cancellationReasons.find((r) => {
       const reasonId = r.id || r.reasonId || r.reasonCode;
       return String(reasonId) === String(selectedReason);
@@ -883,6 +984,11 @@ const BookingAppointmentHistory = () => {
 
     const reasonName =
       selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
+
+    // Determine scenario using new fields
+    const scenario = getPaymentScenario(patientToCancel);
+    const hasOnlinePayment = scenario === "ONLINE_PAID"; // only this triggers refund
+    const paymentMessageHtml = getPaymentMessageHtml(patientToCancel);
 
     const result = await Swal.fire({
       title: `${CONFIRM_CANCELLATION_TITLE}`,
@@ -892,50 +998,94 @@ const BookingAppointmentHistory = () => {
           <div class="alert alert-warning p-2">
             <p class="mb-0"><strong>Reason:</strong> ${reasonName}</p>
           </div>
+          ${paymentMessageHtml}
         </div>
       `,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, Cancel",
+      confirmButtonText: hasOnlinePayment
+        ? "Yes, Cancel & Refund"
+        : "Yes, Cancel",
       cancelButtonText: "No",
       confirmButtonColor: "#dc3545",
     });
 
-    if (result.isConfirmed) {
-      Swal.showLoading();
-      try {
-        const cancelRequest = {
-          visitId: patientToCancel.visitId,
-          cancelReasonId: parseInt(selectedReason, 10),
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setCancelling(true);
+    Swal.showLoading();
+
+    try {
+      // STEP 1: Refund only if online payment is PAID
+      if (hasOnlinePayment) {
+        const refundRequest = {
+          billingHeaderId: patientToCancel.billingHeaderId,
+          refundAmount: patientToCancel.billedAmount,
+          refundReasonId: parseInt(selectedReason, 10),
         };
 
-        const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
+        console.log("=== INITIATING REFUND ===", refundRequest);
 
-        if (res.status === 200) {
-          setShowCancelPopup(false);
-          setSelectedReason("");
-          setPatientToCancel(null);
+        const refundRes = await postRequest(RAZORPAY_REFUND, refundRequest);
 
-          await Swal.fire({
-            icon: "success",
-            title: "Cancelled",
-            text: `${CANCELLATION_SUCCESS}`,
-            timer: 2000,
-          });
+        console.log("=== REFUND RESPONSE ===", refundRes);
 
-          await handleSearch(1);
-        } else {
-          throw new Error(res.message || "Server error");
+        if (!refundRes?.status || refundRes.status !== "REFUND_PENDING") {
+          throw new Error(
+            refundRes?.message ||
+              "Refund could not be initiated. Appointment was not cancelled.",
+          );
         }
-      } catch (error) {
-        console.error(`${CANCELLATION_ERROR}`, error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.message || `${CANCELLATION_ERROR}`,
-          timer: 2000,
-        });
       }
+
+      // STEP 2: Cancel the appointment
+// refundAmount → billedAmount only when a refund is applicable, else null
+// paymentMode   → paymentGatewayMode from the row response, else null
+const cancelRequest = {
+  visitId: patientToCancel.visitId,
+  cancelReasonId: parseInt(selectedReason, 10),
+  paymentMode: patientToCancel.paymentGatewayMode || null,
+  refundAmount:  patientToCancel.billedAmount || null
+};
+
+console.log("=== CANCEL REQUEST ===", cancelRequest);
+
+      const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
+
+      if (res.status === 200) {
+        setShowCancelPopup(false);
+        setSelectedReason("");
+        setPatientToCancel(null);
+
+        await Swal.fire({
+          icon: "success",
+          title: "Cancelled",
+          text: hasOnlinePayment
+            ? `${CANCELLATION_SUCCESS} A refund of \u20B9${patientToCancel.billedAmount} has been initiated.`
+            : `${CANCELLATION_SUCCESS}`,
+          timer: 2500,
+        });
+
+        await handleSearch(1);
+      } else {
+        throw new Error(res.message || "Server error");
+      }
+    } catch (error) {
+      console.error(`${CANCELLATION_ERROR}`, error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error?.message ||
+          error?.response?.message ||
+          `${CANCELLATION_ERROR}`,
+        timer: 3500,
+      });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -960,7 +1110,7 @@ const BookingAppointmentHistory = () => {
             </div>
             <div className="card-body">
               <div className="row mb-4">
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Name</label>
                   <input
                     type="text"
@@ -971,7 +1121,7 @@ const BookingAppointmentHistory = () => {
                     onChange={(e) => setPatientName(e.target.value)}
                   />
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Mobile Number</label>
                   <input
                     type="text"
@@ -983,7 +1133,7 @@ const BookingAppointmentHistory = () => {
                   />
                 </div>
 
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Appointment Type</label>
                   <select
                     className="form-select"
@@ -998,10 +1148,26 @@ const BookingAppointmentHistory = () => {
                   </select>
                 </div>
 
-                <div className="col-md-3 d-flex align-items-end">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Payment Mode</label>
+                  <select
+                    className="form-select"
+                    value={payment}
+                    onChange={(e) => setPayment(e.target.value)}
+                  >
+                    <option value="">Select Payment</option>
+                    {PAYMENT_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-2 d-flex align-items-end">
                   <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-success w-100"
                     onClick={handleSearch}
                     disabled={searchLoading}
                   >
@@ -1049,6 +1215,8 @@ const BookingAppointmentHistory = () => {
                                 <th>Status</th>
                                 <th>Appointment Date</th>
                                 <th>Appointment Slot</th>
+                                <th>Payment</th>
+                                <th>Payment Status</th>
                                 <th>Actions</th>
                               </tr>
                             </thead>
@@ -1069,6 +1237,8 @@ const BookingAppointmentHistory = () => {
                                   </td>
                                   <td>{row.appointmentDate}</td>
                                   <td>{row.appointmentSlot}</td>
+                                  <td>{row.paymentMode}</td>
+                                  <td>{row.paymentStatusDisplay}</td>
                                   <td>
                                     <div className="d-flex gap-2">
                                       <button
@@ -1406,6 +1576,7 @@ const BookingAppointmentHistory = () => {
                     setSelectedReason("");
                     setPatientToCancel(null);
                   }}
+                  disabled={cancelling}
                 ></button>
               </div>
               <div className="modal-body">
@@ -1435,6 +1606,13 @@ const BookingAppointmentHistory = () => {
                           <strong>Department:</strong>{" "}
                           {patientToCancel.departmentName}
                         </p>
+
+                        {/* Dynamic payment message based on scenario */}
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: getPaymentMessageHtml(patientToCancel),
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1459,6 +1637,7 @@ const BookingAppointmentHistory = () => {
                           className="form-select"
                           value={selectedReason}
                           onChange={(e) => setSelectedReason(e.target.value)}
+                          disabled={cancelling}
                         >
                           <option value="">-- Select Reason --</option>
                           {cancellationReasons.map((reason) => {
@@ -1491,6 +1670,7 @@ const BookingAppointmentHistory = () => {
                     setSelectedReason("");
                     setPatientToCancel(null);
                   }}
+                  disabled={cancelling}
                 >
                   Back
                 </button>
@@ -1498,9 +1678,20 @@ const BookingAppointmentHistory = () => {
                   type="button"
                   className="btn btn-danger"
                   onClick={submitCancellation}
-                  disabled={!selectedReason}
+                  disabled={!selectedReason || cancelling}
                 >
-                  Confirm Cancellation
+                  {cancelling ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Confirm Cancellation"
+                  )}
                 </button>
               </div>
             </div>

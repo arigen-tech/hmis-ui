@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
+import { formatDateTimeWithSecondsForDisplay } from "../../../utils/dateUtils";
+
 import {
   BILLING_REFUND_PATIENT_LIST,
   FILTER_LAB_DEPT,
@@ -16,6 +18,10 @@ import {
 } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 
+// API constants
+const BILLING_REFUND_GATEWAY_DETAILS = "/billing/refundDetails";
+const PAYMENT_GATEWAY_LIST = "/master/paymentGateway/getAll/1";
+
 const SERVICE_OPTIONS = [
   { value: "All", label: "All" },
   { value: FILTER_OPD_DEPT, label: "OPD" },
@@ -23,11 +29,19 @@ const SERVICE_OPTIONS = [
   { value: FILTER_RADIO_DEPT, label: "Radiology" },
 ];
 
+const REFUND_STATUS_FILTER_OPTIONS = [
+  { value: "All", label: "All" },
+  { value: "REFUND_PENDING_CASH", label: "Pending" },
+  { value: "REFUND_PENDING", label: "Processed" },
+  { value: "REFUNDED", label: "Completed" },
+];
+
 const DEFAULT_FILTERS = {
   patientName: "",
   mobileNo: "",
   billingService: "All",
   refundStatus: "All",
+  paymentMode: "All",
   fromDate: "",
   toDate: "",
 };
@@ -39,6 +53,9 @@ const BillingRefundDetails = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [refundStatus, setRefundStatus] = useState("All");
+  const [paymentMode, setPaymentMode] = useState("All");
+
+  const [paymentModeOptions, setPaymentModeOptions] = useState([]);
 
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +72,13 @@ const BillingRefundDetails = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
 
+  const [showProcessRefundPopup, setShowProcessRefundPopup] = useState(false);
+  const [processRefundData, setProcessRefundData] = useState(null);
+
+  const [gatewayDetailData, setGatewayDetailData] = useState(null);
+  const [gatewayDetailLoading, setGatewayDetailLoading] = useState(false);
+  const [isGatewayOnly, setIsGatewayOnly] = useState(false);
+
   const totalPages = Math.ceil(totalElements / DEFAULT_ITEMS_PER_PAGE);
 
   const showPopup = (message, type = "info") => {
@@ -65,61 +89,26 @@ const BillingRefundDetails = () => {
     });
   };
 
-  const formatApiDate = (value) => {
-    if (!value) return "-";
-
-    const text = String(value).trim();
-    if (!text || text === "-") return "-";
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-      const [year, month, day] = text.split("-");
-      return `${day}/${month}/${year}`;
-    }
-
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
-      return text;
-    }
-
-    const date = new Date(text);
-    if (Number.isNaN(date.getTime())) {
-      return text;
-    }
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
   const formatAgeGender = (age, gender) => {
-    const ageText = age === null || age === undefined || String(age).trim() === "" ? "-" : String(age).trim();
-    const genderText = gender === null || gender === undefined || String(gender).trim() === "" ? "-" : String(gender).trim();
+    const ageText =
+      age === null || age === undefined || String(age).trim() === ""
+        ? "-"
+        : String(age).trim();
+    const genderText =
+      gender === null || gender === undefined || String(gender).trim() === ""
+        ? "-"
+        : String(gender).trim();
 
-    if (ageText === "-" && genderText === "-") {
-      return "-";
-    }
-
-    if (ageText === "-") {
-      return genderText;
-    }
-
-    if (genderText === "-") {
-      return ageText;
-    }
-
+    if (ageText === "-" && genderText === "-") return "-";
+    if (ageText === "-") return genderText;
+    if (genderText === "-") return ageText;
     return `${ageText} / ${genderText}`;
   };
 
   const formatCurrency = (value) => {
-    if (value === null || value === undefined || value === "") {
-      return "-";
-    }
-
+    if (value === null || value === undefined || value === "") return "-";
     const amount = Number(value);
-    if (Number.isNaN(amount)) {
-      return String(value);
-    }
-
+    if (Number.isNaN(amount)) return String(value);
     return `Rs. ${amount.toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -128,22 +117,70 @@ const BillingRefundDetails = () => {
 
   const normalizeRefundStatus = (value) => {
     const status = String(value || "").trim().toLowerCase();
+    if (!status) return "Pending";
 
-    if (!status) return "";
-    if (["completed", "complete", "done", "paid", "y", "yes"].includes(status)) {
+    if (
+      [
+        "completed",
+        "complete",
+        "done",
+        "paid",
+        "y",
+        "yes",
+        "refunded",
+        "refunded.",
+        "refunded ",
+      ].includes(status)
+    ) {
       return "Completed";
     }
-    if (["pending", "p", "n"].includes(status)) {
+
+    if (
+      [
+        "refund pending",
+        "refundpending",
+        "refund_pending",
+        "processed",
+        "processing",
+      ].includes(status)
+    ) {
+      return "Processed";
+    }
+
+    if (
+      [
+        "pending",
+        "refund_pending_cash",
+        "refundpendingcash",
+        "refund pending cash",
+      ].includes(status)
+    ) {
       return "Pending";
     }
 
-    return String(value).trim();
+    return "Pending";
   };
 
   const getRefundBadgeClass = (status) => {
-    return normalizeRefundStatus(status) === "Completed"
-      ? "bg-success"
-      : "bg-warning text-dark";
+    const normalized = normalizeRefundStatus(status);
+    if (normalized === "Completed") return "bg-primary";
+    if (normalized === "Processed") return "bg-success";
+    return "bg-warning text-dark";
+  };
+
+  // Fetch payment gateway options for the filter
+  const fetchPaymentGatewayOptions = async () => {
+    try {
+      const data = await getRequest(PAYMENT_GATEWAY_LIST);
+      if (data?.status === 200 && Array.isArray(data.response)) {
+        setPaymentModeOptions(data.response);
+      } else {
+        setPaymentModeOptions([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch payment gateway list:", error);
+      setPaymentModeOptions([]);
+    }
   };
 
   const fetchRefundList = async (page = 0, filters = appliedFilters) => {
@@ -160,20 +197,31 @@ const BillingRefundDetails = () => {
         [REQUEST_PARAM_SIZE]: String(DEFAULT_ITEMS_PER_PAGE),
       });
 
-      if (filters.patientName.trim()) {
+      if (filters.patientName && filters.patientName.trim()) {
         params.append(REQUEST_PARAM_PATIENT_NAME, filters.patientName.trim());
       }
 
-      if (filters.mobileNo.trim()) {
+      if (filters.mobileNo && filters.mobileNo.trim()) {
         params.append("mobileNo", filters.mobileNo.trim());
       }
 
-      if (filters.billingService !== "All") {
+      if (filters.billingService && filters.billingService !== "All") {
         params.append("billingServiceType", filters.billingService);
       }
 
-      if (filters.refundStatus !== "All") {
+      if (filters.refundStatus && filters.refundStatus !== "All") {
         params.append("refundStatus", filters.refundStatus);
+      }
+
+      // Payment mode: send only when a specific gateway is selected.
+      // When "All", omit the param entirely so the backend receives null.
+      if (
+        filters.paymentMode &&
+        filters.paymentMode !== "All" &&
+        filters.paymentMode !== null &&
+        filters.paymentMode !== undefined
+      ) {
+        params.append("paymentModeId", String(filters.paymentMode));
       }
 
       if (filters.fromDate) {
@@ -184,7 +232,9 @@ const BillingRefundDetails = () => {
         params.append(REQUEST_PARAM_TO_DATE, filters.toDate);
       }
 
-      const data = await getRequest(`${BILLING_REFUND_PATIENT_LIST}?${params.toString()}`);
+      const data = await getRequest(
+        `${BILLING_REFUND_PATIENT_LIST}?${params.toString()}`,
+      );
       const pageData = data?.response ?? {};
       const content = Array.isArray(pageData.content) ? pageData.content : [];
 
@@ -208,13 +258,18 @@ const BillingRefundDetails = () => {
   const fetchRefundDetails = async (billingHeaderId) => {
     if (!billingHeaderId) {
       setDetailRows([]);
-      showPopup("Unable to load refund details because the billing ID is missing.", "error");
+      showPopup(
+        "Unable to load refund details because the billing ID is missing.",
+        "error",
+      );
       return;
     }
 
     try {
       setDetailLoading(true);
-      const data = await getRequest(`${PATIENT_BILLING_REFUND_DETAILS}/${billingHeaderId}`);
+      const data = await getRequest(
+        `${PATIENT_BILLING_REFUND_DETAILS}/${billingHeaderId}`,
+      );
       setDetailRows(Array.isArray(data?.response) ? data.response : []);
     } catch (error) {
       console.error("Failed to fetch billing refund details:", error);
@@ -224,6 +279,42 @@ const BillingRefundDetails = () => {
       setDetailLoading(false);
     }
   };
+
+  const fetchGatewayRefundDetails = async (refundId) => {
+    if (!refundId) {
+      showPopup("Refund ID is missing for this record.", "error");
+      return;
+    }
+
+    try {
+      setGatewayDetailLoading(true);
+      const data = await getRequest(
+        `${BILLING_REFUND_GATEWAY_DETAILS}/${refundId}`,
+      );
+
+      if (data.status !== 200) {
+        throw new Error(
+          data.message || "Failed to fetch gateway refund details",
+        );
+      }
+
+      setGatewayDetailData(data.response || null);
+    } catch (error) {
+      console.error("Failed to fetch gateway refund details:", error);
+      setGatewayDetailData(null);
+      showPopup(
+        error.message || "Unable to load gateway refund details.",
+        "error",
+      );
+    } finally {
+      setGatewayDetailLoading(false);
+    }
+  };
+
+  // Initial load — payment gateways + refund list
+  useEffect(() => {
+    fetchPaymentGatewayOptions();
+  }, []);
 
   useEffect(() => {
     fetchRefundList(currentPage - 1, appliedFilters);
@@ -240,6 +331,7 @@ const BillingRefundDetails = () => {
       mobileNo,
       billingService,
       refundStatus,
+      paymentMode,
       fromDate,
       toDate,
     });
@@ -253,12 +345,17 @@ const BillingRefundDetails = () => {
     setRefundStatus(value);
   };
 
+  const handlePaymentModeChange = (value) => {
+    setPaymentMode(value);
+  };
+
   const handleReset = async () => {
     setResetLoading(true);
     setPatientName("");
     setMobileNo("");
     setBillingService("All");
     setRefundStatus("All");
+    setPaymentMode("All");
     setFromDate("");
     setToDate("");
     setCurrentPage(1);
@@ -268,6 +365,7 @@ const BillingRefundDetails = () => {
       mobileNo: "",
       billingService: "All",
       refundStatus: "All",
+      paymentMode: "All",
       fromDate: "",
       toDate: "",
     };
@@ -279,11 +377,32 @@ const BillingRefundDetails = () => {
     setCurrentPage(page);
   };
 
-  const handleView = async (item) => {
+  const handleView = (item) => {
     setViewData(item);
     setShowViewPopup(true);
     setDetailRows([]);
-    await fetchRefundDetails(item.billingHeaderId);
+    setDetailLoading(false);
+    setGatewayDetailData(null);
+    setGatewayDetailLoading(false);
+
+    const normalizedStatus = normalizeRefundStatus(item.refundStatus);
+
+    if (normalizedStatus === "Completed" || normalizedStatus === "Processed") {
+      setIsGatewayOnly(true);
+      if (item.refundId) {
+        fetchGatewayRefundDetails(item.refundId);
+      } else {
+        showPopup("Refund ID is missing for this record.", "error");
+      }
+    } else {
+      setIsGatewayOnly(false);
+      fetchRefundDetails(item.billingHeaderId);
+    }
+  };
+
+  const handleProcessRefund = (item) => {
+    setProcessRefundData(item);
+    setShowProcessRefundPopup(true);
   };
 
   const handleExport = () => {
@@ -300,6 +419,7 @@ const BillingRefundDetails = () => {
     <div className="content-wrapper">
       {popupMessage && <Popup {...popupMessage} />}
 
+      {/* ===================== View Popup ===================== */}
       {showViewPopup && viewData && (
         <div
           className="modal d-block"
@@ -321,7 +441,9 @@ const BillingRefundDetails = () => {
           >
             <div className="modal-content">
               <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Refund Details</h5>
+                <h5 className="modal-title">
+                  {isGatewayOnly ? "Gateway Refund Details" : "Refund Details"}
+                </h5>
                 <button
                   type="button"
                   className="btn-close btn-close-white"
@@ -330,127 +452,181 @@ const BillingRefundDetails = () => {
                     setViewData(null);
                     setDetailRows([]);
                     setDetailLoading(false);
+                    setGatewayDetailData(null);
+                    setGatewayDetailLoading(false);
+                    setIsGatewayOnly(false);
                   }}
                 />
               </div>
               <div className="modal-body">
-                {/* <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Registration No.</label>
-                    <p>{viewData.registrationNo || "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Patient Name</label>
-                    <p>{viewData.patientName || "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Mobile No.</label>
-                    <p>{viewData.mobileNo || "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Age / Gender</label>
-                    <p>{formatAgeGender(viewData.age, viewData.gender)}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Billing Type</label>
-                    <p>{viewData.billingType || "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Department</label>
-                    <p>{viewData.departmentName || "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Registration Date</label>
-                    <p>{formatApiDate(viewData.date)}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Cancelled Date</label>
-                    <p>{formatApiDate(viewData.cancelledDate)}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Date</label>
-                    <p>{formatApiDate(viewData.refundDate)}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Billing Amount</label>
-                    <p>Rs. {viewData.billingAmount ?? "-"}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Status</label>
-                    <p>
-                      <span
-                        className={`badge ${getRefundBadgeClass(
-                          viewData.refundStatus,
-                        )}`}
-                      >
-                        {normalizeRefundStatus(viewData.refundStatus) ||
-                          viewData.refundStatus ||
-                          "-"}
-                      </span>
-                    </p>
-                  </div>
-                </div> */}
+                {!isGatewayOnly && (
+                  <>
+                    <hr className="my-4" />
 
-                <hr className="my-4" />
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="fw-bold mb-0">Refund Details</h6>
+                      {detailLoading && (
+                        <span className="text-muted small">
+                          Loading details...
+                        </span>
+                      )}
+                    </div>
 
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h6 className="fw-bold mb-0">Refund Details</h6>
-                  {detailLoading && (
-                    <span className="text-muted small">Loading details...</span>
-                  )}
-                </div>
+                    {!detailLoading && !selectedRefundDetail ? (
+                      <div className="text-center text-muted py-4 border rounded">
+                        No refund details found
+                      </div>
+                    ) : (
+                      <div className="border rounded overflow-hidden">
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                          <span className="text-muted">Refund Status</span>
+                          <span
+                            className={`badge ${getRefundBadgeClass(
+                              selectedRefundDetail?.refundStatus ??
+                                viewData.refundStatus,
+                            )}`}
+                          >
+                            {normalizeRefundStatus(
+                              selectedRefundDetail?.refundStatus ??
+                                viewData.refundStatus,
+                            ) || "-"}
+                          </span>
+                        </div>
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                          <span className="text-muted">Refund Amount</span>
+                          <span className="fw-semibold">
+                            {formatCurrency(selectedRefundDetail?.refundAmount)}
+                          </span>
+                        </div>
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                          <span className="text-muted">Refund Mode</span>
+                          <span className="fw-semibold">
+                            {selectedRefundDetail?.refundMode || "-"}
+                          </span>
+                        </div>
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                          <span className="text-muted">
+                            Transaction / Reference No.
+                          </span>
+                          <span className="fw-semibold">
+                            {selectedRefundDetail?.transactionNumber || "-"}
+                          </span>
+                        </div>
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                          <span className="text-muted">Refund Date</span>
+                          <span className="fw-semibold">
+                            {formatDateTimeWithSecondsForDisplay(
+                              selectedRefundDetail?.refundDate ??
+                                viewData.refundDate,
+                            )}
+                          </span>
+                        </div>
+                        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3">
+                          <span className="text-muted">Processed By</span>
+                          <span className="fw-semibold">
+                            {selectedRefundDetail?.processedBy || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
-                {!detailLoading && !selectedRefundDetail ? (
-                  <div className="text-center text-muted py-4 border rounded">
-                    No refund details found
-                  </div>
-                ) : (
-                  <div className="border rounded overflow-hidden">
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
-                      <span className="text-muted">Refund Status</span>
-                      <span
-                        className={`badge ${getRefundBadgeClass(
-                          selectedRefundDetail?.refundStatus ?? viewData.refundStatus,
-                        )}`}
-                      >
-                        {normalizeRefundStatus(
-                          selectedRefundDetail?.refundStatus ?? viewData.refundStatus,
-                        ) || "-"}
-                      </span>
-                    </div>
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
-                      <span className="text-muted">Refund Amount</span>
-                      <span className="fw-semibold">
-                        {formatCurrency(selectedRefundDetail?.refundAmount)}
-                      </span>
-                    </div>
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
-                      <span className="text-muted">Refund Mode</span>
-                      <span className="fw-semibold">
-                        {selectedRefundDetail?.refundMode || "-"}
-                      </span>
-                    </div>
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
-                      <span className="text-muted">Transaction / Reference No.</span>
-                      <span className="fw-semibold">
-                        {selectedRefundDetail?.transactionNumber || "-"}
-                      </span>
-                    </div>
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
-                      <span className="text-muted">Refund Date</span>
-                      <span className="fw-semibold">
-                        {formatApiDate(
-                          selectedRefundDetail?.refundDate ?? viewData.refundDate,
-                        )}
-                      </span>
-                    </div>
-                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3">
-                      <span className="text-muted">Processed By</span>
-                      <span className="fw-semibold">
-                        {selectedRefundDetail?.processedBy || "-"}
-                      </span>
-                    </div>
-                  </div>
+                {isGatewayOnly && (
+                  <>
+                    <h6 className="fw-bold mb-3">Gateway Refund Details</h6>
+
+                    {gatewayDetailLoading && (
+                      <div className="text-center py-3">
+                        <div
+                          className="spinner-border text-primary"
+                          role="status"
+                        />
+                      </div>
+                    )}
+
+                    {!gatewayDetailLoading && gatewayDetailData && (
+  <div className="border rounded overflow-hidden">
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Gateway Refund ID</span>
+      <span className="fw-semibold">
+        {gatewayDetailData.gatewayRefundId || "-"}
+      </span>
+    </div>
+    {/* ❌ Removed: Refund Number row */}
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Refund Amount</span>
+      <span className="fw-semibold">
+        {formatCurrency(gatewayDetailData.refundAmount)}
+      </span>
+    </div>
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Refund Reason</span>
+      <span className="fw-semibold">
+        {gatewayDetailData.refundReason || "-"}
+      </span>
+    </div>
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Payment Amount</span>
+      <span className="fw-semibold">
+        {formatCurrency(gatewayDetailData.paymentAmount)}
+      </span>
+    </div>
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Initiated On</span>
+      <span className="fw-semibold">
+        {formatDateTimeWithSecondsForDisplay(
+          gatewayDetailData.initiatedOn,
+        )}
+      </span>
+    </div>
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Gateway Payment ID</span>
+      <span className="fw-semibold">
+        {gatewayDetailData.gatewayPaymentId || "-"}
+      </span>
+    </div>
+    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+      <span className="text-muted">Payment Mode</span>
+      <span className="fw-semibold">
+        {gatewayDetailData.paymentMode || "-"}
+      </span>
+    </div>
+    <div
+      className={`detail-row d-flex justify-content-between align-items-center px-3 py-3 ${
+        gatewayDetailData.gatewayReferenceType &&
+        gatewayDetailData.gatewayReferenceNo
+          ? "border-bottom"
+          : ""
+      }`}
+    >
+      <span className="text-muted">Payment Via</span>
+      <span className="fw-semibold">
+        {gatewayDetailData.paymentVia || "-"}
+      </span>
+    </div>
+
+    {/* ✅ New: Only render when both values are present */}
+    {gatewayDetailData.gatewayReferenceType &&
+      gatewayDetailData.gatewayReferenceNo && (
+        <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3">
+          <span className="text-muted">
+            {gatewayDetailData.gatewayReferenceType}
+          </span>
+          <span className="fw-semibold">
+            {gatewayDetailData.gatewayReferenceNo}
+          </span>
+        </div>
+      )}
+  </div>
+)}
+
+                    {!gatewayDetailLoading && !gatewayDetailData && (
+                      <div className="text-center text-muted py-3">
+                        No gateway details available.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               <div className="modal-footer">
@@ -461,6 +637,61 @@ const BillingRefundDetails = () => {
                     setViewData(null);
                     setDetailRows([]);
                     setDetailLoading(false);
+                    setGatewayDetailData(null);
+                    setGatewayDetailLoading(false);
+                    setIsGatewayOnly(false);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== Process Refund Placeholder Popup ===================== */}
+      {showProcessRefundPopup && processRefundData && (
+        <div
+          className="modal d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header bg-warning">
+                <h5 className="modal-title">Process Refund</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowProcessRefundPopup(false);
+                    setProcessRefundData(null);
+                  }}
+                />
+              </div>
+              <div className="modal-body">
+                <p className="mb-2">
+                  <strong>Patient:</strong> {processRefundData.patientName}
+                </p>
+                <p className="mb-2">
+                  <strong>Billing Amount:</strong>{" "}
+                  {formatCurrency(processRefundData.billingAmount)}
+                </p>
+                <p className="mb-2">
+                  <strong>Payment Mode:</strong>{" "}
+                  {processRefundData.paymentModeName || "-"}
+                </p>
+                <p className="text-muted mb-0">
+                  Process Refund flow will be implemented here.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowProcessRefundPopup(false);
+                    setProcessRefundData(null);
                   }}
                 >
                   Close
@@ -530,6 +761,29 @@ const BillingRefundDetails = () => {
 
               <div className="col-md-2">
                 <div className="form-group mb-0">
+                  <label className="form-label fw-bold mb-1">
+                    Payment Mode
+                  </label>
+                  <select
+                    className="form-select"
+                    value={paymentMode}
+                    onChange={(e) => handlePaymentModeChange(e.target.value)}
+                  >
+                    <option value="All">All</option>
+                    {paymentModeOptions.map((pg) => (
+                      <option
+                        key={pg.gatewayId || pg.gatewayCode}
+                        value={pg.gatewayId}
+                      >
+                        {pg.gatewayName || pg.gatewayCode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-md-2">
+                <div className="form-group mb-0">
                   <label className="form-label fw-bold mb-1">From Date</label>
                   <input
                     type="date"
@@ -552,58 +806,24 @@ const BillingRefundDetails = () => {
                 </div>
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-2">
                 <div className="form-group mb-0">
                   <label className="form-label fw-bold mb-1">
                     Refund Status
                   </label>
-                  <div className="d-flex gap-3 flex-wrap">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="refundStatus"
-                        id="statusPending"
-                        value="Pending"
-                        checked={refundStatus === "Pending"}
-                        onChange={(e) => handleRefundStatusChange(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="statusPending">
-                        Pending
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="refundStatus"
-                        id="statusCompleted"
-                        value="Completed"
-                        checked={refundStatus === "Completed"}
-                        onChange={(e) => handleRefundStatusChange(e.target.value)}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="statusCompleted"
-                      >
-                        Completed
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="refundStatus"
-                        id="statusAll"
-                        value="All"
-                        checked={refundStatus === "All"}
-                        onChange={(e) => handleRefundStatusChange(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="statusAll">
-                        All
-                      </label>
-                    </div>
-                  </div>
+                  <select
+                    className="form-select"
+                    value={refundStatus}
+                    onChange={(e) =>
+                      handleRefundStatusChange(e.target.value)
+                    }
+                  >
+                    {REFUND_STATUS_FILTER_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -650,7 +870,11 @@ const BillingRefundDetails = () => {
                     </>
                   )}
                 </button>
-                <button type="button" className="btn btn-info" onClick={handleExport}>
+                <button
+                  type="button"
+                  className="btn btn-info"
+                  onClick={handleExport}
+                >
                   <i className="me-1"></i> Export Refund Register
                 </button>
               </div>
@@ -661,7 +885,10 @@ const BillingRefundDetails = () => {
             {tableLoading && refundRows.length > 0 && (
               <div
                 className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                style={{ backgroundColor: "rgba(255,255,255,0.7)", zIndex: 2 }}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.7)",
+                  zIndex: 2,
+                }}
               >
                 <div className="text-center">
                   <div className="spinner-border text-primary" role="status" />
@@ -672,54 +899,85 @@ const BillingRefundDetails = () => {
             <table className="table table-bordered table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>Registration No.</th>
                   <th>Patient Name</th>
                   <th>Mobile No.</th>
                   <th>Age/Gender</th>
                   <th>Billing Type</th>
-                  <th>Registration Date</th>
+                  <th>Payment Mode</th>
                   <th>Billing Amount</th>
+                  <th>Billing Date</th>
                   <th>Cancelled Date</th>
-                  <th>Refund Date</th>
+                  <th>Refund Process Date</th>
                   <th>Refund Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.length > 0 ? (
-                  visibleRows.map((item) => (
-                    <tr key={item.visitId || item.billingHeaderId || item.registrationNo}>
-                      <td>{item.registrationNo || "-"}</td>
-                      <td>{item.patientName || "-"}</td>
-                      <td>{item.mobileNo || "-"}</td>
-                      <td>{formatAgeGender(item.age, item.gender)}</td>
-                      <td>{item.billingType || "-"}</td>
-                      <td>{formatApiDate(item.date)}</td>
-                      <td>Rs. {item.billingAmount ?? "-"}</td>
-                      <td>{formatApiDate(item.cancelledDate)}</td>
-                      <td>{formatApiDate(item.refundDate)}</td>
-                      <td>
-                        <span
-                          className={`badge ${getRefundBadgeClass(
-                            item.refundStatus,
-                          )}`}
-                        >
-                          {normalizeRefundStatus(item.refundStatus) ||
-                            item.refundStatus ||
-                            "-"}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => handleView(item)}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  visibleRows.map((item) => {
+                    const normalizedStatus = normalizeRefundStatus(
+                      item.refundStatus,
+                    );
+                    const isPending = normalizedStatus === "Pending";
+
+                    return (
+                      <tr
+                        key={
+                          item.visitId ||
+                          item.billingHeaderId ||
+                          item.registrationNo
+                        }
+                      >
+                        <td>{item.patientName || "-"}</td>
+                        <td>{item.mobileNo || "-"}</td>
+                        <td>{formatAgeGender(item.age, item.gender)}</td>
+                        <td>{item.billingType || "-"}</td>
+                        <td>{item.paymentModeName || "-"}</td>
+                        <td>Rs. {item.billingAmount ?? "-"}</td>
+                        <td>
+                          {formatDateTimeWithSecondsForDisplay(
+                            item.billDate || item.date,
+                          )}
+                        </td>
+                        <td>
+                          {formatDateTimeWithSecondsForDisplay(
+                            item.cancelledDate,
+                          )}
+                        </td>
+                        <td>
+                          {formatDateTimeWithSecondsForDisplay(item.refundDate)}
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${getRefundBadgeClass(
+                              item.refundStatus,
+                            )}`}
+                          >
+                            {normalizedStatus}
+                          </span>
+                        </td>
+                        <td>
+                          {isPending ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-warning"
+                              onClick={() => handleProcessRefund(item)}
+                            >
+                              Process Refund
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleView(item)}
+                            >
+                              View
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="11" className="text-center text-muted py-4">
