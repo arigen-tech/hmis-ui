@@ -1,7 +1,7 @@
 export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = 'http://103.133.215.182:8081/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
-//export const API_HOST = "http://localhost:8080";
+// export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -334,6 +334,7 @@ export const MAS_QUESTION_HEADING = `${MASTERS}/masQuestionHeading`;
 export const MAS_BLOOD_DONATION_TYPE = `${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`;
+export const MAS_BLOOD_COMPONENT_GET_ALL = `${MAS_BLOOD_COMPONENT}/getAll/1`;
 export const MAS_BLOOD_COMPATIBILITY = `${MASTERS}/masBloodCompatibility`;
 export const MAS_BLOOD_BAG_TYPE = `${MASTERS}/masBloodBagType`;
 export const MAS_CROSS_MATCH_TYPE = `${MASTERS}/masCrossMatchType`;
@@ -392,6 +393,8 @@ export const GET_PENDING_COLLECTION_LIST = `/bloodBank/pendingBloodCollectionLis
 export const GET_PENDING_COLLECTION_DETAILS = `/bloodBank/pendingBloodCollectionDetails`;
 export const PENDING_COMPONENT_GENERATION_LIST = `/bloodBank/pendingComponentGenerationList`;
 export const SAVE_BLOOD_COLLECTION_DATA = `/bloodBank/saveBloodCollection`;
+export const CREATE_BLOOD_REQUEST = `/bloodBank/createBloodRequest`;
+export const GET_BLOOD_REQUEST_TRACKING = `/bloodBank/getBloodRequestTrackingList`;
 export const GET_FAILURE_REASONS = `${MASTERS}/masComponentFailureReason`;
 export const COMPONENT_GENERATION_FAIL = "/bloodBank/componentGenerationFail";
 export const COMPONENT_GENERATION_PASS = "/bloodBank/componentGenerationPass";
@@ -787,6 +790,7 @@ export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
 export const IPD_PATIENT_WAITING_LIST = `/ipd/pendingAdmissionList`;
 export const ACTIVE_ADMISSION_AND_DISCHARGE_ADMISSION_LIST = `/ipd/activeAdmissionAndDischargeAdmissionList`;
+export const GET_WARD_WISE_INPATIENT = `/ipd/getWardWiseInpatient`;
 export const GET_WARD_BY_CATEGORY = `/ipd/getWardDetailsByCategory`;
 export const GET_ROOM_BY_WARD = `/ipd/getRoomDetailsByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedDetailsByRoom';

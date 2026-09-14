@@ -31,6 +31,7 @@ import {
   STATE_BY_COUNTRY,
   MAS_BLOODGROUP,
   MAS_GENDER,
+  OBG_DEPARTMENT_CODE,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -410,6 +411,53 @@ const UpdatePatientRegistration = () => {
 
   const handleSpecialityChange = async (rowId, value) => {
     const selectedDepartment = departmentData.find((d) => d.id == value);
+
+    const selectedGender =
+      patientDetailForm.patientGender &&
+      typeof patientDetailForm.patientGender === "object"
+        ? patientDetailForm.patientGender
+        : genderData.find(
+            (gender) =>
+              String(gender.id) === String(patientDetailForm.patientGender),
+          );
+    const genderName =
+      selectedGender?.genderName || selectedGender?.name || "";
+    const isMale = genderName.trim().toLowerCase() === "male";
+    const isGynaeDepartment =
+      selectedDepartment?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+      selectedDepartment?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE;
+
+    if (isMale && isGynaeDepartment) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not Applicable",
+        text: "Male Patient not applicable for this department",
+      });
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === rowId
+            ? {
+                ...appointment,
+                speciality: "",
+                selDoctorId: "",
+                selSession: "",
+                departmentName: "",
+                selDate: null,
+                tokenNo: null,
+                tokenStartTime: "",
+                tokenEndTime: "",
+                selectedTimeSlot: "",
+              }
+            : appointment,
+        ),
+      );
+      setDoctorDataMap((prev) => {
+        const updated = { ...prev };
+        delete updated[rowId];
+        return updated;
+      });
+      return;
+    }
 
     setAppointments((prev) =>
       prev.map((a) =>
@@ -1287,6 +1335,17 @@ const UpdatePatientRegistration = () => {
     loadMasterData();
   }, [location.key, location.pathname]);
 
+  const getCurrentLocalDateTime = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
   const handleEdit = async (patient) => {
     try {
       const patientId = patient.id;
@@ -1729,6 +1788,30 @@ const UpdatePatientRegistration = () => {
         Swal.fire("Error", ADD_AT_LEAST_ONE_APPOINTMENT_ERROR, "error");
         return;
       }
+
+      const isMale =
+        patientDetailForm.patientGender?.genderName?.trim().toLowerCase() === "male"|| patientDetailForm.patientGender?.name?.trim().toLowerCase() === "Male";
+      const isMaleGynaeAppointment =
+        isMale &&
+        validAppointments.some((appointment) => {
+          const department = departmentData.find(
+            (item) => String(item.id) === String(appointment.speciality),
+          );
+          return (
+            department?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+            department?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE
+          );
+        });
+
+      if (isMaleGynaeAppointment) {
+        Swal.fire({
+          icon: "warning",
+          title: "Not Applicable",
+          text: "Male Patient not applicable for this department",
+        });
+        return;
+      }
+
       const duplicateAppointment = findDuplicateAppointment(validAppointments);
       if (duplicateAppointment) {
         Swal.fire("Error", DUPLICATE_APPOINTMENT_ERROR, "error");
@@ -1875,8 +1958,8 @@ const UpdatePatientRegistration = () => {
 
     const hospitalId = Number(sessionStorage.getItem("hospitalId"));
     const username = sessionStorage.getItem("username");
-    const currentDate = new Date().toISOString();
-    const currentDateOnly = new Date().toISOString().split("T")[0];
+    const currentDate = getCurrentLocalDateTime();
+    const currentDateOnly = currentDate.split("T")[0];
 
     const toInstant = (dateStr, timeStr) => {
       if (!dateStr || !timeStr) return null;
@@ -1889,6 +1972,23 @@ const UpdatePatientRegistration = () => {
 
       return `${dateOnly}T${timeWithSeconds}Z`;
     };
+
+    const toLocalDateTime = (dateStr, timeStr) => {
+  if (!dateStr || !timeStr) return null;
+  
+  // Extract date part (handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss")
+  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  
+  // Ensure time has seconds (HH:mm -> HH:mm:ss)
+  let timeWithSeconds = timeStr;
+  if (timeStr && timeStr.split(":").length === 2) {
+    timeWithSeconds = `${timeStr}:00`;
+  }
+  
+  return `${dateOnly}T${timeWithSeconds}`;
+};
+
+
 
     const toNumber = (value) => {
       if (value === null || value === undefined || value === "") return null;
@@ -2080,8 +2180,8 @@ const UpdatePatientRegistration = () => {
             (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
           )
           .map((appt) => {
-            const startTime = toInstant(appt.selDate, appt.tokenStartTime);
-            const endTime = toInstant(appt.selDate, appt.tokenEndTime);
+            const startTime = toLocalDateTime(appt.selDate, appt.tokenStartTime);
+            const endTime = toLocalDateTime(appt.selDate, appt.tokenEndTime);
 
             return {
               id: appt.visitId || null,

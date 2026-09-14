@@ -1,508 +1,467 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { getRequest, postRequest } from "../../../service/apiService";
+import {
+  CREATE_BLOOD_REQUEST,
+  GET_WARD_WISE_INPATIENT,
+  MAS_BLOOD_COMPONENT_GET_ALL,
+  MAS_BLOODGROUP,
+  MAS_WARD_GET_ALL_ACTIVE,
+} from "../../../config/apiConfig";
+
+const newBloodRequest = (id) => ({
+  id,
+  componentType: "",
+  unitsRequired: "",
+  urgency: "",
+  requiredDateTime: "",
+  indication: "",
+  remarks: "",
+});
+
+const urgencyOptions = ["Routine", "Emergency", "Urgent"];
+const indicationOptions = [
+  "Anemia",
+  "Surgery",
+  "Bleeding",
+  "Trauma",
+  "Thalassemia",
+  "Hemophilia",
+  "Cancer",
+  "Liver Disease",
+];
 
 const RequestForBlood = () => {
-    // Mock data for patient auto-fill
-    const [inpatientNo, setInpatientNo] = useState("");
-    const [patientDetails, setPatientDetails] = useState({
-        patientName: "",
-        ageGender: "",
-        bloodGroup: "",
-        wardOT: "",
-        treatingDoctor: "",
-    });
+  const [wardId, setWardId] = useState("");
+  const [inpatientId, setInpatientId] = useState("");
+  const [wardOptions, setWardOptions] = useState([]);
+  const [inpatientOptions, setInpatientOptions] = useState([]);
+  const [componentOptions, setComponentOptions] = useState([]);
+  const [bloodGroupOptions, setBloodGroupOptions] = useState([]);
+  const [bloodGroupId, setBloodGroupId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [bloodRequests, setBloodRequests] = useState([newBloodRequest(1)]);
 
-    // Mock data for blood requirement rows
-    const [bloodRequests, setBloodRequests] = useState([
-        {
-            id: 1,
-            componentType: "",
-            unitsRequired: "",
-            urgency: "",
-            requiredDateTime: "",
-            indication: "",
-            remarks: "",
-        },
-    ]);
-
-    // Mock data for dropdowns
-    const componentTypes = [
-        { id: 1, name: "PRBC - Packed Red Blood Cells" },
-        { id: 2, name: "Platelet" },
-        { id: 3, name: "Plasma" },
-        { id: 4, name: "Cryo" },
-        { id: 5, name: "Whole Blood" },
-    ];
-
-    const urgencyOptions = [
-        { id: 1, name: "Routine", badge: "bg-info" },
-        { id: 2, name: "Emergency", badge: "bg-danger" },
-        { id: 3, name: "Urgent", badge: "bg-warning" },
-    ];
-
-    const indicationOptions = [
-        "Anemia",
-        "Surgery",
-        "Bleeding",
-        "Trauma",
-        "Thalassemia",
-        "Hemophilia",
-        "Cancer",
-        "Liver Disease",
-    ];
-
-    // Handle inpatient number change with auto-fill
-    const handleInpatientChange = (e) => {
-        const value = e.target.value;
-        setInpatientNo(value);
-
-        // Mock auto-fill - in real app this would fetch from API
-        if (value === "IP-000123") {
-            setPatientDetails({
-                patientName: "Rahul Sharma",
-                ageGender: "45 / Male",
-                bloodGroup: "B+",
-                wardOT: "ICU",
-                treatingDoctor: "Dr. Mehta",
-            });
-        } else if (value === "IP-000456") {
-            setPatientDetails({
-                patientName: "Priya Patel",
-                ageGender: "32 / Female",
-                bloodGroup: "O+",
-                wardOT: "Emergency",
-                treatingDoctor: "Dr. Kumar",
-            });
-        } else if (value === "IP-000789") {
-            setPatientDetails({
-                patientName: "Amit Singh",
-                ageGender: "58 / Male",
-                bloodGroup: "A-",
-                wardOT: "OT-2",
-                treatingDoctor: "Dr. Sharma",
-            });
-        } else {
-            setPatientDetails({
-                patientName: "",
-                ageGender: "",
-                bloodGroup: "",
-                wardOT: "",
-                treatingDoctor: "",
-            });
-        }
-    };
-
-    // Handle blood request row changes
-    const handleRequestChange = (index, field, value) => {
-        const updatedRequests = [...bloodRequests];
-        updatedRequests[index][field] = value;
-        setBloodRequests(updatedRequests);
-    };
-
-    // Add new row
-    const addRow = () => {
-        setBloodRequests([
-            ...bloodRequests,
-            {
-                id: bloodRequests.length + 1,
-                componentType: "",
-                unitsRequired: "",
-                urgency: "",
-                requiredDateTime: "",
-                indication: "",
-                remarks: "",
-            },
+  useEffect(() => {
+    const fetchWards = async () => {
+      setIsLoading(true);
+      try {
+        const [wardsResponse, componentsResponse, bloodGroupsResponse] = await Promise.all([
+          getRequest(MAS_WARD_GET_ALL_ACTIVE),
+          getRequest(MAS_BLOOD_COMPONENT_GET_ALL),
+          getRequest(`${MAS_BLOODGROUP}/getAll/1`),
         ]);
+        const wards = wardsResponse?.response || [];
+        const components = componentsResponse?.response || [];
+        const bloodGroups = bloodGroupsResponse?.response || [];
+        setWardOptions(Array.isArray(wards) ? wards : []);
+        setComponentOptions(Array.isArray(components) ? components : []);
+        setBloodGroupOptions(Array.isArray(bloodGroups) ? bloodGroups : []);
+      } catch (error) {
+        console.error("Error fetching wards and blood components:", error);
+        setWardOptions([]);
+        setComponentOptions([]);
+        setBloodGroupOptions([]);
+        Swal.fire("Unable to Load Data", "Ward and blood component data could not be loaded.", "error");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Delete row
-    const deleteRow = (index) => {
-        if (bloodRequests.length > 1) {
-            const updatedRequests = bloodRequests.filter((_, i) => i !== index);
-            setBloodRequests(updatedRequests);
-        }
-    };
+    fetchWards();
+  }, []);
 
-    // Handle form submit
-    const handleSubmit = () => {
-        console.log("Blood Request Submitted:", {
-            inpatientNo,
-            patientDetails,
-            bloodRequests,
-        });
-        alert("Blood request submitted successfully!");
-    };
+  const handleWardChange = async (event) => {
+    const selectedWardId = event.target.value;
+    setWardId(selectedWardId);
+    setInpatientId("");
+    setSelectedPatient(null);
+    setInpatientOptions([]);
 
-    // Handle reset
-    const handleReset = () => {
-        setInpatientNo("");
-        setPatientDetails({
-            patientName: "",
-            ageGender: "",
-            bloodGroup: "",
-            wardOT: "",
-            treatingDoctor: "",
-        });
-        setBloodRequests([
-            {
-                id: 1,
-                componentType: "",
-                unitsRequired: "",
-                urgency: "",
-                requiredDateTime: "",
-                indication: "",
-                remarks: "",
-            },
-        ]);
-    };
+    if (!selectedWardId) {
+      return;
+    }
 
-    return (
-        <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">
-                                BLOOD REQUEST TO BLOOD BANK
-                            </h4>
-                            
-                        </div>
+    setIsLoading(true);
+    try {
+      const response = await getRequest(
+        `${GET_WARD_WISE_INPATIENT}?wardId=${encodeURIComponent(selectedWardId)}`,
+      );
+      const inpatientData = response?.response || [];
+      setInpatientOptions(Array.isArray(inpatientData) ? inpatientData : []);
+    } catch (error) {
+      console.error("Error fetching ward-wise inpatients:", error);
+      setInpatientOptions([]);
+      Swal.fire("Unable to Load Inpatients", "Inpatient data could not be loaded for this ward.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                        <div className="card-body">
-
-
-
-
-                            <div className="row mb-3">
-                                <div className="col-sm-12">
-                                       
-                                        <div className="card-body">
-                                            <div className="row">
-
-                                             <div className="col-md-3">
-  <label className="form-label fw-semibold">
-    Inpatient Number <span className="text-danger">*</span>
-  </label>
-  <input
-    type="text"
-    className="form-control"
-    placeholder="Enter IP-000XXX"
-    value={inpatientNo}
-    onChange={handleInpatientChange}
-  />
-</div>
-
-<div className="col-md-3">
-  <label className="form-label fw-semibold">
-    Patient Name
-  </label>
-  <input
-    type="text"
-    className="form-control"
-    placeholder="Enter Patient Name"
-  /> 
-</div>
-
-<div className="col-md-3">
-  <label className="form-label fw-semibold">
-    Mobile Number
-  </label>
-  <input
-    type="tel"
-    className="form-control"
-    placeholder="Enter Mobile Number"
-  />
-</div>
-
-                                                <div className="col-md-2 d-flex align-items-end">
-                                                    <button
-                                                        type="button"
-                                                       className="btn btn-success">
-                                                        Search
-                                                    </button>
-                                                </div>
-
-                                            </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
-
-
-
-
-                            {/* Patient Details - Auto-filled Fields */}
-                            <div className="row mb-3">
-                                <div className="col-sm-12">
-                                    <div className="card shadow mb-3">
-                                        <div className="card-header py-3 border-bottom-1">
-                                            <h6 className="mb-0 fw-bold">Patient Details</h6>
-                                        </div>
-                                        <div className="card-body">
-                                            <div className="row g-3">
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Patient Name</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={patientDetails.patientName}
-                                                        readOnly
-                                                        placeholder="Will auto-fill"
-                                                    />
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Age / Gender</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={patientDetails.ageGender}
-                                                        readOnly
-                                                        placeholder="-"
-                                                    />
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Blood Group</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={patientDetails.bloodGroup}
-                                                        readOnly
-                                                        placeholder="-"
-                                                    />
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Ward / OT</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={patientDetails.wardOT}
-                                                        readOnly
-                                                        placeholder="-"
-                                                    />
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Treating Doctor</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={patientDetails.treatingDoctor}
-                                                        readOnly
-                                                        placeholder="-"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Blood Requirement Section */}
-                            <div className="row mb-3">
-                                <div className="col-sm-12">
-                                    <div className="card shadow mb-3">
-                                        <div className="card-header py-3 border-bottom-1">
-                                            <h6 className="mb-0 fw-bold">Blood Requirement Details</h6>
-                                        </div>
-                                        <div className="card-body">
-                                            <div className="table-responsive">
-                                                <table className="table table-bordered table-hover">
-                                                    <thead className="table-light">
-                                                        <tr>
-                                                            <th style={{ width: "20%" }}>
-                                                                Component Type <span className="text-danger">*</span>
-                                                            </th>
-                                                            <th style={{ width: "10%" }}>
-                                                                Units <span className="text-danger">*</span>
-                                                            </th>
-                                                            <th style={{ width: "12%" }}>
-                                                                Urgency <span className="text-danger">*</span>
-                                                            </th>
-                                                            <th style={{ width: "18%" }}>
-                                                                Required Date & Time{" "}
-                                                                <span className="text-danger">*</span>
-                                                            </th>
-                                                            <th style={{ width: "20%" }}>
-                                                                Indication <span className="text-danger">*</span>
-                                                            </th>
-                                                            <th style={{ width: "15%" }}>Remarks</th>
-                                                            <th style={{ width: "5%" }}>Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {bloodRequests.map((request, index) => (
-                                                            <tr key={request.id}>
-                                                                <td>
-                                                                    <select
-                                                                        className="form-select form-select-sm"
-                                                                        value={request.componentType}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "componentType",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <option value="">Select Component</option>
-                                                                        {componentTypes.map((type) => (
-                                                                            <option key={type.id} value={type.name}>
-                                                                                {type.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </td>
-                                                                <td>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="form-control form-control-sm"
-                                                                        placeholder="Units"
-                                                                        min="1"
-                                                                        value={request.unitsRequired}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "unitsRequired",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </td>
-                                                                <td>
-                                                                    <select
-                                                                        className="form-select form-select-sm"
-                                                                        value={request.urgency}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "urgency",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <option value="">Select</option>
-                                                                        {urgencyOptions.map((option) => (
-                                                                            <option key={option.id} value={option.name}>
-                                                                                {option.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    {request.urgency && (
-                                                                        <span
-                                                                            className={`badge ${urgencyOptions.find(
-                                                                                (o) => o.name === request.urgency
-                                                                            )?.badge || "bg-secondary"
-                                                                                } mt-1`}
-                                                                        >
-                                                                            {request.urgency}
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                                <td>
-                                                                    <input
-                                                                        type="datetime-local"
-                                                                        className="form-control form-control-sm"
-                                                                        value={request.requiredDateTime}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "requiredDateTime",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </td>
-                                                                <td>
-                                                                    <select
-                                                                        className="form-select form-select-sm"
-                                                                        value={request.indication}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "indication",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <option value="">Select Indication</option>
-                                                                        {indicationOptions.map((option, i) => (
-                                                                            <option key={i} value={option}>
-                                                                                {option}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </td>
-                                                                <td>
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control form-control-sm"
-                                                                        placeholder="Optional remarks"
-                                                                        value={request.remarks}
-                                                                        onChange={(e) =>
-                                                                            handleRequestChange(
-                                                                                index,
-                                                                                "remarks",
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </td>
-                                                                <td className="text-center">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-danger btn-sm"
-                                                                        onClick={() => deleteRow(index)}
-                                                                        disabled={bloodRequests.length === 1}
-                                                                        title="Delete Row"
-                                                                    >
-                                                                        X
-
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <div className="d-flex justify-content-between align-items-center mt-3">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-success"
-                                                    onClick={addRow}
-                                                >
-                                                    <i className="mdi mdi-plus me-2"></i>
-                                                    + Add Another Component
-                                                </button>
-
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-primary me-2"
-                                                        onClick={handleSubmit}
-                                                    >
-                                                        <i className="mdi mdi-checkbox-marked-circle me-2"></i>
-                                                        Submit Request
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-secondary"
-                                                        onClick={handleReset}
-                                                    >
-                                                        <i className="mdi mdi-refresh me-2"></i>
-                                                        Reset
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  const createRequest = () => {
+    const patient = inpatientOptions.find(
+      (inpatient) => String(inpatient.inpatientId) === String(inpatientId),
     );
+
+    if (!patient) {
+      Swal.fire("Inpatient Required", "Please select an inpatient before creating the request.", "info");
+      return;
+    }
+
+    setSelectedPatient({
+      ...patient,
+      id: patient.inpatientId,
+      patientId: patient.patientId || patient.patientDetailsId || null,
+      uhidNo: patient.uhid || "",
+      wardOt: patient.ward || "",
+      treatingDoctor: patient.doctorName || patient.consultantName || "",
+      bloodGroup: patient.bloodGroup || "",
+    });
+    setBloodRequests([newBloodRequest(1)]);
+  };
+
+  const resetSearch = () => {
+    setWardId("");
+    setInpatientId("");
+    setInpatientOptions([]);
+    setSelectedPatient(null);
+    setBloodGroupId("");
+  };
+
+  const updateRequest = (index, field, value) => {
+    setBloodRequests((previous) =>
+      previous.map((request, requestIndex) =>
+        requestIndex === index ? { ...request, [field]: value } : request,
+      ),
+    );
+  };
+
+  const updateUnits = (index, value) => {
+    updateRequest(index, "unitsRequired", value.replace(/\D/g, ""));
+  };
+
+  const addRequestRow = () => {
+    setBloodRequests((previous) => [
+      ...previous,
+      newBloodRequest(previous.length + 1),
+    ]);
+  };
+
+  const removeRequestRow = (index) => {
+    setBloodRequests((previous) =>
+      previous.length > 1
+        ? previous.filter((_, requestIndex) => requestIndex !== index)
+        : previous,
+    );
+  };
+
+  const submitRequest = () => {
+    const patientId = Number(selectedPatient?.patientId);
+    const selectedBloodGroupId = Number(bloodGroupId);
+    const requestDepartment = Number(
+      sessionStorage.getItem("departmentId") ||
+      localStorage.getItem("departmentId"),
+    );
+
+    if (!Number.isInteger(patientId) || patientId < 1) {
+      Swal.fire(
+        "Patient ID Missing",
+        "The selected inpatient response does not contain a valid patient ID.",
+        "error",
+      );
+      return;
+    }
+
+    if (!Number.isInteger(selectedBloodGroupId) || selectedBloodGroupId < 1) {
+      Swal.fire("Blood Group Required", "Please select a blood group.", "error");
+      return;
+    }
+
+    if (!Number.isInteger(requestDepartment) || requestDepartment < 1) {
+      Swal.fire(
+        "Department Required",
+        "A valid department could not be found. Please log in again.",
+        "error",
+      );
+      return;
+    }
+
+    const hasMissingFields = bloodRequests.some((request) =>
+      [
+        "componentType",
+        "unitsRequired",
+        "urgency",
+        "requiredDateTime",
+        "indication",
+      ].some((field) => !request[field]),
+    );
+
+    const hasInvalidUnits = bloodRequests.some(
+      (request) =>
+        !Number.isInteger(Number(request.unitsRequired)) ||
+        Number(request.unitsRequired) < 1,
+    );
+
+    if (hasMissingFields || hasInvalidUnits) {
+      Swal.fire("Incomplete Request", "Please complete all required blood details.", "warning");
+      return;
+    }
+
+    const payload = {
+      inpatientId: Number(selectedPatient.inpatientId),
+      wardId: Number(selectedPatient.wardId || wardId),
+      patientId,
+      requestDepartment,
+      bloodGroupId: selectedBloodGroupId,
+      bloodRequirementDetails: bloodRequests.map((request) => ({
+        componentId: Number(request.componentType),
+        unitsRequired: Number(request.unitsRequired),
+        urgency: request.urgency,
+        requiredDateTime: request.requiredDateTime,
+        indication: request.indication,
+        remarks: request.remarks,
+      })),
+    };
+
+    const saveRequest = async () => {
+      setIsSubmitting(true);
+      try {
+        const response = await postRequest(CREATE_BLOOD_REQUEST, payload);
+        if (response?.status === 200 || response?.status === 201) {
+          await Swal.fire({
+            title: "Success",
+            text: response.message || "Blood request submitted successfully.",
+            icon: "success",
+            confirmButtonText: "OK",
+            allowOutsideClick: false,
+          });
+          window.location.reload();
+        } else {
+          Swal.fire("Unable to Submit", response?.message || "Blood request could not be submitted.", "error");
+        }
+      } catch (error) {
+        console.error("Error submitting blood request:", error);
+        Swal.fire("Unable to Submit", "Blood request could not be submitted.", "error");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    saveRequest();
+  };
+
+  if (selectedPatient) {
+    return (
+      <div className="body d-flex py-3">
+        <div className="container-fluid">
+          <div className="row align-items-center">
+            <div className="border-0 mb-4 w-100">
+              <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom">
+                <h3 className="fw-bold mb-0">BLOOD REQUEST TO BLOOD BANK</h3>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSelectedPatient(null)}
+                >
+                  <i className="icofont-arrow-left me-1" /> Back to Search
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card shadow mb-3">
+            <div className="card-header py-3 border-bottom-1">
+              <h6 className="mb-0 fw-bold">Patient Details</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                {[
+                  ["Patient Name", selectedPatient.patientName],
+                  ["Age / Gender", `${selectedPatient.age} / ${selectedPatient.gender}`],
+                  // ["Mobile No.", selectedPatient.mobileNo],
+                  // ["UHID No.", selectedPatient.uhidNo],
+                  // ["Admission No.", selectedPatient.admissionNo],
+                  // ["Blood Group", selectedPatient.bloodGroup],
+                  ["Ward / OT", selectedPatient.wardOt],
+                  ["Room / Bed", `${selectedPatient.room || ""} / ${selectedPatient.bed || ""}`],
+                  ["Treating Doctor", selectedPatient.treatingDoctor],
+                ].map(([label, value]) => (
+                  <div className="col-md-4" key={label}>
+                    <label className="form-label">{label}</label>
+                    <input className="form-control" value={value || ""} readOnly />
+                  </div>
+                ))}
+                <div className="col-md-4">
+                  <label className="form-label">Blood Group <span className="text-danger">*</span></label>
+                  <select
+                    className="form-select"
+                    value={bloodGroupId}
+                    onChange={(event) => setBloodGroupId(event.target.value)}
+                    disabled={isSubmitting}
+                    required
+                  >
+                    <option value="">Select Blood Group</option>
+                    {bloodGroupOptions.map((bloodGroup) => (
+                      <option
+                        key={bloodGroup.bloodGroupId}
+                        value={bloodGroup.bloodGroupId}
+                      >
+                        {bloodGroup.bloodGroupName || bloodGroup.bloodGroupCode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card shadow mb-3">
+            <div className="card-header py-3 border-bottom-1">
+              <h6 className="mb-0 fw-bold">Blood Requirement Details</h6>
+            </div>
+            <div className="card-body">
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Component Type *</th>
+                      <th>Units *</th>
+                      <th>Urgency *</th>
+                      <th>Required Date &amp; Time *</th>
+                      <th>Indication *</th>
+                      <th>Remarks</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bloodRequests.map((request, index) => (
+                      <tr key={request.id}>
+                        <td>
+                          <select className="form-select form-select-sm" value={request.componentType} onChange={(event) => updateRequest(index, "componentType", event.target.value)}>
+                            <option value="">Select Component</option>
+                            {componentOptions.map((component) => (
+                              <option key={component.componentId} value={component.componentId}>
+                                {component.componentName}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            inputMode="numeric"
+                            className="form-control form-control-sm"
+                            value={request.unitsRequired}
+                            onKeyDown={(event) =>
+                              ["-", "+", ".", "e", "E"].includes(event.key) &&
+                              event.preventDefault()
+                            }
+                            onChange={(event) => updateUnits(index, event.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <select className="form-select form-select-sm" value={request.urgency} onChange={(event) => updateRequest(index, "urgency", event.target.value)}>
+                            <option value="">Select</option>
+                            {urgencyOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </td>
+                        <td><input type="datetime-local" className="form-control form-control-sm" value={request.requiredDateTime} onChange={(event) => updateRequest(index, "requiredDateTime", event.target.value)} /></td>
+                        <td>
+                          <select className="form-select form-select-sm" value={request.indication} onChange={(event) => updateRequest(index, "indication", event.target.value)}>
+                            <option value="">Select Indication</option>
+                            {indicationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </td>
+                        <td><input className="form-control form-control-sm" value={request.remarks} onChange={(event) => updateRequest(index, "remarks", event.target.value)} /></td>
+                        <td className="text-center">
+                          <button type="button" className="btn btn-danger btn-sm" onClick={() => removeRequestRow(index)} disabled={bloodRequests.length === 1}>X</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mt-3">
+                <button type="button" className="btn btn-success" onClick={addRequestRow}>+ Add Another Component</button>
+                <div>
+                  <button type="button" className="btn btn-primary me-2" onClick={submitRequest} disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit Request"}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setBloodRequests([newBloodRequest(1)])}>Reset</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="body d-flex py-3">
+      <div className="container-fluid">
+        <div className="row align-items-center">
+          <div className="border-0 mb-4 w-100">
+            <div className="card-header py-3 no-bg bg-transparent border-bottom">
+              <h3 className="fw-bold mb-0">BLOOD REQUEST TO BLOOD BANK</h3>
+            </div>
+          </div>
+        </div>
+
+        <div className="card shadow mb-3">
+          <div className="card-header py-3 border-bottom-1"><h6 className="mb-0 fw-bold">Create Blood Request</h6></div>
+          <div className="card-body">
+            <div className="row g-3 align-items-end">
+              <div className="col-md-4">
+                <label className="form-label">Ward Name</label>
+                <select
+                  className="form-select"
+                  value={wardId}
+                  onChange={handleWardChange}
+                  disabled={isLoading}
+                >
+                  <option value="">Select Ward</option>
+                  {wardOptions.map((ward) => (
+                    <option key={ward.wardId || ward.id} value={ward.wardId || ward.id}>
+                      {ward.wardName || ward.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Inpatient</label>
+                <select
+                  className="form-select"
+                  value={inpatientId}
+                  onChange={(event) => setInpatientId(event.target.value)}
+                  disabled={!wardId || isLoading}
+                >
+                  <option value="">Select Inpatient</option>
+                  {inpatientOptions.map((patient) => (
+                    <option key={patient.inpatientId} value={patient.inpatientId}>
+                      {patient.patientName?.trim()} - {patient.admissionNo || patient.uhid}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4 d-flex gap-2 flex-wrap">
+                <button type="button" className="btn btn-primary" onClick={createRequest} disabled={isLoading || !inpatientId}>
+                  Create Request
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={resetSearch} disabled={isLoading}>
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default RequestForBlood;

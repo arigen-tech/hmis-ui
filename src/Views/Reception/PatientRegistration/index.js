@@ -23,6 +23,7 @@ import {
   PATIENT_IMAGE_UPLOAD,
   PATIENT_REGISTRATION,
   STATE_BY_COUNTRY,
+  OBG_DEPARTMENT_CODE,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -386,6 +387,26 @@ const PatientRegistration = () => {
       valid: Object.keys(newErrors).length === 0,
       message: missingField ? `${missingField.label} is required.` : "",
     };
+  };
+
+  const isMaleGynaeAppointment = () => {
+    const selectedGender = genderData.find(
+      (gender) => String(gender.id) === String(formData.gender),
+    );
+    const isMale = selectedGender?.genderName?.trim().toLowerCase() === "male";
+
+    return (
+      isMale &&
+      appointments.some((appointment) => {
+        const department = departmentData.find(
+          (item) => String(item.id) === String(appointment.speciality),
+        );
+        return (
+          department?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+          department?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE
+        );
+      })
+    );
   };
 
   const formatAbhaNumber = (value = "") => {
@@ -1276,6 +1297,43 @@ const PatientRegistration = () => {
       ? selectedDepartment.departmentName
       : "";
 
+    const selectedGender = genderData.find(
+      (gender) => String(gender.id) === String(formData.gender),
+    );
+    const isMale = selectedGender?.genderName?.trim().toLowerCase() === "male";
+    const isGynaeDepartment =
+      selectedDepartment?.departmentCode?.toUpperCase() === OBG_DEPARTMENT_CODE ||
+      selectedDepartment?.departmentTypeCode?.toUpperCase() === OBG_DEPARTMENT_CODE;
+
+    if (isMale && isGynaeDepartment) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not Applicable",
+        text: "Male Patient not applicable for this department",
+      });
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === id
+            ? {
+                ...appointment,
+                speciality: "",
+                selDoctorId: "",
+                selSession: "",
+                departmentName: "",
+                selDate: null,
+                tokenNo: null,
+              }
+            : appointment,
+        ),
+      );
+      setDoctorDataMap((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+      return;
+    }
+
     setAppointments((prev) =>
       prev.map((appointment) =>
         appointment.id === id
@@ -1667,6 +1725,15 @@ const PatientRegistration = () => {
         icon: "warning",
         title: INCOMPLETE_FORM_TITLE,
         text: validationResult.message,
+      });
+      return;
+    }
+
+    if (isMaleGynaeAppointment()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Not Applicable",
+        text: "Male Patient not applicable for this department",
       });
       return;
     }

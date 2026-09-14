@@ -106,6 +106,7 @@ const OpdPaymentSuccess = () => {
     hasBillingData &&
     receiptRows.some((bp) => bp.billHeaderId != null || bp.billingHdId != null);
   const showBillActions = isBillingAvailable && receiptRows.length > 0;
+  const showBulkBillActions = showBillActions && receiptRows.length > 1;
   const isOpdBilling =
     billingType === OPD_SERVICE_CATAGORY || billingType === "Consultation Services";
 
@@ -541,7 +542,7 @@ const OpdPaymentSuccess = () => {
 
                 {/* Action Buttons */}
                 <div className="d-flex justify-content-center gap-3 flex-wrap pt-3 border-top">
-                  {showBillActions && (
+                  {showBulkBillActions && (
                     <>
                       <button
                         className="btn btn-primary d-flex align-items-center gap-2"
