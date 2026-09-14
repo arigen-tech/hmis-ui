@@ -38,6 +38,12 @@ const InvestigationModal = ({
   onTemplateSaved,
   doctorId = "",
 }) => {
+  const resolvedDoctorId =
+    doctorId ||
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("userId") ||
+    "";
+
   // State management
   const [templateName, setTemplateName] = useState("");
   const [templateCode, setTemplateCode] = useState("");
@@ -91,7 +97,7 @@ const InvestigationModal = ({
         loadTemplateData(selectedTemplate);
       }
     }
-  }, [show, templateType, selectedTemplate, doctorId]);
+  }, [show, templateType, selectedTemplate, resolvedDoctorId]);
 
   useEffect(() => {
     if (allInvestigations.length > 0) {
@@ -145,8 +151,8 @@ const InvestigationModal = ({
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
-      if (doctorId) {
-        queryParams.append("doctorId", doctorId);
+      if (resolvedDoctorId) {
+        queryParams.append("doctorId", resolvedDoctorId);
       }
       const response = await getRequest(
         `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
@@ -626,14 +632,31 @@ const InvestigationModal = ({
       }
 
       if (templateType === "create") {
+        const numericDoctorId = resolvedDoctorId
+          ? Number(resolvedDoctorId)
+          : null;
+        const validDoctorId =
+          numericDoctorId !== null && !isNaN(numericDoctorId)
+            ? numericDoctorId
+            : resolvedDoctorId || null;
+
         const requestData = {
           opdTemplateName: templateName.trim(),
           opdTemplateCode: templateCode.trim(),
+          doctorId: validDoctorId,
           investigationRequestList: investigationPayload,
           treatments: [],
         };
 
-        const response = await postRequest(`${OPD_TEMPLATE_SAVE}`, requestData);
+        const queryParams = new URLSearchParams();
+        if (resolvedDoctorId) {
+          queryParams.append("doctorId", resolvedDoctorId);
+        }
+        const saveUrl = `${OPD_TEMPLATE_SAVE}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`;
+
+        const response = await postRequest(saveUrl, requestData);
 
         if (response && response.status === 200) {
           showPopup(TEMPLATE_CREATED_SUCCESS, "success");
@@ -702,16 +725,33 @@ const InvestigationModal = ({
             });
           }
         });
+        const numericDoctorId = resolvedDoctorId
+          ? Number(resolvedDoctorId)
+          : null;
+        const validDoctorId =
+          numericDoctorId !== null && !isNaN(numericDoctorId)
+            ? numericDoctorId
+            : resolvedDoctorId || null;
+
         const requestData = {
           templateId: parseInt(templateId),
+          doctorId: validDoctorId,
           opdTempInvest: opdTempInvest,
           deletedTempIvs: deletedTempIvs,
         };
 
         console.log("Update Request Data:", requestData);
 
+        const queryParams = new URLSearchParams();
+        if (resolvedDoctorId) {
+          queryParams.append("doctorId", resolvedDoctorId);
+        }
+        const updateUrl = `${OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE}/${templateId}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`;
+
         const response = await putRequest(
-          `${OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE}/${templateId}`,
+          updateUrl,
           requestData,
         );
 

@@ -102,7 +102,6 @@ const GeneralMedicineWaitingList = () => {
 
   const userId =
     localStorage.getItem("userId") || sessionStorage.getItem("userId");
-  const currentDoctorId = searchFilters.doctorList || userId || "";
 
   const [waitingList, setWaitingList] = useState([]);
 
@@ -1546,16 +1545,29 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const fetchOpdTemplateData = async () => {
+  const fetchOpdTemplateData = async (overrideDoctorId) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (currentDoctorId) {
-        queryParams.append("doctorId", currentDoctorId);
+      const doctorId =
+        overrideDoctorId ||
+        currentDoctorId ||
+        searchFilters.doctorList ||
+        selectedPatient?.doctorId ||
+        selectedPatient?.doctor_id ||
+        localStorage.getItem("userId") ||
+        sessionStorage.getItem("userId") ||
+        "";
+
+      if (!doctorId) {
+        setOpdTemplateData([]);
+        return;
       }
+
+      setTreatmentTemplateLoading(true);
+      const queryParams = new URLSearchParams();
+      queryParams.append("doctorId", doctorId);
+
       const data = await getRequest(
-        `${OPD_TREATMENT_TEMPLATE_GET_ALL}${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`,
+        `${OPD_TREATMENT_TEMPLATE_GET_ALL}?${queryParams.toString()}`,
       );
 
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -1565,7 +1577,10 @@ const GeneralMedicineWaitingList = () => {
         setOpdTemplateData([]);
       }
     } catch (error) {
-      console.error("Error fetching Doctor data:", error);
+      console.error("Error fetching OPD treatment template data:", error);
+      setOpdTemplateData([]);
+    } finally {
+      setTreatmentTemplateLoading(false);
     }
   };
 
@@ -1654,14 +1669,23 @@ const GeneralMedicineWaitingList = () => {
     fetchWardCategoryData();
   };
 
-  const handleTemplateOpen = () => {
-    fetchOpdTemplateData();
-  };
-
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const [showDetailView, setShowDetailView] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+
+  const currentDoctorId =
+    selectedPatient?.doctorId ||
+    selectedPatient?.doctor_id ||
+    selectedPatient?.doctor?.doctorId ||
+    selectedPatient?.doctor?.id ||
+    searchFilters.doctorList ||
+    userId ||
+    "";
+
+  const handleTemplateOpen = () => {
+    fetchOpdTemplateData(currentDoctorId);
+  };
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false);
   const [showCurrentMedicationModal, setShowCurrentMedicationModal] =
     useState(false);
@@ -2113,20 +2137,30 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const fetchInvestigationTemplates = async (flag = 1) => {
+  const fetchInvestigationTemplates = async (flag = 1, overrideDoctorId) => {
     try {
       setInvestigationTemplateLoading(true);
-      const queryParams = new URLSearchParams();
 
       const doctorId =
+        overrideDoctorId ||
+        currentDoctorId ||
         searchFilters.doctorList ||
+        selectedPatient?.doctorId ||
+        selectedPatient?.doctor_id ||
         localStorage.getItem("userId") ||
         sessionStorage.getItem("userId") ||
         "";
+
+      if (!doctorId) {
+        setInvestigationTemplates([]);
+        return;
+      }
+
+      const queryParams = new URLSearchParams();
+      queryParams.append("doctorId", doctorId);
+
       const response = await getRequest(
-        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}?${queryParams.toString()}`,
       );
       if (response && response.response) {
         setInvestigationTemplates(response.response);
@@ -2748,8 +2782,14 @@ const GeneralMedicineWaitingList = () => {
   };
 
   useEffect(() => {
-    if (showDetailView && selectedPatient && currentDoctorId) {
-      fetchInvestigationTemplates();
+    if (showDetailView && selectedPatient) {
+      if (currentDoctorId) {
+        fetchInvestigationTemplates(1, currentDoctorId);
+        fetchOpdTemplateData(currentDoctorId);
+      } else {
+        setInvestigationTemplates([]);
+        setOpdTemplateData([]);
+      }
     }
   }, [showDetailView, selectedPatient, currentDoctorId]);
 
@@ -2962,6 +3002,19 @@ const GeneralMedicineWaitingList = () => {
       if (patient.pregnancyDetails && pregnancyRef.current) {
         pregnancyRef.current.setData(patient.pregnancyDetails);
       }
+    }
+
+    const doctorId =
+      patient.doctorId ||
+      patient.doctor_id ||
+      patient.doctor?.doctorId ||
+      patient.doctor?.id ||
+      searchFilters.doctorList ||
+      userId ||
+      "";
+    if (doctorId) {
+      void fetchInvestigationTemplates(1, doctorId);
+      void fetchOpdTemplateData(doctorId);
     }
   };
 
@@ -8353,7 +8406,7 @@ const GeneralMedicineWaitingList = () => {
           templateType={investigationModalType}
           doctorId={currentDoctorId}
           onTemplateSaved={(template) => {
-            fetchInvestigationTemplates();
+            fetchInvestigationTemplates(1, currentDoctorId);
           }}
         />
 
@@ -8364,7 +8417,7 @@ const GeneralMedicineWaitingList = () => {
           doctorId={currentDoctorId}
           onTemplateSaved={() => {
             opdTemplateLoadedRef.current = false;
-            fetchOpdTemplateData();
+            fetchOpdTemplateData(currentDoctorId);
           }}
         />
 

@@ -935,9 +935,18 @@ const TreatmentModal = ({
         }
       }
 
+      const numericDoctorId = resolvedDoctorId
+        ? Number(resolvedDoctorId)
+        : null;
+      const validDoctorId =
+        numericDoctorId !== null && !isNaN(numericDoctorId)
+          ? numericDoctorId
+          : resolvedDoctorId || null;
+
       const requestData = {
         opdTemplateName: templateName.trim(),
         opdTemplateCode: templateCode.trim(),
+        doctorId: validDoctorId,
         investigationRequestList: [],
         treatments: treatmentItems.map((item) => ({
           dosage: item.dosage,
@@ -951,9 +960,17 @@ const TreatmentModal = ({
         })),
       };
 
+      const queryParams = new URLSearchParams();
+      if (resolvedDoctorId) {
+        queryParams.append("doctorId", resolvedDoctorId);
+      }
+
       let response;
       if (templateType === "create") {
-        response = await postRequest(`${OPD_TEMPLATE}/saveOpdTemplateTreatment`, requestData);
+        const createUrl = `${OPD_TEMPLATE}/saveOpdTemplateTreatment${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`;
+        response = await postRequest(createUrl, requestData);
       } else if (templateType === "edit") {
         const templateId = selectedTemplate
           ? selectedTemplate.templateId
@@ -962,8 +979,11 @@ const TreatmentModal = ({
           showPopup(SELECT_TEMPLATE_TO_UPDATE, "error");
           return;
         }
+        const updateUrl = `${OPD_TEMPLATE}/updateOpdTemplateTreatment/${templateId}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`;
         response = await putRequest(
-          `${OPD_TEMPLATE}/updateOpdTemplateTreatment/${templateId}`,
+          updateUrl,
           requestData,
         );
       }
