@@ -296,7 +296,6 @@ const validRoutes = [
 // Routes that should bypass authorization
 const bypassRoutes = [
   "/PatientSearchForAdmission",
-  "/InpatientAdmission",
 ];
 
 const NotAuthorized = () => {
