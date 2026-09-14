@@ -298,6 +298,12 @@ const bypassRoutes = [
   "/PatientSearchForAdmission",
 ];
 
+// Mapping of sub-routes to their parent routes
+// A user can access a sub-route if they have access to at least one of its parent routes.
+const subRoutes = {
+  "/InpatientAdmission": ["/PatientListForAdmission", "/PatientSearchForAdmission"],
+};
+
 const NotAuthorized = () => {
   const navigate = useNavigate();
 
@@ -348,6 +354,16 @@ const ProtectedRoute = () => {
     allowedUrls.includes(currentPath)
   ) {
     return <Outlet />;
+  }
+
+  // Sub-route authorization
+  if (subRoutes[currentPath]) {
+    const hasParentAccess = subRoutes[currentPath].some(
+      (parent) => allowedUrls.includes(parent) || bypassRoutes.includes(parent)
+    );
+    if (hasParentAccess) {
+      return <Outlet />;
+    }
   }
 
   // Unauthorized
