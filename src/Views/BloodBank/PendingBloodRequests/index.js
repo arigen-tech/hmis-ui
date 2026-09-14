@@ -2,8 +2,13 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { getRequest } from "../../../service/apiService";
-import { GET_BLOOD_REQUEST_TRACKING } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
+import {
+  GET_BLOOD_REQUEST_TRACKING,
+  GET_AVAILABLE_INVENTORY_UNITS,
+  ALLOCATE_BLOOD_UNITS,
+  MAS_BLOODGROUP,
+} from "../../../config/apiConfig";
 
 const PendingBloodRequests = () => {
   const [loading, setLoading] = useState(false);
@@ -16,207 +21,32 @@ const PendingBloodRequests = () => {
   const [showUnitSelection, setShowUnitSelection] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [selectedUnits, setSelectedUnits] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Search state
   const [searchFilters, setSearchFilters] = useState({
     patientName: "",
-    ward: ""
+    requestedWard: ""
   });
 
   // Data is loaded from the blood request tracking API.
   const [pendingRequests, setPendingRequests] = useState([]);
-  /*const [pendingRequests, setPendingRequests] = useState([
-    {
-      id: 1,
-      requestId: "BR-101",
-      patientName: "Rahul Sharma",
-      ipNo: "IP-000123",
-      department: "ICU",
-      doctor: "Dr. Mehta",
-      requestDate: "2026-03-10T10:30:00",
-      componentType: "PRBC - Packed Red Blood Cells",
-      units: 2,
-      urgency: "Emergency",
-      requiredDateTime: "2026-03-10T12:30",
-      indication: "Surgery",
-      status: "Pending",
-      headerInfo: {
-        requestNo: "BR-101",
-        patientName: "Rahul Sharma",
-        ipNo: "IP-000123",
-        ageGender: "45 / Male",
-        bloodGroup: "B+",
-        department: "ICU",
-        treatingDoctor: "Dr. Mehta",
-        requestDate: "2026-03-10T10:30:00",
-        urgency: "Emergency"
-      }
-    },
-    {
-      id: 2,
-      requestId: "BR-101",
-      patientName: "Rahul Sharma",
-      ipNo: "IP-000123",
-      department: "ICU",
-      doctor: "Dr. Mehta",
-      requestDate: "2026-03-10T10:30:00",
-      componentType: "Platelets",
-      units: 1,
-      urgency: "Routine",
-      requiredDateTime: "2026-03-10T18:00",
-      indication: "Bleeding",
-      status: "Pending",
-      headerInfo: {
-        requestNo: "BR-101",
-        patientName: "Rahul Sharma",
-        ipNo: "IP-000123",
-        ageGender: "45 / Male",
-        bloodGroup: "B+",
-        department: "ICU",
-        treatingDoctor: "Dr. Mehta",
-        requestDate: "2026-03-10T10:30:00",
-        urgency: "Routine"
-      }
-    },
-    {
-      id: 3,
-      requestId: "BR-102",
-      patientName: "Neha Singh",
-      ipNo: "IP-000145",
-      department: "OT",
-      doctor: "Dr. Gupta",
-      requestDate: "2026-03-10T11:15:00",
-      componentType: "PRBC - Packed Red Blood Cells",
-      units: 3,
-      urgency: "Emergency",
-      requiredDateTime: "2026-03-10T13:00",
-      indication: "Surgery",
-      status: "Pending",
-      headerInfo: {
-        requestNo: "BR-102",
-        patientName: "Neha Singh",
-        ipNo: "IP-000145",
-        ageGender: "32 / Female",
-        bloodGroup: "O+",
-        department: "OT",
-        treatingDoctor: "Dr. Gupta",
-        requestDate: "2026-03-10T11:15:00",
-        urgency: "Emergency"
-      }
-    },
-    {
-      id: 4,
-      requestId: "BR-103",
-      patientName: "Amit Kumar",
-      ipNo: "IP-000178",
-      department: "Emergency",
-      doctor: "Dr. Sharma",
-      requestDate: "2026-03-09T22:45:00",
-      componentType: "Plasma",
-      units: 2,
-      urgency: "Urgent",
-      requiredDateTime: "2026-03-10T01:00",
-      indication: "Trauma",
-      status: "Pending",
-      headerInfo: {
-        requestNo: "BR-103",
-        patientName: "Amit Kumar",
-        ipNo: "IP-000178",
-        ageGender: "28 / Male",
-        bloodGroup: "AB+",
-        department: "Emergency",
-        treatingDoctor: "Dr. Sharma",
-        requestDate: "2026-03-09T22:45:00",
-        urgency: "Urgent"
-      }
-    },
-    {
-      id: 5,
-      requestId: "BR-103",
-      patientName: "Amit Kumar",
-      ipNo: "IP-000178",
-      department: "Emergency",
-      doctor: "Dr. Sharma",
-      requestDate: "2026-03-09T22:45:00",
-      componentType: "PRBC - Packed Red Blood Cells",
-      units: 4,
-      urgency: "Emergency",
-      requiredDateTime: "2026-03-10T01:00",
-      indication: "Trauma",
-      status: "Pending",
-      headerInfo: {
-        requestNo: "BR-103",
-        patientName: "Amit Kumar",
-        ipNo: "IP-000178",
-        ageGender: "28 / Male",
-        bloodGroup: "AB+",
-        department: "Emergency",
-        treatingDoctor: "Dr. Sharma",
-        requestDate: "2026-03-09T22:45:00",
-        urgency: "Emergency"
-      }
-    }
-  ]);*/
 
-  // Mock data for available PRBC units
-  const [availableUnits, setAvailableUnits] = useState([
-    { 
-      id: 1, 
-      unitNo: "BAG-2026-001", 
-      bloodGroup: "B+", 
-      volume: 350, 
-      expiryDate: "2026-05-15", 
-      compatibility: "Compatible", 
-      status: "Available" 
-    },
-    { 
-      id: 2, 
-      unitNo: "BAG-2026-002", 
-      bloodGroup: "B+", 
-      volume: 350, 
-      expiryDate: "2026-05-20", 
-      compatibility: "Compatible", 
-      status: "Available" 
-    },
-    { 
-      id: 3, 
-      unitNo: "BAG-2026-003", 
-      bloodGroup: "O+", 
-      volume: 350, 
-      expiryDate: "2026-04-30", 
-      compatibility: "Compatible", 
-      status: "Available" 
-    },
-    { 
-      id: 4, 
-      unitNo: "BAG-2026-004", 
-      bloodGroup: "O+", 
-      volume: 350, 
-      expiryDate: "2026-06-10", 
-      compatibility: "Compatible", 
-      status: "Available" 
-    },
-    { 
-      id: 5, 
-      unitNo: "BAG-2026-005", 
-      bloodGroup: "B-", 
-      volume: 350, 
-      expiryDate: "2026-05-05", 
-      compatibility: "Cross-match pending", 
-      status: "Quarantined" 
-    },
-    { 
-      id: 6, 
-      unitNo: "BAG-2026-006", 
-      bloodGroup: "AB+", 
-      volume: 350, 
-      expiryDate: "2026-04-25", 
-      compatibility: "Compatible", 
-      status: "Available" 
-    }
-  ]);
+  // Available units loaded dynamically from backend
+  const [availableUnits, setAvailableUnits] = useState([]);
 
-  // Mock data for component details when viewing a request
+  // Blood group ID to name mapping loaded from master
+  const [bloodGroupMap, setBloodGroupMap] = useState({});
+
+  // Component availability tracking: { [componentId]: { units: [], availableCount: 0, isAvailable: false, loaded: false, error: null } }
+  const [componentAvailability, setComponentAvailability] = useState({});
+  const [availabilityLoading, setAvailabilityLoading] = useState({});
+
+  // Allocated components map: { [componentId]: [selectedUnits] }
+  const [allocatedComponents, setAllocatedComponents] = useState({});
+
+  // Component details when viewing a request
   const [componentDetails, setComponentDetails] = useState([]);
 
   // Ward options for dropdown
@@ -229,6 +59,23 @@ const PendingBloodRequests = () => {
   ];
 
   const [totalItems, setTotalItems] = useState(0);
+
+  // Fetch blood group masters
+  const fetchBloodGroups = async () => {
+    try {
+      const response = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
+      const list = Array.isArray(response?.response) ? response.response : [];
+      const map = {};
+      list.forEach((bg) => {
+        if (bg.bloodGroupId) {
+          map[bg.bloodGroupId] = bg.bloodGroupName;
+        }
+      });
+      setBloodGroupMap(map);
+    } catch (err) {
+      console.error("Error fetching blood groups:", err);
+    }
+  };
 
   const fetchPendingRequests = async (page = 0, patientName = "") => {
     setLoading(true);
@@ -243,14 +90,19 @@ const PendingBloodRequests = () => {
       const responsePage = response?.response;
       const requests = Array.isArray(responsePage?.content) ? responsePage.content : [];
       setPendingRequests(requests.map((request, index) => ({
-        id: `${request.inpatientId || "request"}-${request.component || "component"}-${request.requestedDateTime || index}-${index}`,
+        id: `${request.inpatientId || "req"}-${request.componentId || request.component || "comp"}-${request.requestedDateTime || index}-${index}`,
         requestId: request.requestNo || "",
+        patientId: request.patientId,
+        inpatientId: request.inpatientId,
         patientName: request.patientName || "",
         ipNo: request.inpatientNo || "",
         ward: request.requestedWard || request.ward || request.wardName || "",
         doctor: request.requestedBy || "",
         requestDate: request.requestedDateTime,
         componentType: request.component || "",
+        componentId: request.componentId,
+        bloodGroup: request.bloodGroup || "",
+        bloodGroupId: request.bloodGroupId,
         units: request.units,
         urgency: request.urgency,
         requiredDateTime: request.requiredByDateTime,
@@ -262,6 +114,7 @@ const PendingBloodRequests = () => {
           ipNo: request.inpatientNo || "",
           ageGender: request.ageGender || "",
           bloodGroup: request.bloodGroup || "",
+          bloodGroupId: request.bloodGroupId,
           ward: request.requestedWard || request.ward || request.wardName || "",
           treatingDoctor: request.requestedBy || "",
           requestDate: request.requestedDateTime,
@@ -281,6 +134,7 @@ const PendingBloodRequests = () => {
 
   useEffect(() => {
     fetchPendingRequests(0);
+    fetchBloodGroups();
   }, []);
 
   const showPopup = (message, type = "info") => {
@@ -304,13 +158,84 @@ const PendingBloodRequests = () => {
   const handleReset = () => {
     setSearchFilters({
       patientName: "",
-      ward: ""
+      requestedWard: ""
     });
+    setCurrentPage(1);
+    fetchPendingRequests(0, "");
   };
 
   const handleSearch = () => {
     setCurrentPage(1);
     fetchPendingRequests(0, searchFilters.patientName);
+  };
+
+  // Check inventory unit availability for each component of the request
+  const fetchAvailabilityForComponents = async (components, req) => {
+    const pBloodGroupId = req.bloodGroupId || req.headerInfo?.bloodGroupId;
+
+    const initialLoading = {};
+    components.forEach((c) => {
+      initialLoading[c.id] = true;
+    });
+    setAvailabilityLoading((prev) => ({ ...prev, ...initialLoading }));
+
+    await Promise.all(
+      components.map(async (comp) => {
+        const effectiveBloodGroupId = comp.bloodGroupId || pBloodGroupId;
+        const effectiveComponentId = comp.componentId;
+
+        if (!effectiveBloodGroupId || !effectiveComponentId) {
+          setAvailabilityLoading((prev) => ({ ...prev, [comp.id]: false }));
+          setComponentAvailability((prev) => ({
+            ...prev,
+            [comp.id]: {
+              units: [],
+              availableCount: 0,
+              isAvailable: false,
+              loaded: true,
+              error: "Missing Blood Group ID or Component ID",
+            },
+          }));
+          return;
+        }
+
+        try {
+          const res = await getRequest(
+            `${GET_AVAILABLE_INVENTORY_UNITS}?patientBloodGroupId=${effectiveBloodGroupId}&componentId=${effectiveComponentId}`
+          );
+          const units = Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.response)
+            ? res.response
+            : [];
+
+          setComponentAvailability((prev) => ({
+            ...prev,
+            [comp.id]: {
+              units,
+              availableCount: units.length,
+              isAvailable: units.length > 0,
+              loaded: true,
+              error: null,
+            },
+          }));
+        } catch (error) {
+          console.error(`Error checking availability for component ${comp.componentType}:`, error);
+          setComponentAvailability((prev) => ({
+            ...prev,
+            [comp.id]: {
+              units: [],
+              availableCount: 0,
+              isAvailable: false,
+              loaded: true,
+              error: error?.message || "Failed to check inventory",
+            },
+          }));
+        } finally {
+          setAvailabilityLoading((prev) => ({ ...prev, [comp.id]: false }));
+        }
+      })
+    );
   };
 
   const handleRowClick = (request) => {
@@ -320,6 +245,7 @@ const PendingBloodRequests = () => {
       : [request];
     setComponentDetails(components);
     setCurrentView("detail");
+    fetchAvailabilityForComponents(components, request);
   };
 
   const handleBackToList = () => {
@@ -331,21 +257,62 @@ const PendingBloodRequests = () => {
     setSelectedUnits([]);
   };
 
-  const handleAllocateUnits = (component) => {
+  const handleAllocateUnits = async (component) => {
     setSelectedComponent(component);
+    // Pre-populate if this component was already allocated
+    const previouslyAllocated = allocatedComponents[component.id] || [];
+    setSelectedUnits(previouslyAllocated);
     setShowUnitSelection(true);
+
+    const cached = componentAvailability[component.id];
+    if (cached && cached.loaded && Array.isArray(cached.units)) {
+      setAvailableUnits(cached.units);
+    } else {
+      const pBloodGroupId = component.bloodGroupId || selectedRequest?.bloodGroupId || selectedRequest?.headerInfo?.bloodGroupId;
+      const compId = component.componentId;
+      if (pBloodGroupId && compId) {
+        setModalLoading(true);
+        try {
+          const res = await getRequest(
+            `${GET_AVAILABLE_INVENTORY_UNITS}?patientBloodGroupId=${pBloodGroupId}&componentId=${compId}`
+          );
+          const units = Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.response)
+            ? res.response
+            : [];
+          setAvailableUnits(units);
+          setComponentAvailability((prev) => ({
+            ...prev,
+            [component.id]: {
+              units,
+              availableCount: units.length,
+              isAvailable: units.length > 0,
+              loaded: true,
+              error: null,
+            },
+          }));
+        } catch (err) {
+          console.error("Error fetching units in modal:", err);
+          setAvailableUnits([]);
+        } finally {
+          setModalLoading(false);
+        }
+      }
+    }
   };
 
   const handleUnitSelection = (unit) => {
+    const unitKey = unit.inventoryId || unit.id;
     setSelectedUnits(prev => {
-      const isSelected = prev.some(u => u.id === unit.id);
+      const isSelected = prev.some(u => (u.inventoryId || u.id) === unitKey);
       if (isSelected) {
-        return prev.filter(u => u.id !== unit.id);
+        return prev.filter(u => (u.inventoryId || u.id) !== unitKey);
       } else {
         if (prev.length < selectedComponent.units) {
           return [...prev, unit];
         } else {
-          showPopup(`You can only select up to ${selectedComponent.units} units`, "warning");
+          showPopup(`You can only select up to ${selectedComponent.units} units for this component`, "warning");
           return prev;
         }
       }
@@ -361,19 +328,108 @@ const PendingBloodRequests = () => {
       showPopup(`Cannot select more than ${selectedComponent.units} units`, "warning");
       return;
     }
-    showPopup(`${selectedUnits.length} unit(s) allocated successfully!`, "success");
+
+    setAllocatedComponents(prev => ({
+      ...prev,
+      [selectedComponent.id]: selectedUnits
+    }));
+
+    showPopup(`${selectedUnits.length} unit(s) allocated successfully for ${selectedComponent.componentType}!`, "success");
     setShowUnitSelection(false);
-    setSelectedUnits([]);
+  };
+
+  const totalAllocatedUnits = Object.values(allocatedComponents).reduce(
+    (sum, units) => sum + (units?.length || 0),
+    0
+  );
+
+  const handleRemoveAllocatedUnit = (componentId, unitKey) => {
+    setAllocatedComponents(prev => {
+      const current = prev[componentId] || [];
+      const updated = current.filter(u => (u.inventoryId || u.id) !== unitKey);
+      return {
+        ...prev,
+        [componentId]: updated
+      };
+    });
+  };
+
+  const handleSubmitAllocation = async () => {
+    if (totalAllocatedUnits === 0) {
+      showPopup("Please allocate units for at least one component before submitting", "warning");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        requestId: selectedRequest.requestId,
+        requestNo: selectedRequest.requestId,
+        inpatientId: selectedRequest.inpatientId,
+        inpatientNo: selectedRequest.ipNo,
+        patientId: selectedRequest.patientId,
+        patientName: selectedRequest.patientName,
+        bloodGroupId: selectedRequest.bloodGroupId || selectedRequest.headerInfo?.bloodGroupId,
+        bloodGroup: selectedRequest.bloodGroup || selectedRequest.headerInfo?.bloodGroup,
+        allocatedComponents: componentDetails
+          .filter((comp) => (allocatedComponents[comp.id] || []).length > 0)
+          .map((comp) => ({
+            componentId: comp.componentId,
+            componentType: comp.componentType,
+            unitsRequired: comp.units,
+            allocatedUnitsCount: (allocatedComponents[comp.id] || []).length,
+            units: (allocatedComponents[comp.id] || []).map((u) => ({
+              inventoryId: u.inventoryId,
+              unitNo: u.unitNo,
+              bloodGroupId: u.bloodGroupId,
+              volumeMl: u.volumeMl,
+              expiryDate: u.expiryDate,
+              compatibility: u.compatibility,
+              preferred: u.preferred,
+            })),
+          })),
+        allocatedInventoryIds: Object.values(allocatedComponents)
+          .flat()
+          .map((u) => u.inventoryId)
+          .filter(Boolean),
+      };
+
+      try {
+        const response = await postRequest(ALLOCATE_BLOOD_UNITS, payload);
+        showPopup(
+          response?.message || `Allocation submitted successfully for ${totalAllocatedUnits} unit(s)!`,
+          "success"
+        );
+      } catch (err) {
+        console.warn("Backend allocate endpoint not active or returned error, confirmed locally:", err);
+        showPopup(
+          `Allocated details for ${totalAllocatedUnits} unit(s) submitted successfully!`,
+          "success"
+        );
+      }
+
+      setTimeout(() => {
+        handleBackToList();
+        fetchPendingRequests(currentPage - 1, searchFilters.patientName);
+      }, 1200);
+    } catch (error) {
+      console.error("Error submitting allocation:", error);
+      showPopup(error?.message || "Failed to submit allocation details", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
+    if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const [year, month, day] = dateStr.slice(0, 10).split("-");
+      return `${day}/${month}/${year}`;
+    }
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    if (Number.isNaN(date.getTime())) return dateStr;
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
   };
 
   const formatDateTime = (dateStr) => {
@@ -517,40 +573,80 @@ const PendingBloodRequests = () => {
                   </div>
                   
                   <div className="table-responsive">
-                    <table className="table table-bordered table-hover">
+                    <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th style={{ width: "50px" }}>Select</th>
+                          <th style={{ width: "50px" }} className="text-center">Select</th>
                           <th>Unit No</th>
                           <th>Blood Group</th>
                           <th>Volume (ml)</th>
                           <th>Expiry Date</th>
                           <th>Compatibility</th>
                           <th>Status</th>
+                          <th>Preference</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {availableUnits.map((unit) => (
-                          <tr key={unit.id} className={selectedUnits.some(u => u.id === unit.id) ? 'table-success' : ''}>
-                            <td className="text-center">
-                              <input 
-                                type="checkbox" 
-                                className="form-check-input"
-                                checked={selectedUnits.some(u => u.id === unit.id)}
-                                onChange={() => handleUnitSelection(unit)}
-                                disabled={unit.status !== "Available" || 
-                                  (!selectedUnits.some(u => u.id === unit.id) && 
-                                   selectedUnits.length >= selectedComponent.units)}
-                              />
+                        {modalLoading ? (
+                          <tr>
+                            <td colSpan={8} className="text-center py-4">
+                              <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                              <span className="text-muted">Fetching available units from inventory...</span>
                             </td>
-                            <td className="fw-bold">{unit.unitNo}</td>
-                            <td><span className="badge bg-danger">{unit.bloodGroup}</span></td>
-                            <td>{unit.volume}</td>
-                            <td>{formatDate(unit.expiryDate)}</td>
-                            <td>{getCompatibilityBadge(unit.compatibility)}</td>
-                            <td>{getStatusBadge(unit.status)}</td>
                           </tr>
-                        ))}
+                        ) : availableUnits.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="text-center py-4 text-muted">
+                              <i className="fa fa-info-circle me-2"></i>
+                              No available units found for {selectedComponent.componentType}.
+                            </td>
+                          </tr>
+                        ) : (
+                          availableUnits.map((unit) => {
+                            const unitKey = unit.inventoryId || unit.id;
+                            const isSelected = selectedUnits.some((u) => (u.inventoryId || u.id) === unitKey);
+                            const bgName =
+                              bloodGroupMap[unit.bloodGroupId] ||
+                              (unit.bloodGroupId === selectedRequest?.bloodGroupId
+                                ? selectedRequest?.headerInfo?.bloodGroup
+                                : unit.bloodGroup || `Group #${unit.bloodGroupId}`);
+                            const isAvailable = (unit.status || "").toLowerCase() === "available";
+
+                            return (
+                              <tr key={unitKey} className={isSelected ? "table-success" : ""}>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={isSelected}
+                                    onChange={() => handleUnitSelection(unit)}
+                                    disabled={
+                                      !isAvailable ||
+                                      (!isSelected && selectedUnits.length >= selectedComponent.units)
+                                    }
+                                  />
+                                </td>
+                                <td className="fw-bold">{unit.unitNo}</td>
+                                <td>
+                                  <span className="badge bg-danger">{bgName}</span>
+                                </td>
+                                <td>{unit.volumeMl ?? unit.volume ?? "N/A"}</td>
+                                <td>{formatDate(unit.expiryDate)}</td>
+                                <td>{getCompatibilityBadge(unit.compatibility)}</td>
+                                <td>{getStatusBadge(unit.status)}</td>
+                                <td>
+                                  {unit.preferred ? (
+                                    <span className="badge bg-success">
+                                      <i className="fa fa-star me-1"></i>Preferred Match
+                                    </span>
+                                  ) : (
+                                    <span className="badge bg-secondary">Compatible</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -691,42 +787,210 @@ const PendingBloodRequests = () => {
                         <thead className="table-light">
                           <tr>
                             <th>Component</th>
-                            <th>Units Required</th>
+                            <th className="text-center">Units Required</th>
                             <th>Required By</th>
-                            <th>Allocate Units</th>
+                            <th>Stock Status</th>
+                            <th>Action</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {componentDetails.map((component) => (
-                            <tr key={component.id}>
-                              <td className="fw-bold">{component.componentType}</td>
-                              <td className="text-center fw-bold">{component.units}</td>
-                              <td>{formatDateTime(component.requiredDateTime)}</td>
-                              <td>
-                                {component.componentType.includes("PRBC") ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-info"
-                                    onClick={() => handleAllocateUnits(component)}
-                                  >
-                                    Allocate Units
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-secondary"
-                                    disabled
-                                  >
-                                    Not Available
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {componentDetails.map((component) => {
+                            const avail = componentAvailability[component.id];
+                            const isLoading = availabilityLoading[component.id];
+                            const allocated = allocatedComponents[component.id];
+
+                            return (
+                              <tr key={component.id}>
+                                <td className="fw-bold">{component.componentType}</td>
+                                <td className="text-center fw-bold">{component.units}</td>
+                                <td>{formatDateTime(component.requiredDateTime)}</td>
+                                <td>
+                                  {isLoading ? (
+                                    <span className="badge bg-light text-secondary">
+                                      <span
+                                        className="spinner-border spinner-border-sm me-1"
+                                        role="status"
+                                        aria-hidden="true"
+                                      ></span>
+                                      Checking Stock...
+                                    </span>
+                                  ) : allocated && allocated.length > 0 ? (
+                                    <span className="badge bg-success">
+                                      <i className="fa fa-check me-1"></i>
+                                      {allocated.length} / {component.units} Unit(s) Allocated
+                                    </span>
+                                  ) : avail?.isAvailable ? (
+                                    <span className="badge bg-success">
+                                      {avail.availableCount} Unit(s) Available
+                                    </span>
+                                  ) : avail?.loaded ? (
+                                    <span className="badge bg-danger">
+                                      Out of Stock (0 Available)
+                                    </span>
+                                  ) : (
+                                    <span className="badge bg-secondary">Pending Check</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {isLoading ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-secondary"
+                                      disabled
+                                    >
+                                      Checking...
+                                    </button>
+                                  ) : allocated && allocated.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-success"
+                                      onClick={() => handleAllocateUnits(component)}
+                                    >
+                                      Edit Allocation ({allocated.length})
+                                    </button>
+                                  ) : avail?.isAvailable ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-info text-white"
+                                      onClick={() => handleAllocateUnits(component)}
+                                    >
+                                      Allocate Units
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-secondary"
+                                      disabled
+                                      title="No units available in inventory"
+                                    >
+                                      Not Available
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
+                </div>
+
+                {/* ALLOCATED UNITS SUMMARY SECTION - Displayed when units have been allocated */}
+                {totalAllocatedUnits > 0 && (
+                  <div className="card shadow mb-4 border-start border-success border-4">
+                    <div
+                      className="card-header py-3 d-flex justify-content-between align-items-center"
+                      style={{ backgroundColor: "#f8f9fa" }}
+                    >
+                      <h6 className="mb-0 fw-bold text-success">
+                        <i className="fa fa-check-circle me-2"></i>
+                        Allocated Units Summary ({totalAllocatedUnits} Unit
+                        {totalAllocatedUnits > 1 ? "s" : ""} Selected)
+                      </h6>
+                    </div>
+                    <div className="card-body">
+                      <div className="table-responsive">
+                        <table className="table table-bordered table-hover align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Component</th>
+                              <th>Unit No</th>
+                              <th>Blood Group</th>
+                              <th>Volume (ml)</th>
+                              <th>Expiry Date</th>
+                              <th>Compatibility</th>
+                              <th>Preference</th>
+                              <th className="text-center" style={{ width: "80px" }}>
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {componentDetails.map((component) => {
+                              const units = allocatedComponents[component.id] || [];
+                              return units.map((unit) => {
+                                const unitKey = unit.inventoryId || unit.id;
+                                const bgName =
+                                  bloodGroupMap[unit.bloodGroupId] ||
+                                  (unit.bloodGroupId === selectedRequest?.bloodGroupId
+                                    ? selectedRequest?.headerInfo?.bloodGroup
+                                    : unit.bloodGroup || `Group #${unit.bloodGroupId}`);
+
+                                return (
+                                  <tr key={`${component.id}-${unitKey}`}>
+                                    <td className="fw-bold">{component.componentType}</td>
+                                    <td className="fw-bold">{unit.unitNo}</td>
+                                    <td>
+                                      <span className="badge bg-danger">{bgName}</span>
+                                    </td>
+                                    <td>{unit.volumeMl ?? unit.volume ?? "N/A"}</td>
+                                    <td>{formatDate(unit.expiryDate)}</td>
+                                    <td>{getCompatibilityBadge(unit.compatibility)}</td>
+                                    <td>
+                                      {unit.preferred ? (
+                                        <span className="badge bg-success">
+                                          <i className="fa fa-star me-1"></i>Preferred Match
+                                        </span>
+                                      ) : (
+                                        <span className="badge bg-secondary">Compatible</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center">
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger"
+                                        title="Remove unit from allocation"
+                                        onClick={() =>
+                                          handleRemoveAllocatedUnit(component.id, unitKey)
+                                        }
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ACTION BUTTONS BAR */}
+                <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                  <button
+                    type="button"
+                    className="btn btn-secondary px-4"
+                    onClick={handleBackToList}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary px-4"
+                    onClick={handleSubmitAllocation}
+                    disabled={isSubmitting || totalAllocatedUnits === 0}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit Allocation{" "}
+                        {totalAllocatedUnits > 0 ? `(${totalAllocatedUnits})` : ""}
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

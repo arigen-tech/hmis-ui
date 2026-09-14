@@ -65,7 +65,7 @@ const PendingComponentGeneration = () => {
     return result;
   };
 
-    const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
 
   const fetchPendingData = async () => {
     try {
@@ -379,14 +379,14 @@ const PendingComponentGeneration = () => {
   return (
     <div className="content-wrapper">
       {popupMessage && (
-      <Popup
-        message={popupMessage.message}
-        type={popupMessage.type}
-        onClose={popupMessage.onClose}
-      />
-    )}
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
 
-    {showDetailView && selectedBag ? (
+      {showDetailView && selectedBag ? (
         // ============= COMPONENT GENERATION DETAIL VIEW =============
         <div className="row">
           <div className="col-12">

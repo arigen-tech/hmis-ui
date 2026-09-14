@@ -284,8 +284,7 @@ const TreatmentModal = ({
         queryParams.append("doctorId", resolvedDoctorId);
       }
       const response = await getRequest(
-        `${OPD_TREATMENT_TEMPLATE_GET_ALL}${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        `${OPD_TREATMENT_TEMPLATE_GET_ALL}${queryParams.toString() ? `?${queryParams.toString()}` : ""
         }`,
       );
       if (response && response.response) {
@@ -297,7 +296,7 @@ const TreatmentModal = ({
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
-      showPopup( FAILED_TO_LOAD_TEMPLATES, "error");
+      showPopup(FAILED_TO_LOAD_TEMPLATES, "error");
       return false;
     }
   };
@@ -540,7 +539,7 @@ const TreatmentModal = ({
       return;
     }
 
-    setTemplateName(template.opdTemplateName || ""); 
+    setTemplateName(template.opdTemplateName || "");
     setTemplateCode(template.opdTemplateCode || "");
 
     if (template.treatments && template.treatments.length > 0) {
@@ -808,7 +807,7 @@ const TreatmentModal = ({
     );
 
     if (drugAlreadyInOtherRow) {
-      showPopup( DRUG_ALREADY_ADDED, "error");
+      showPopup(DRUG_ALREADY_ADDED, "error");
       return;
     }
 
@@ -816,15 +815,15 @@ const TreatmentModal = ({
     const resolvedDrug = itemDetails || drug;
 
     const newItems = [...treatmentItems];
-      newItems[index] = {
-        ...newItems[index],
-        drugName: resolvedDrug.name || resolvedDrug.nomenclature || drug.name,
-        drugId: resolvedDrug.itemId ?? drug.id,
-        dosageUnit: resolveDosageUnit(resolvedDrug, drug.dosageUnit),
-        dispUnit: resolveDispUnit(resolvedDrug, drug.dispUnitName),
-        itemClassId: resolvedDrug.itemClassId ?? drug.itemClassId,
-        adispQty: resolvedDrug.adispQty ?? resolvedDrug.aDispQty ?? drug.adispQty,
-      };
+    newItems[index] = {
+      ...newItems[index],
+      drugName: resolvedDrug.name || resolvedDrug.nomenclature || drug.name,
+      drugId: resolvedDrug.itemId ?? drug.id,
+      dosageUnit: resolveDosageUnit(resolvedDrug, drug.dosageUnit),
+      dispUnit: resolveDispUnit(resolvedDrug, drug.dispUnitName),
+      itemClassId: resolvedDrug.itemClassId ?? drug.itemClassId,
+      adispQty: resolvedDrug.adispQty ?? resolvedDrug.aDispQty ?? drug.adispQty,
+    };
 
     const calculatedTotal = calculateTotal(newItems[index]);
     newItems[index].total = calculatedTotal;
@@ -889,7 +888,7 @@ const TreatmentModal = ({
     }
 
     if (selectedDrugs.length === 0) {
-      showPopup(ADD_AT_LEAST_ONE_TREATMENT_ITEM , "error");
+      showPopup(ADD_AT_LEAST_ONE_TREATMENT_ITEM, "error");
       return;
     }
 
@@ -967,9 +966,8 @@ const TreatmentModal = ({
 
       let response;
       if (templateType === "create") {
-        const createUrl = `${OPD_TEMPLATE}/saveOpdTemplateTreatment${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`;
+        const createUrl = `${OPD_TEMPLATE}/saveOpdTemplateTreatment${queryParams.toString() ? `?${queryParams.toString()}` : ""
+          }`;
         response = await postRequest(createUrl, requestData);
       } else if (templateType === "edit") {
         const templateId = selectedTemplate
@@ -979,9 +977,8 @@ const TreatmentModal = ({
           showPopup(SELECT_TEMPLATE_TO_UPDATE, "error");
           return;
         }
-        const updateUrl = `${OPD_TEMPLATE}/updateOpdTemplateTreatment/${templateId}${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`;
+        const updateUrl = `${OPD_TEMPLATE}/updateOpdTemplateTreatment/${templateId}${queryParams.toString() ? `?${queryParams.toString()}` : ""
+          }`;
         response = await putRequest(
           updateUrl,
           requestData,
@@ -1124,7 +1121,7 @@ const TreatmentModal = ({
               duplicates={duplicateItems}
               onClose={() => setShowDuplicatePopup(false)}
             />
-            
+
             {/* Template Selection Dropdown */}
             {templateType === "edit" && !selectedTemplate && (
               <div style={{
@@ -1256,7 +1253,7 @@ const TreatmentModal = ({
                   {selectedDrugs.length} item(s) selected
                 </span>
               </div>
-              
+
               <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%" }}>
                 <table className="table table-bordered" style={{ width: "100%", fontSize: "0.875rem" }}>
                   <thead className="table-light">
@@ -1278,237 +1275,237 @@ const TreatmentModal = ({
                         row.drugId && row.stock !== "" && Number(row.stock) === 0;
 
                       return (
-                      <tr key={index} className={isOutOfStock ? "table-danger" : ""}>
-                        {/* Drug Name with Search Dropdown - Input only, dropdown rendered via portal */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <div className="position-relative" style={{ width: "100%" }}>
+                        <tr key={index} className={isOutOfStock ? "table-danger" : ""}>
+                          {/* Drug Name with Search Dropdown - Input only, dropdown rendered via portal */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <div className="position-relative" style={{ width: "100%" }}>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                placeholder="Search Drug..."
+                                value={
+                                  row.drugId
+                                    ? row.drugName || ""
+                                    : drugSearch[index] !== undefined
+                                      ? drugSearch[index]
+                                      : row.drugName || ""
+                                }
+                                onChange={(e) =>
+                                  handleDrugSearch(e.target.value, index)
+                                }
+                                onClick={(e) => {
+                                  updateDropdownPosition(e.target);
+                                  loadFirstDrugPage(index);
+                                  setActiveDrugDropdown(index);
+                                }}
+                                onBlur={() => {
+                                  setTimeout(() => setActiveDrugDropdown(null), 200);
+                                }}
+                                data-row-index={index}
+                                autoComplete="off"
+                                style={{ borderRadius: "4px" }}
+                              />
+                            </div>
+                          </td>
+
+                          {/* Disp Unit */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
                             <input
                               type="text"
                               className="form-control form-control-sm"
-                              placeholder="Search Drug..."
-                              value={
-                                row.drugId
-                                  ? row.drugName || ""
-                                  : drugSearch[index] !== undefined
-                                    ? drugSearch[index]
-                                    : row.drugName || ""
-                              }
-                              onChange={(e) =>
-                                handleDrugSearch(e.target.value, index)
-                              }
-                              onClick={(e) => {
-                                updateDropdownPosition(e.target);
-                                loadFirstDrugPage(index);
-                                setActiveDrugDropdown(index);
+                              value={row.dosageUnit || row.dispUnit}
+                              readOnly
+                              style={{
+                                borderRadius: "4px",
+                                backgroundColor: "#f8f9fa",
+                                fontSize: "0.875rem"
                               }}
-                              onBlur={() => {
-                                setTimeout(() => setActiveDrugDropdown(null), 200);
-                              }}
-                              data-row-index={index}
-                              autoComplete="off"
-                              style={{ borderRadius: "4px" }}
                             />
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Disp Unit */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={row.dosageUnit || row.dispUnit}
-                            readOnly
-                            style={{
-                              borderRadius: "4px",
-                              backgroundColor: "#f8f9fa",
-                              fontSize: "0.875rem"
-                            }}
-                          />
-                        </td>
-
-                        {/* Dosage */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            value={row.dosage}
-                            min={0}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
+                          {/* Dosage */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={row.dosage}
+                              min={0}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) =>
+                                handleTreatmentChange(
+                                  index,
+                                  "dosage",
+                                  e.target.value,
+                                )
                               }
-                            }}
-                            onChange={(e) =>
-                              handleTreatmentChange(
-                                index,
-                                "dosage",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="1"
-                            style={{ borderRadius: "4px" }}
-                            disabled={!dataLoaded}
-                          />
-                        </td>
+                              placeholder="0"
+                              style={{ borderRadius: "4px" }}
+                              disabled={!dataLoaded}
+                            />
+                          </td>
 
-                        {/* Frequency */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <select
-                            className="form-select form-select-sm"
-                            value={row.frequencyId || ""}
-                            onChange={(e) =>
-                              handleFrequencySelect(
-                                index,
-                                parseInt(e.target.value),
-                              )
-                            }
-                            style={{ borderRadius: "4px" }}
-                            disabled={!dataLoaded}
-                          >
-                            <option value="">Select...</option>
-                            {allFrequencies.map((freq) => (
-                              <option
-                                key={freq.frequencyId}
-                                value={freq.frequencyId}
-                              >
-                                {freq.frequencyName}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Days */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            value={row.days}
-                            min={0}
-                            onKeyDown={(e) => {
-                              if (["-", "+", "e", "E"].includes(e.key)) {
-                                e.preventDefault();
+                          {/* Frequency */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <select
+                              className="form-select form-select-sm"
+                              value={row.frequencyId || ""}
+                              onChange={(e) =>
+                                handleFrequencySelect(
+                                  index,
+                                  parseInt(e.target.value),
+                                )
                               }
-                            }}
-                            onChange={(e) =>
-                              handleTreatmentChange(index, "days", e.target.value)
-                            }
-                            placeholder="0"
-                            style={{ borderRadius: "4px" }}
-                            disabled={!dataLoaded}
-                          />
-                        </td>
+                              style={{ borderRadius: "4px" }}
+                              disabled={!dataLoaded}
+                            >
+                              <option value="">Select...</option>
+                              {allFrequencies.map((freq) => (
+                                <option
+                                  key={freq.frequencyId}
+                                  value={freq.frequencyId}
+                                >
+                                  {freq.frequencyName}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
 
-                        {/* Total */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            value={row.total}
-                            onChange={(e) =>
-                              handleTreatmentChange(
-                                index,
-                                "total",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="0"
-                            readOnly={
-                              row.drugId &&
-                              row.dosage &&
-                              row.days &&
-                              row.frequencyId
-                            }
-                            style={{
-                              borderRadius: "4px",
-                              backgroundColor:
+                          {/* Days */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={row.days}
+                              min={0}
+                              onKeyDown={(e) => {
+                                if (["-", "+", "e", "E"].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
+                              onChange={(e) =>
+                                handleTreatmentChange(index, "days", e.target.value)
+                              }
+                              placeholder="0"
+                              style={{ borderRadius: "4px" }}
+                              disabled={!dataLoaded}
+                            />
+                          </td>
+
+                          {/* Total */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={row.total}
+                              onChange={(e) =>
+                                handleTreatmentChange(
+                                  index,
+                                  "total",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="0"
+                              readOnly={
                                 row.drugId &&
                                 row.dosage &&
                                 row.days &&
                                 row.frequencyId
-                                  ? "#f8f9fa"
-                                  : "white",
-                            }}
-                            disabled={!dataLoaded}
-                          />
-                        </td>
+                              }
+                              style={{
+                                borderRadius: "4px",
+                                backgroundColor:
+                                  row.drugId &&
+                                    row.dosage &&
+                                    row.days &&
+                                    row.frequencyId
+                                    ? "#f8f9fa"
+                                    : "white",
+                              }}
+                              disabled={!dataLoaded}
+                            />
+                          </td>
 
-                        {/* Instruction */}
-                        <td style={{ padding: "6px", verticalAlign: "middle" }}>
-                          <select
-                            className="form-select form-select-sm"
-                            value={row.instruction}
-                            onChange={(e) =>
-                              handleTreatmentChange(
-                                index,
-                                "instruction",
-                                e.target.value,
-                              )
-                            }
-                            style={{ borderRadius: "4px" }}
-                            disabled={!dataLoaded}
-                          >
-                            <option value="">Select...</option>
-                            <option value="After Meal">After Meal</option>
-                            <option value="Before Meal">Before Meal</option>
-                            <option value="With Food">With Food</option>
-                          </select>
-                        </td>
+                          {/* Instruction */}
+                          <td style={{ padding: "6px", verticalAlign: "middle" }}>
+                            <select
+                              className="form-select form-select-sm"
+                              value={row.instruction}
+                              onChange={(e) =>
+                                handleTreatmentChange(
+                                  index,
+                                  "instruction",
+                                  e.target.value,
+                                )
+                              }
+                              style={{ borderRadius: "4px" }}
+                              disabled={!dataLoaded}
+                            >
+                              <option value="">Select...</option>
+                              <option value="After Meal">After Meal</option>
+                              <option value="Before Meal">Before Meal</option>
+                              <option value="With Food">With Food</option>
+                            </select>
+                          </td>
 
-                        {/* Add Button */}
-                        <td className="text-center align-middle" style={{ padding: "6px" }}>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={handleAddTreatmentItem}
-                            disabled={!dataLoaded}
-                            style={{
-                              borderRadius: "4px",
-                              width: "30px",
-                              height: "30px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              margin: "0 auto",
-                            }}
-                          >
-                            +
-                          </button>
-                        </td>
+                          {/* Add Button */}
+                          <td className="text-center align-middle" style={{ padding: "6px" }}>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={handleAddTreatmentItem}
+                              disabled={!dataLoaded}
+                              style={{
+                                borderRadius: "4px",
+                                width: "30px",
+                                height: "30px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                margin: "0 auto",
+                              }}
+                            >
+                              +
+                            </button>
+                          </td>
 
-                        {/* Delete Button */}
-                        <td className="text-center align-middle" style={{ padding: "6px" }}>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleRemoveTreatmentItem(index)}
-                            disabled={
-                              !dataLoaded ||
-                              (treatmentItems.length === 1 &&
-                                !treatmentItems[0].drugName &&
-                                !treatmentItems[0].drugId &&
-                                !treatmentItems[0].dispUnit &&
-                                !treatmentItems[0].dosage &&
-                                !treatmentItems[0].days &&
-                                !treatmentItems[0].total &&
-                                !treatmentItems[0].instruction &&
-                                !treatmentItems[0].stock &&
-                                !treatmentItems[0].itemClassId &&
-                                !treatmentItems[0].adispQty)
-                            }
-                            style={{
-                              borderRadius: "4px",
-                              width: "30px",
-                              height: "30px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              margin: "0 auto",
-                            }}
-                          >
-                            −
-                          </button>
-                        </td>
-                      </tr>
+                          {/* Delete Button */}
+                          <td className="text-center align-middle" style={{ padding: "6px" }}>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleRemoveTreatmentItem(index)}
+                              disabled={
+                                !dataLoaded ||
+                                (treatmentItems.length === 1 &&
+                                  !treatmentItems[0].drugName &&
+                                  !treatmentItems[0].drugId &&
+                                  !treatmentItems[0].dispUnit &&
+                                  !treatmentItems[0].dosage &&
+                                  !treatmentItems[0].days &&
+                                  !treatmentItems[0].total &&
+                                  !treatmentItems[0].instruction &&
+                                  !treatmentItems[0].stock &&
+                                  !treatmentItems[0].itemClassId &&
+                                  !treatmentItems[0].adispQty)
+                              }
+                              style={{
+                                borderRadius: "4px",
+                                width: "30px",
+                                height: "30px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                margin: "0 auto",
+                              }}
+                            >
+                              −
+                            </button>
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -1539,7 +1536,7 @@ const TreatmentModal = ({
                       !selectedTemplate) ||
                     !dataLoaded
                   }
-                  style={{ 
+                  style={{
                     borderRadius: "4px",
                     backgroundColor: "#6aab9c",
                     border: "none",
