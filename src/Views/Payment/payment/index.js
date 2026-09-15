@@ -363,11 +363,53 @@ const PaymentPage = () => {
         : [];
 
   // ==========================================================
+  // BUILD BILLING ITEMS (billingHdId + amount PER ITEM)
+  // ==========================================================
+  //
+  // The create-order API now takes a list of { billingHdId, amount }
+  // so that multiple appointments paid in ONE Razorpay checkout each
+  // get their own payment_details_v2 row, all sharing the same
+  // gateway order.
+  //
+  // OPD already has real per-appointment amounts via
+  // buildOpdBillPayments() (billHeaderId + netAmount), so that maps
+  // directly.
+  //
+  // RADIOLOGY / LAB do not currently carry a per-item amount
+  // breakdown anywhere in location.state -- only a single total
+  // `amount` and a flat `billingHeaderIds` list with no amounts
+  // attached. Until that per-item data is wired in from those
+  // screens, they fall back to a single item using the total amount
+  // and the (first) bill header id -- i.e. unchanged behavior for
+  // those two service types.
+
+  const buildBillingItems = () => {
+    if (isConsultation) {
+      const opdBillPayments = buildOpdBillPayments();
+
+      if (opdBillPayments.length > 0) {
+        return opdBillPayments.map((item) => ({
+          billingHdId: item.billHeaderId,
+          amount: item.netAmount,
+        }));
+      }
+    }
+
+    // RADIOLOGY / LAB fallback -- single item, total amount.
+    return [
+      {
+        billingHdId: currentBillHeaderId,
+        amount: Number(amount),
+      },
+    ];
+  };
+
+  // ==========================================================
   // WAIT FOR WEBHOOK PAYMENT CONFIRMATION
   // ==========================================================
 
   const waitForPaymentConfirmation = async (
-    paymentId
+    paymentIds
   ) => {
     /*
      * Webhook may take a little time to reach
@@ -385,8 +427,18 @@ const PaymentPage = () => {
      *   ↓
      * ...
      *   ↓
-     * PAID
+     * ALL PAID
+     *
+     * One Razorpay checkout can now confirm MULTIPLE
+     * payment_details_v2 rows (one per billing header paid
+     * together), so this polls every paymentId each attempt and
+     * only resolves once ALL of them report PAID.
      */
+
+    const ids =
+      Array.isArray(paymentIds)
+        ? paymentIds
+        : [paymentIds];
 
     const maxAttempts = 10;
     const pollingInterval = 30000;
@@ -399,21 +451,26 @@ const PaymentPage = () => {
       try {
         console.log(
           `Checking payment status ${attempt}/${maxAttempts}`,
-          paymentId
+          ids
         );
 
-        const response =
-          await getRequest(
-            `/api/payments/status/${paymentId}`
+        const responses =
+          await Promise.all(
+            ids.map((id) =>
+              getRequest(
+                `/api/payments/status/${id}`
+              )
+            )
           );
 
         console.log(
-          "Payment status response:",
-          response
+          "Payment status responses:",
+          responses
         );
 
         /*
          * Your backend returns PaymentGatewayStatusResponse
+         * per paymentId
          *
          * {
          *   paymentId: 123,
@@ -428,38 +485,28 @@ const PaymentPage = () => {
          * body directly.
          */
 
-        const paymentStatus =
-          response?.paymentStatus ||
-          response?.response?.paymentStatus;
+        const statuses =
+          responses.map(
+            (response) =>
+              String(
+                response?.paymentStatus ||
+                response?.response?.paymentStatus
+              ).toUpperCase()
+          );
 
         console.log(
-          "Current payment status:",
-          paymentStatus
+          "Current payment statuses:",
+          statuses
         );
 
         // ------------------------------------------------------
-        // PAID
+        // FAILED (any one of them)
         // ------------------------------------------------------
 
         if (
-          String(paymentStatus).toUpperCase() ===
-          "PAID"
-        ) {
-          console.log(
-            "Payment confirmed as PAID",
-            response
-          );
-
-          return response;
-        }
-
-        // ------------------------------------------------------
-        // FAILED
-        // ------------------------------------------------------
-
-        if (
-          String(paymentStatus).toUpperCase() ===
-          "FAILED"
+          statuses.some(
+            (status) => status === "FAILED"
+          )
         ) {
           throw new Error(
             "Payment failed."
@@ -467,12 +514,13 @@ const PaymentPage = () => {
         }
 
         // ------------------------------------------------------
-        // REFUNDED
+        // REFUNDED (any one of them)
         // ------------------------------------------------------
 
         if (
-          String(paymentStatus).toUpperCase() ===
-          "REFUNDED"
+          statuses.some(
+            (status) => status === "REFUNDED"
+          )
         ) {
           throw new Error(
             "Payment has already been refunded."
@@ -480,7 +528,24 @@ const PaymentPage = () => {
         }
 
         // ------------------------------------------------------
-        // PENDING
+        // ALL PAID
+        // ------------------------------------------------------
+
+        if (
+          statuses.every(
+            (status) => status === "PAID"
+          )
+        ) {
+          console.log(
+            "All payments confirmed as PAID",
+            responses
+          );
+
+          return responses;
+        }
+
+        // ------------------------------------------------------
+        // STILL PENDING (at least one)
         // ------------------------------------------------------
 
         if (
@@ -531,25 +596,22 @@ const PaymentPage = () => {
     // CREATE ORDER
     // --------------------------------------------------------
     //
-    // We now pass billingType, billingHeaderIds and patientId
-    // along with amount + billingHdId so that the backend can
-    // create a payment record correctly for ALL service
-    // categories (OPD / RADIOLOGY / LAB) instead of only LAB.
+    // One Razorpay order can now fund MULTIPLE billing headers
+    // paid together in a single checkout (e.g. three appointments
+    // booked at once). The backend takes a list of per-item
+    // { billingHdId, amount } instead of a single billingHdId, and
+    // creates one PaymentDetailsV2 row per item, all sharing the
+    // same Razorpay order.
+
+    const billingItems =
+      buildBillingItems();
 
     const orderRes =
       await postRequest(
         RAZORPAY_CREATE_ORDER,
         {
-          amount: Number(amount),
-          billingHdId:
-            currentBillHeaderId,
+          billingItems,
           billingType,
-          billingHeaderIds:
-            Array.isArray(billingHeaderIds)
-              ? billingHeaderIds
-              : billingHeaderIds
-                ? [billingHeaderIds]
-                : [],
           patientId,
         }
       );
@@ -568,43 +630,32 @@ const PaymentPage = () => {
     /*
      * IMPORTANT:
      *
-     * Backend should return:
+     * Backend now returns:
      *
-     * paymentId
-     *
-     * from payment_details_v2.
+     * paymentIds (array -- one per billing header in this order)
      *
      * Example:
      *
      * {
      *   orderId: "order_xxx",
-     *   amount: 100000,
+     *   amount: 30000,
      *   currency: "INR",
-     *   paymentReferenceNo: "PAYxxx",
-     *   paymentId: 123
+     *   paymentIds: [123, 124, 125],
+     *   billingHdIds: [5001, 5002, 5003]
      * }
      */
 
-    if (!orderRes?.paymentId) {
-      throw new Error(
-        "Payment ID was not returned by create-order API."
-      );
-    }
-
-    const paymentId =
-      orderRes.paymentId;
-
-    // --------------------------------------------------------
-    // UPDATE REFERENCE DISPLAY
-    // --------------------------------------------------------
-
     if (
-      orderRes.paymentReferenceNo
+      !Array.isArray(orderRes?.paymentIds) ||
+      orderRes.paymentIds.length === 0
     ) {
-      setPaymentReferenceNo(
-        orderRes.paymentReferenceNo
+      throw new Error(
+        "Payment IDs were not returned by create-order API."
       );
     }
+
+    const paymentIds =
+      orderRes.paymentIds;
 
     // --------------------------------------------------------
     // OPEN RAZORPAY
@@ -699,14 +750,14 @@ const PaymentPage = () => {
                   "Signature verified. Waiting for webhook confirmation..."
                 );
 
-                const paymentStatus =
+                const paymentStatuses =
                   await waitForPaymentConfirmation(
-                    paymentId
+                    paymentIds
                   );
 
                 console.log(
-                  "=== PAYMENT CONFIRMED ===",
-                  paymentStatus
+                  "=== PAYMENTS CONFIRMED ===",
+                  paymentStatuses
                 );
 
                 /*
