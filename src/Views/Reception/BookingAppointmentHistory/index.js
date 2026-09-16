@@ -51,6 +51,11 @@ import {
   FETCH_TOKEN_AVAILABILITY_ERROR,
 } from "../../../config/constants";
 
+// ================================================================
+// DUMMY OTP CONFIG (remove once real OTP API is integrated)
+// ================================================================
+const DUMMY_OTP = "123456";
+
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
 
@@ -353,6 +358,13 @@ const BookingAppointmentHistory = () => {
   // Cancellation submit-in-progress flag
   const [cancelling, setCancelling] = useState(false);
 
+  // OTP verification states (Cancel popup) — DUMMY for now
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
   // Functionality States
   const [newDate, setNewDate] = useState("");
   const [newSession, setNewSession] = useState("");
@@ -528,9 +540,11 @@ const BookingAppointmentHistory = () => {
             ),
             appointmentSlot: appointmentSlot,
 
-            
-           paymentMode: toTitleCase(appointment.paymentGatewayMode),
-           paymentStatusDisplay: toTitleCase(appointment.paymentV2PaymentStatusCode),
+            paymentMode: toTitleCase(appointment.paymentGatewayMode),
+            paymentModeName: appointment.paymentGatewayModeName,
+            paymentStatusDisplay: toTitleCase(
+              appointment.paymentV2PaymentStatusCode,
+            ),
 
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
@@ -650,6 +664,9 @@ const BookingAppointmentHistory = () => {
   const handleCancel = (patientData) => {
     setPatientToCancel(patientData);
     setSelectedReason("");
+    setOtp("");
+    setOtpSent(false);
+    setOtpVerified(false);
     setShowCancelPopup(true);
   };
 
@@ -965,9 +982,112 @@ const BookingAppointmentHistory = () => {
   };
 
   // ==========================================================
-  // Submit Cancellation (updated for new payment logic)
+  // OTP handlers — DUMMY (replace with real API later)
+  // ==========================================================
+  const resetOtpState = () => {
+    setOtp("");
+    setOtpSent(false);
+    setOtpVerified(false);
+    setSendingOtp(false);
+    setVerifyingOtp(false);
+  };
+
+  const handleSendOtp = async () => {
+    if (!patientToCancel?.mobileNumber) {
+      Swal.fire({
+        icon: "warning",
+        title: "Mobile number missing",
+        text: "No mobile number found for this appointment.",
+      });
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      // ===================================================
+      // DUMMY OTP — no API call
+      // ===================================================
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      setOtpSent(true);
+      setOtpVerified(false);
+      setOtp("");
+
+      Swal.fire({
+        icon: "success",
+        title: "OTP Sent (Dummy)",
+        html: `A dummy OTP has been generated for <strong>${patientToCancel.mobileNumber}</strong>.<br/><br/>Use <strong>${DUMMY_OTP}</strong> to verify.`,
+        timer: 4000,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error?.message || "Failed to send OTP.",
+      });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid OTP",
+        text: "Please enter the 6-digit OTP.",
+      });
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      // ===================================================
+      // DUMMY VERIFY — checks against fixed code
+      // ===================================================
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      if (otp === DUMMY_OTP) {
+        setOtpVerified(true);
+        Swal.fire({
+          icon: "success",
+          title: "OTP Verified",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        setOtpVerified(false);
+        Swal.fire({
+          icon: "error",
+          title: "Verification Failed",
+          text: "Invalid OTP. Please try again.",
+        });
+      }
+    } catch (error) {
+      setOtpVerified(false);
+      Swal.fire({
+        icon: "error",
+        title: "Verification Failed",
+        text: error?.message || "Invalid OTP.",
+      });
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // ==========================================================
+  // Submit Cancellation (updated for new payment logic + OTP)
   // ==========================================================
   const submitCancellation = async () => {
+    if (!otpVerified) {
+      Swal.fire({
+        icon: "warning",
+        title: "OTP Not Verified",
+        text: "Please verify the OTP before cancelling the appointment.",
+      });
+      return;
+    }
+
     if (!selectedReason) {
       Swal.fire({
         icon: "warning",
@@ -1041,16 +1161,16 @@ const BookingAppointmentHistory = () => {
       }
 
       // STEP 2: Cancel the appointment
-// refundAmount → billedAmount only when a refund is applicable, else null
-// paymentMode   → paymentGatewayMode from the row response, else null
-const cancelRequest = {
-  visitId: patientToCancel.visitId,
-  cancelReasonId: parseInt(selectedReason, 10),
-  paymentMode: patientToCancel.paymentGatewayMode || null,
-  refundAmount:  patientToCancel.billedAmount || null
-};
+      // refundAmount → billedAmount only when a refund is applicable, else null
+      // paymentMode   → paymentGatewayMode from the row response, else null
+      const cancelRequest = {
+        visitId: patientToCancel.visitId,
+        cancelReasonId: parseInt(selectedReason, 10),
+        paymentMode: patientToCancel.paymentGatewayMode || null,
+        refundAmount: patientToCancel.billedAmount || null,
+      };
 
-console.log("=== CANCEL REQUEST ===", cancelRequest);
+      console.log("=== CANCEL REQUEST ===", cancelRequest);
 
       const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
 
@@ -1058,6 +1178,7 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
         setShowCancelPopup(false);
         setSelectedReason("");
         setPatientToCancel(null);
+        resetOtpState();
 
         await Swal.fire({
           icon: "success",
@@ -1237,7 +1358,7 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
                                   </td>
                                   <td>{row.appointmentDate}</td>
                                   <td>{row.appointmentSlot}</td>
-                                  <td>{row.paymentMode}</td>
+                                  <td>{row.paymentModeName}</td>
                                   <td>{row.paymentStatusDisplay}</td>
                                   <td>
                                     <div className="d-flex gap-2">
@@ -1575,6 +1696,7 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
                     setShowCancelPopup(false);
                     setSelectedReason("");
                     setPatientToCancel(null);
+                    resetOtpState();
                   }}
                   disabled={cancelling}
                 ></button>
@@ -1614,6 +1736,89 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
                           }}
                         />
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ---- OTP Verification ---- */}
+                <div className="card mb-3">
+                  <div className="card-header">
+                    <h6 className="mb-0 fw-bold">Verify OTP</h6>
+                  </div>
+                  <div className="card-body">
+                    <div className="mb-3">
+                      <label className="form-label">Mobile Number</label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control bg-light"
+                          value={patientToCancel.mobileNumber || ""}
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary"
+                          onClick={handleSendOtp}
+                          disabled={sendingOtp || verifyingOtp || otpVerified}
+                        >
+                          {sendingOtp && (
+                            <span
+                              className="spinner-border spinner-border-sm me-1"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                          )}
+                          {otpSent ? "Resend OTP" : "Send OTP"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-0">
+                      <label className="form-label">Enter OTP</label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter 6-digit OTP"
+                          value={otp}
+                          maxLength={6}
+                          inputMode="numeric"
+                          onChange={(e) =>
+                            setOtp(e.target.value.replace(/\D/g, ""))
+                          }
+                          disabled={!otpSent || otpVerified || verifyingOtp}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-success"
+                          onClick={handleVerifyOtp}
+                          disabled={
+                            !otpSent ||
+                            otpVerified ||
+                            verifyingOtp ||
+                            otp.length !== 6
+                          }
+                        >
+                          {verifyingOtp && (
+                            <span
+                              className="spinner-border spinner-border-sm me-1"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                          )}
+                          {otpVerified ? "Verified" : "Verify"}
+                        </button>
+                      </div>
+                      {otpVerified && (
+                        <div className="text-success small mt-1">
+                          OTP verified successfully.
+                        </div>
+                      )}
+                      {otpSent && !otpVerified && (
+                        <div className="text-muted small mt-1">
+                          OTP sent to {patientToCancel.mobileNumber}.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1669,6 +1874,7 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
                     setShowCancelPopup(false);
                     setSelectedReason("");
                     setPatientToCancel(null);
+                    resetOtpState();
                   }}
                   disabled={cancelling}
                 >
@@ -1678,7 +1884,7 @@ console.log("=== CANCEL REQUEST ===", cancelRequest);
                   type="button"
                   className="btn btn-danger"
                   onClick={submitCancellation}
-                  disabled={!selectedReason || cancelling}
+                  disabled={!selectedReason || !otpVerified || cancelling}
                 >
                   {cancelling ? (
                     <>

@@ -15,7 +15,6 @@ import {
   PRESCRIPTION_INVOICE_REPORT,
   GET_ITEM_BATCHES_EXCEPT_STOCK,
 } from "../../../config/apiConfig";
-import ViewDownloadWithUnlimitedButtons from "../../../Components/ViewDownloadWithUnlimitedButtons";
 
 
 
@@ -330,10 +329,13 @@ const PrescriptionIssue = () => {
       };
 
       const response = await putRequest(APPROVE_PRESCRIPTION_URL, payload);
+      debugger;
       const apiStatus = response?.status;
       const apiData = response?.data;
 
       const prescriptionHdId = apiData?.prescriptionHdId ?? selectedRecord?.prescriptionHeaderId;
+      const billHdId=apiData?.response?.billHdId;
+      const visitId=apiData?.response?.visitId;
       const prescriptionNumber=selectedRecord.prescriptionNo;
       const nisNo = apiData?.response?.nisno;
 
@@ -364,7 +366,7 @@ const PrescriptionIssue = () => {
                 key: "invoice",
                 label: "Invoice Report",
                 type: "view",
-                url: `${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${prescriptionHdId}`,
+                url: `${PRESCRIPTION_INVOICE_REPORT}?billHdId=${billHdId}`,
                 className: "btn btn-warning",
                 icon: "fa fa-file-invoice",
                 loadingText: "Generating...",
@@ -377,7 +379,7 @@ const PrescriptionIssue = () => {
                 key: "nis",
                 label: "NIS Report",
                 type: "view",
-                url: `${ALL_REPORTS}/precriptionNis?prescriptionId=${prescriptionHdId}`,
+                url: `${ALL_REPORTS}/nisMedicineReport?hospitalId=${hospitalId}&visitId=${visitId}`,
                 className: "btn btn-success",
                 icon: "fa fa-file-medical",
                 loadingText: "Generating...",
