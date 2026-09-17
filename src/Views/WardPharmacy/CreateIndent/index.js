@@ -9,17 +9,12 @@ import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
 
 import {
-  SELECT_DRUG_ERROR,
-  DUPLICATE_DRUG_WARNING,
   MINIMUM_ROWS_WARNING,
-  EMPTY_DRUG_NAME_WARNING,
   INVALID_DEPARTMENT_ERROR,
   INVALID_DATE_ERROR,
   INVALID_QUANTITY_ERROR,
   EXCEED_STOCK_ERROR,
   MANDATORY_FIELD_WARNING,
-  DUPLICATE_DRUGS_WARNING,
-  NO_VALID_DRUGS_WARNING,
   INDENT_SAVE_SUCCESS,
   INDENT_SUBMIT_SUCCESS,
   INDENT_SAVE_ERROR,
@@ -38,7 +33,12 @@ import {
   INDENT_TYPE_CHANGE_WARN_MSG,
   SELECT_INDENT_TYPE_WARN_MSG,
   SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG,
-  SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG
+  SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG,
+  SELECT_ITEM_ERROR,
+  DUPLICATE_ITEM_WARNING,
+  EMPTY_ITEM_NAME_WARNING,
+  DUPLICATE_ITEMS_WARNING,
+  NO_VALID_ITEMS_WARNING
 } from "../../../config/constants";
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
@@ -317,7 +317,7 @@ const IndentCreation = () => {
     );
 
     if (isDuplicate) {
-      showPopup(DUPLICATE_DRUG_WARNING, "warning");
+      showPopup(DUPLICATE_ITEM_WARNING, "warning");
       return;
     }
 
@@ -534,7 +534,7 @@ const IndentCreation = () => {
     const lastRow = indentEntries[indentEntries.length - 1];
 
     if (!lastRow.drugName || lastRow.drugName.trim() === "") {
-      showPopup(EMPTY_DRUG_NAME_WARNING, "warning");
+      showPopup(EMPTY_ITEM_NAME_WARNING, "warning");
       return;
     }
 
@@ -590,7 +590,7 @@ const IndentCreation = () => {
 
     indentEntries.forEach((entry, index) => {
       if (!entry.drugId) {
-        newErrors[`drug_${index}`] = SELECT_DRUG_ERROR;
+        newErrors[`drug_${index}`] = SELECT_ITEM_ERROR;
       }
       if (!entry.requiredQty || entry.requiredQty <= 0) {
         newErrors[`qty_${index}`] = INVALID_QUANTITY_ERROR;
@@ -786,7 +786,7 @@ const IndentCreation = () => {
     }
 
     if (hasDuplicateDrugs()) {
-      showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
+      showPopup(`${DUPLICATE_ITEMS_WARNING}`, "warning");
       return;
     }
 
@@ -796,7 +796,7 @@ const IndentCreation = () => {
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
-      showPopup(`${NO_VALID_DRUGS_WARNING}`, "warning");
+      showPopup(`${NO_VALID_ITEMS_WARNING}`, "warning");
       return;
     }
 
@@ -867,7 +867,7 @@ const IndentCreation = () => {
     }
 
     if (hasDuplicateDrugs()) {
-      showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
+      showPopup(`${DUPLICATE_ITEMS_WARNING}`, "warning");
       return;
     }
 
@@ -877,7 +877,7 @@ const IndentCreation = () => {
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
-      showPopup(`${NO_VALID_DRUGS_WARNING}`, "warning");
+      showPopup(`${NO_VALID_ITEMS_WARNING}`, "warning");
       return;
     }
 
@@ -1039,7 +1039,7 @@ const IndentCreation = () => {
                 </div>
 
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Department <span className="text-danger">*</span></label>
+                  <label className="form-label fw-bold">To Department <span className="text-danger">*</span></label>
                   <select
                     className={`form-select ${errors.department ? 'is-invalid' : ''}`}
                     value={department}

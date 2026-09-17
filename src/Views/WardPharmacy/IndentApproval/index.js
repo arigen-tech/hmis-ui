@@ -22,6 +22,8 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {sanitizePositiveInt,blockNonDigitKeys} from "../../../utils/FormFieldsValiadtion"
+
 
 const IndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -577,7 +579,8 @@ const IndentApproval = () => {
                                 type="number"
                                 className="form-control form-control-sm"
                                 value={entry.approveQty}
-                                onChange={(e) => handleIndentEntryChange(index, "approveQty", e.target.value)}
+                                onChange={(e) => handleIndentEntryChange(index, "approveQty", sanitizePositiveInt(e.target.value))}
+                                onKeyDown={blockNonDigitKeys}
                                 placeholder="0"
                                 min="0"
                                 max={Math.min(entry.availableStock, entry.requestedQty)}

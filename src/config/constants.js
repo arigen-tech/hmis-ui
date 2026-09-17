@@ -373,17 +373,17 @@ export const FETCH_TOOTH_CONDITION_ERR_MSG ="Failed to fetch tooth condition dat
 export const DUPLICATE_TOOTH_CONDITION = "Tooth Condition already exists!";
 
 // IndentCreation Messages
-export const SELECT_DRUG_ERROR = "Please select a drug from the dropdown";
-export const DUPLICATE_DRUG_WARNING ="This drug is already added in another row. Please select a different drug.";
+export const SELECT_ITEM_ERROR = "Please select a item from the dropdown";
+export const DUPLICATE_ITEM_WARNING ="This item is already added in another row. Please select a different item.";
 export const MINIMUM_ROWS_WARNING = "At least one row is required";
-export const EMPTY_DRUG_NAME_WARNING ="Please fill drug name before adding new row";
+export const EMPTY_ITEM_NAME_WARNING ="Please fill item name before adding new row";
 export const INVALID_DEPARTMENT_ERROR = "Please select a department";
 export const INVALID_DATE_ERROR = "Indent date is required";
-export const INVALID_QUANTITY_ERROR ="Required quantity must be greater than 0";
+export const INVALID_QUANTITY_ERROR ="Required quantity must be greater than 1";
 export const EXCEED_STOCK_ERROR ="Required quantity cannot exceed available stock";
 export const MANDATORY_FIELD_WARNING ="Please fill the Mandatory field before ";
-export const DUPLICATE_DRUGS_WARNING ="Duplicate drugs found. Please remove duplicate entries before ";
-export const NO_VALID_DRUGS_WARNING = "Please select valid drugs before ";
+export const DUPLICATE_ITEMS_WARNING ="Duplicate item found. Please remove duplicate entries before ";
+export const NO_VALID_ITEMS_WARNING = "Please select valid items before ";
 export const INDENT_SAVE_SUCCESS ="Indent saved successfully! Do you want to print report ?";
 export const INDENT_SUBMIT_SUCCESS ="Indent submitted successfully ! , Do You want to print report ?";
 export const INDENT_SAVE_ERROR = "Error saving indent";

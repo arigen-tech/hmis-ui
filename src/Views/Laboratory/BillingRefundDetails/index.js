@@ -31,8 +31,8 @@ const SERVICE_OPTIONS = [
 
 const REFUND_STATUS_FILTER_OPTIONS = [
   { value: "All", label: "All" },
-  { value: "REFUND_PENDING_CASH", label: "Pending" },
-  { value: "REFUND_PENDING", label: "Processed" },
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSED", label: "Processed" },
   { value: "REFUNDED", label: "Completed" },
 ];
 
@@ -163,9 +163,9 @@ const BillingRefundDetails = () => {
 
   const getRefundBadgeClass = (status) => {
     const normalized = normalizeRefundStatus(status);
-    if (normalized === "Completed") return "bg-primary";
-    if (normalized === "Processed") return "bg-success";
-    return "bg-warning text-dark";
+    if (normalized === "Completed") return "bg-success";
+    if (normalized === "Processed") return "bg-warning";
+    return "bg-danger";
   };
 
   // Fetch payment gateway options for the filter
