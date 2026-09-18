@@ -718,6 +718,7 @@ export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;
 
 // Stock Status Report Endpoints
 export const GET_ALL_ITEM_SECTIONS = `${MAS_ITEM_SECTION}/getAll/1`;
+export const GET_ITEM_SECTIONS_BY_TYPE = `${INVENTORY}/itemSections`;
 export const GET_ITEM_CLASS_BY_SECTION = `${MAS_ITEM_CLASS}/getAllBySectionId`;
 export const GET_ALL_STOCKS = `${INVENTORY}/getAllStocks`;
 export const STOCK_REPORT_SUMMARY_URL = `${ALL_REPORTS}/stockReportSummary`;

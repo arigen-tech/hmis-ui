@@ -145,17 +145,28 @@ const IndentIssue = () => {
     fetchPendingIndentsForIssue(departmentId);
   }, [departmentId]);
 
+  // Handle search by date range - FIXED DATE COMPARISON
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData);
       return;
     }
+
+    // Create Date objects
     const from = new Date(fromDate);
+    // Set to start of the day (00:00:00.000)
+    from.setHours(0, 0, 0, 0);
+
     const to = new Date(toDate);
+    // Set to end of the day (23:59:59.999)
+    to.setHours(23, 59, 59, 999);
+
     const filtered = indentData.filter((item) => {
+      if (!item.indentDate) return false;
       const itemDate = new Date(item.indentDate);
       return itemDate >= from && itemDate <= to;
     });
+    
     setFilteredIndentData(filtered);
     setCurrentPage(1);
   };
@@ -454,19 +465,6 @@ const IndentIssue = () => {
     setFilteredIndentData(indentData);
   };
 
-  // FIX: nth-row split logic.
-  // Previously the newly-inserted child row's `availableStock` was taken directly from
-  // `nextBatch.availableStock`, which is the *next batch's own* stock figure returned by
-  // GET_ITEM_BATCHES_EXCEPT_STOCK — not the item's remaining total stock after the parent
-  // row's allocation. That caused `splitConditionMet` (which checks
-  // `qtyIssued <= availableStock`) to evaluate against a wrong/zero value, so the "+" button
-  // stayed disabled even when there was clearly more item stock left to split into another row.
-  //
-  // Now `availableStock` for the child row is derived from the source row's own
-  // `availableStock` minus what the parent row just consumed (`parentIssuedQty`). This keeps
-  // the running "remaining item-level stock" correct across any number of chained splits
-  // (2nd row, 3rd row, 4th row, ...), since each new row is always spawned from its immediate
-  // predecessor's `availableStock`, not from unrelated batch-local data.
   const addNewRow = async (sourceIndex) => {
     const sourceEntry = indentEntries[sourceIndex];
     const qtyIssuedOriginal = Number(sourceEntry.qtyIssued) || 0;
@@ -489,9 +487,6 @@ const IndentIssue = () => {
     const parentIssuedQty = batchStock;
     const childIssuedQty = qtyIssuedOriginal - parentIssuedQty;
 
-    // Remaining item-level available stock after the parent row's allocation.
-    // This — not nextBatch.availableStock — is what the child row and future
-    // splitConditionMet checks must compare qtyIssued against.
     const remainingAvailableStock = availableStock - parentIssuedQty;
 
     const updatedEntries = [...indentEntries];
@@ -521,7 +516,6 @@ const IndentIssue = () => {
       qtyIssued: childIssuedQty,
       balanceAfterIssue: remainingAvailableStock - childIssuedQty,
       batchStock: nextBatch.batchStock,
-      // FIX: was nextBatch.availableStock (wrong — batch-local, unrelated to item total)
       availableStock: remainingAvailableStock,
       previousIssuedQty: 0,
     };
@@ -646,12 +640,6 @@ const IndentIssue = () => {
             if (!entry.batchNo) {
               errors.push(`Row ${index + 1}: Batch No is required`);
             }
-            // FIX 2: Removed the strict "Must issue full remaining quantity" check.
-            // This allows the user to enter a partial quantity (e.g., 50 instead of 60) 
-            // when there is insufficient total stock, rather than being blocked.
-            // if (qtyIssued !== remainingQty) {
-            //   errors.push(`Row ${index + 1}: Must issue full remaining quantity (${remainingQty})`);
-            // }
             if (qtyIssued > remainingQty) {
               errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Remaining Approved Qty (${remainingQty})`);
             }
@@ -675,10 +663,8 @@ const IndentIssue = () => {
       return;
     }
 
-    // 1. Check for Batch Stock Shortage (needs splitting)
     const splitWarnings = checkSplitBatchWarning();
     
-    // 2. Check for Total Available Stock Shortage
     const stockShortageWarnings = indentEntries.filter(entry => {
       const qtyIssued = Number(entry.qtyIssued) || 0;
       const availableStock = Number(entry.availableStock) || 0;
@@ -689,7 +675,6 @@ const IndentIssue = () => {
       availableStock: entry.availableStock
     }));
 
-    // 3. Handle Total Available Stock Shortage (Priority - offers Update Qty button)
     if (stockShortageWarnings.length > 0) {
       const warnMsg = stockShortageWarnings.map(w =>
         `Item (${w.itemName}): Qty Issued (${w.qtyIssued}) exceeds Total Available Stock (${w.availableStock}).`
@@ -702,7 +687,6 @@ const IndentIssue = () => {
           handleConfirmSubmit();
         },
         () => {
-          // NEW: Update qtyIssued to availableStock for any item with a stock shortage
           const updatedEntries = indentEntries.map(entry => {
             const qtyIssued = Number(entry.qtyIssued) || 0;
             const availableStock = Number(entry.availableStock) || 0;
@@ -723,7 +707,6 @@ const IndentIssue = () => {
       return;
     }
 
-    // 4. Handle Batch Stock Shortage (Requires Split - original behavior)
     if (splitWarnings.length > 0) {
       const warnMsg = splitWarnings.map(w =>
         `Row ${w.index + 1} (${w.itemName}): Qty Issued (${w.qtyIssued}) exceeds selected Batch Stock (${w.batchStock}). Total Available Stock is ${w.availableStock}.`
@@ -742,7 +725,6 @@ const IndentIssue = () => {
       return;
     }
 
-    // 5. Normal confirmation if no warnings
     showConfirmationPopup(
       CONFIRM_ISSUE_INDENT,
       "info",
@@ -870,8 +852,6 @@ const IndentIssue = () => {
   };
 
   const formatDateForDisplay = (dateString) => {
-    // UI-only: show "N/A" when backend sends null/empty. This does NOT affect the
-    // payload — expDate/mfgDate (raw values) are still sent as-is (null) in handleConfirmSubmit.
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);

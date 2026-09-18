@@ -168,19 +168,28 @@ const IndentApproval = () => {
     fetchPendingIndents(departmentId)
   }, [departmentId]) 
 
-  // Handle search by date range
+  // Handle search by date range - FIXED DATE COMPARISON
   const handleSearch = () => {
     if (!fromDate || !toDate) {
       setFilteredIndentData(indentData)
       return
     }
+
+    // Create Date objects
     const from = new Date(fromDate)
+    // Set to start of the day (00:00:00.000)
+    from.setHours(0, 0, 0, 0)
+
     const to = new Date(toDate)
+    // Set to end of the day (23:59:59.999)
+    to.setHours(23, 59, 59, 999)
 
     const filtered = indentData.filter((item) => {
+      if (!item.indentDate) return false
       const itemDate = new Date(item.indentDate)
       return itemDate >= from && itemDate <= to
     })
+    
     setFilteredIndentData(filtered)
     setCurrentPage(1)
   }
