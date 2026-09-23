@@ -9,13 +9,15 @@ const LabPaymentSuccess = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
-
-  const { amount = 0, paymentResponse, source } = location.state || {};
+  debugger;
+  const { amount = 0, paymentResponse, source ,billingHeaderId} = location.state || {};
+  
   const billNo = paymentResponse?.response?.billNo;
+
   const paymentStatus = paymentResponse?.response?.paymentStatus;
 
   const generateLabInvoice = async (flag = "d") => {
-    if (!billNo || !paymentStatus) {
+    if (!billingHeaderId || !paymentStatus) {
       alert("Missing bill number or payment status for generating report");
       return;
     }
@@ -24,7 +26,7 @@ const LabPaymentSuccess = () => {
     setPdfUrl(null);
 
     try {
-      const url = `${ALL_REPORTS}/labInvoice?billNo=${encodeURIComponent(billNo)}&flag=${flag}`;
+      const url = `${ALL_REPORTS}/labInvoice?billHdId=${billingHeaderId}&flag=${flag}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -75,7 +77,7 @@ const LabPaymentSuccess = () => {
   };
 
   const handlePrint = async () => {
-    if (!billNo || !paymentStatus) {
+    if (!billingHeaderId || !paymentStatus) {
       alert("Missing bill number or payment status for printing");
       return;
     }
@@ -83,7 +85,7 @@ const LabPaymentSuccess = () => {
     setIsPrinting(true);
 
     try {
-      const url = `${LAB_INVOICE_API}?billNo=${encodeURIComponent(billNo)}&flag=p`;
+      const url = `${LAB_INVOICE_API}?billHdId=${billingHeaderId}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",

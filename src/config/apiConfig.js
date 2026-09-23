@@ -887,3 +887,15 @@ export const GET_PROCEDURE_WORKLIST = `/procedure/getProcedureWorkList`;
 export const RAZORPAY_CREATE_ORDER = "/api/payments/create-order";
 export const RAZORPAY_VERIFY = "/api/payments/verify";
 export const RAZORPAY_REFUND = "/api/payments/refund";
+
+export const SMS = "/sms";
+export const VERIFY_CANCELLATION_OTP = `${SMS}/verify-otp`;
+export const SEND_CANCELLATION_OTP = `${SMS}/send-cancellation-otp`;
+
+
+export const RESULT_FLAG_DROPDOWN_END_URL = "/master/result-flag/all"
+export const DETECT_RESULT_FLAG_END_URL   = "/lab/detect-flag"
+export const REQUEST_PARAM_RESULT          = "result"
+export const REQUEST_PARAM_NORMAL_RANGE    = "normalRange"
+export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600   
+

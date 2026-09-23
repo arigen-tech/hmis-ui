@@ -20,7 +20,7 @@ import { getRequest } from "../../../service/apiService";
 
 // API constants
 const BILLING_REFUND_GATEWAY_DETAILS = "/billing/refundDetails";
-const PAYMENT_GATEWAY_LIST = "/master/paymentGateway/getAll/1";
+const PAYMENT_MODE_LIST = "/master/paymentMode/getAll/1";
 
 const SERVICE_OPTIONS = [
   { value: "All", label: "All" },
@@ -171,7 +171,7 @@ const BillingRefundDetails = () => {
   // Fetch payment gateway options for the filter
   const fetchPaymentGatewayOptions = async () => {
     try {
-      const data = await getRequest(PAYMENT_GATEWAY_LIST);
+      const data = await getRequest(PAYMENT_MODE_LIST);
       if (data?.status === 200 && Array.isArray(data.response)) {
         setPaymentModeOptions(data.response);
       } else {
@@ -770,12 +770,12 @@ const BillingRefundDetails = () => {
                     onChange={(e) => handlePaymentModeChange(e.target.value)}
                   >
                     <option value="All">All</option>
-                    {paymentModeOptions.map((pg) => (
+                    {paymentModeOptions.map((pm) => (
                       <option
-                        key={pg.gatewayId || pg.gatewayCode}
-                        value={pg.gatewayId}
+                        key={pm.paymentModeId || pm.modeCode}
+                        value={pm.paymentModeId}
                       >
-                        {pg.gatewayName || pg.gatewayCode}
+                        {pm.modeName || pm.modeCode}
                       </option>
                     ))}
                   </select>

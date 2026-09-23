@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 import DatePicker from "../../../Components/DatePicker";
 import LoadingScreen from "../../../Components/Loading";
@@ -18,6 +18,8 @@ import {
   FILTER_RADIO_DEPT,
   FILTER_OPD_DEPT,
   RAZORPAY_REFUND,
+  SEND_CANCELLATION_OTP,
+  VERIFY_CANCELLATION_OTP,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -50,11 +52,6 @@ import {
   NO_TOKENS_AVAILABLE_CRITERIA_MSG,
   FETCH_TOKEN_AVAILABILITY_ERROR,
 } from "../../../config/constants";
-
-// ================================================================
-// DUMMY OTP CONFIG (remove once real OTP API is integrated)
-// ================================================================
-const DUMMY_OTP = "123456";
 
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
@@ -358,12 +355,19 @@ const BookingAppointmentHistory = () => {
   // Cancellation submit-in-progress flag
   const [cancelling, setCancelling] = useState(false);
 
-  // OTP verification states (Cancel popup) — DUMMY for now
+  // OTP verification states (Cancel popup)
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpSessionId, setOtpSessionId] = useState(null);
+  const otpDigitRefs = useRef([]);
+  const otpTimeoutsRef = useRef([]);
+  const [mobileFieldStatus, setMobileFieldStatus] = useState("idle"); // idle | success | error
+  const [otpBoxStatus, setOtpBoxStatus] = useState("idle"); // idle | error
+  const [otpShake, setOtpShake] = useState(false);
+  const [vanishingOtpIndex, setVanishingOtpIndex] = useState(null);
 
   // Functionality States
   const [newDate, setNewDate] = useState("");
@@ -982,14 +986,106 @@ const BookingAppointmentHistory = () => {
   };
 
   // ==========================================================
-  // OTP handlers — DUMMY (replace with real API later)
+  // OTP handlers
   // ==========================================================
   const resetOtpState = () => {
+    otpTimeoutsRef.current.forEach(clearTimeout);
+    otpTimeoutsRef.current = [];
     setOtp("");
     setOtpSent(false);
     setOtpVerified(false);
     setSendingOtp(false);
     setVerifyingOtp(false);
+    setOtpSessionId(null);
+    setMobileFieldStatus("idle");
+    setOtpBoxStatus("idle");
+    setOtpShake(false);
+    setVanishingOtpIndex(null);
+  };
+
+  // Clears any pending animation timers if the component unmounts mid-sequence.
+  useEffect(() => {
+    return () => {
+      otpTimeoutsRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
+  // Runs the red-glow -> vibrate -> LIFO "dust" clear sequence used when
+  // OTP verification fails, instead of a popup.
+  const runOtpFailureAnimation = () => {
+    otpTimeoutsRef.current.forEach(clearTimeout);
+    otpTimeoutsRef.current = [];
+
+    setOtpBoxStatus("error");
+
+    const shakeTimer = setTimeout(() => {
+      setOtpShake(true);
+
+      const dustStartTimer = setTimeout(() => {
+        setOtpShake(false);
+
+        let index = 5;
+        const dustStep = () => {
+          if (index < 0) {
+            setVanishingOtpIndex(null);
+            setOtpBoxStatus("idle");
+            return;
+          }
+          setVanishingOtpIndex(index);
+          const clearTimer = setTimeout(() => {
+            setOtp((prev) => prev.slice(0, index));
+            index -= 1;
+            dustStep();
+          }, 140);
+          otpTimeoutsRef.current.push(clearTimer);
+        };
+        dustStep();
+      }, 550);
+      otpTimeoutsRef.current.push(dustStartTimer);
+    }, 1100);
+    otpTimeoutsRef.current.push(shakeTimer);
+  };
+
+  // Handles typing a single digit into one of the 6 OTP boxes and
+  // auto-advances focus to the next empty box.
+  const handleOtpDigitChange = (index, rawValue) => {
+    const digit = rawValue.replace(/\D/g, "").slice(-1);
+    const otpChars = otp.split("");
+    otpChars[index] = digit || "";
+    const nextOtp = otpChars.join("").slice(0, 6);
+    setOtp(nextOtp);
+
+    if (digit && index < 5) {
+      otpDigitRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Handles Backspace to clear the current box and move focus back.
+  const handleOtpDigitKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpDigitRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Supports pasting a full 6-digit code into any box.
+  const handleOtpPaste = (e) => {
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    setOtp(pasted);
+    const focusIndex = Math.min(pasted.length, 5);
+    otpDigitRefs.current[focusIndex]?.focus();
+  };
+
+  // Briefly glows the mobile-number field green/red to signal
+  // OTP send success/failure, instead of a popup.
+  const flashMobileField = (status) => {
+    setMobileFieldStatus(status);
+    const flashTimer = setTimeout(() => setMobileFieldStatus("idle"), 1800);
+    otpTimeoutsRef.current.push(flashTimer);
   };
 
   const handleSendOtp = async () => {
@@ -1004,27 +1100,26 @@ const BookingAppointmentHistory = () => {
 
     setSendingOtp(true);
     try {
-      // ===================================================
-      // DUMMY OTP — no API call
-      // ===================================================
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const res = await postRequest(
+        `${SEND_CANCELLATION_OTP}?mobileNumber=${patientToCancel.mobileNumber}`,
+        {},
+      );
 
-      setOtpSent(true);
-      setOtpVerified(false);
-      setOtp("");
-
-      Swal.fire({
-        icon: "success",
-        title: "OTP Sent (Dummy)",
-        html: `A dummy OTP has been generated for <strong>${patientToCancel.mobileNumber}</strong>.<br/><br/>Use <strong>${DUMMY_OTP}</strong> to verify.`,
-        timer: 4000,
-      });
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error?.message || "Failed to send OTP.",
-      });
+      if (res?.status === 200 && res?.response) {
+        setOtpSessionId(res.response);
+        setOtpSent(true);
+        setOtpVerified(false);
+        setOtp("");
+        flashMobileField("success");
+      } else {
+        setOtpSent(false);
+        setOtpSessionId(null);
+        flashMobileField("error");
+      }
+    } catch {
+      setOtpSent(false);
+      setOtpSessionId(null);
+      flashMobileField("error");
     } finally {
       setSendingOtp(false);
     }
@@ -1040,40 +1135,44 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
+    if (!otpSessionId) {
+      Swal.fire({
+        icon: "warning",
+        title: "OTP Not Sent",
+        text: "Please send the OTP before verifying.",
+      });
+      return;
+    }
+
     setVerifyingOtp(true);
     try {
-      // ===================================================
-      // DUMMY VERIFY — checks against fixed code
-      // ===================================================
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const res = await postRequest(
+        `${VERIFY_CANCELLATION_OTP}?sessionId=${otpSessionId}&otp=${otp}`,
+        {},
+      );
 
-      if (otp === DUMMY_OTP) {
+      if (res?.status === 200 && res?.response === true) {
         setOtpVerified(true);
-        Swal.fire({
-          icon: "success",
-          title: "OTP Verified",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+        setOtpBoxStatus("idle");
       } else {
         setOtpVerified(false);
-        Swal.fire({
-          icon: "error",
-          title: "Verification Failed",
-          text: "Invalid OTP. Please try again.",
-        });
+        runOtpFailureAnimation();
       }
-    } catch (error) {
+    } catch {
       setOtpVerified(false);
-      Swal.fire({
-        icon: "error",
-        title: "Verification Failed",
-        text: error?.message || "Invalid OTP.",
-      });
+      runOtpFailureAnimation();
     } finally {
       setVerifyingOtp(false);
     }
   };
+
+  // Auto-verify as soon as all 6 digits are entered.
+  useEffect(() => {
+    if (otp.length === 6 && otpSent && !otpVerified && !verifyingOtp) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   // ==========================================================
   // Submit Cancellation (updated for new payment logic + OTP)
@@ -1221,6 +1320,54 @@ const BookingAppointmentHistory = () => {
 
   return (
     <div className="content-wrapper">
+      <style>{`
+        .otp-mobile-input {
+          border-radius: 10px !important;
+          transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .otp-mobile-input.otp-mobile-success {
+          animation: otpGlowGreen 1.8s ease;
+        }
+        .otp-mobile-input.otp-mobile-error {
+          animation: otpGlowRed 1.8s ease;
+        }
+        .otp-resend-btn {
+          border-radius: 10px !important;
+          white-space: nowrap;
+        }
+        @keyframes otpGlowGreen {
+          0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.55); border-color: #198754; }
+          45% { box-shadow: 0 0 14px 4px rgba(25, 135, 84, 0.45); border-color: #198754; }
+          100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+        @keyframes otpGlowRed {
+          0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); border-color: #dc3545; }
+          45% { box-shadow: 0 0 14px 4px rgba(220, 53, 69, 0.45); border-color: #dc3545; }
+          100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .otp-digit-box {
+          transition: border-color 0.2s ease, transform 0.15s ease;
+        }
+        .otp-digit-box.otp-box-error {
+          animation: otpGlowRed 1.6s ease;
+          border-color: #dc3545 !important;
+        }
+        .otp-digit-box.otp-box-shake {
+          animation: otpShake 0.5s ease;
+        }
+        .otp-digit-box.otp-box-vanish {
+          animation: otpDustOut 0.28s ease forwards;
+        }
+        @keyframes otpShake {
+          10%, 90% { transform: translateX(-2px); }
+          20%, 80% { transform: translateX(3px); }
+          30%, 50%, 70% { transform: translateX(-5px); }
+          40%, 60% { transform: translateX(5px); }
+        }
+        @keyframes otpDustOut {
+          to { opacity: 0; transform: translateY(-6px) scale(0.55); filter: blur(2px); }
+        }
+      `}</style>
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -1741,23 +1888,51 @@ const BookingAppointmentHistory = () => {
                 </div>
 
                 {/* ---- OTP Verification ---- */}
-                <div className="card mb-3">
-                  <div className="card-header">
+                <div
+                  className={`card mb-3 ${
+                    otpVerified
+                      ? "border-success bg-success bg-opacity-10"
+                      : otpSent
+                        ? "border-warning bg-warning bg-opacity-10"
+                        : ""
+                  }`}
+                >
+                  <div
+                    className={`card-header ${
+                      otpVerified
+                        ? "bg-success bg-opacity-25"
+                        : otpSent
+                          ? "bg-warning bg-opacity-25"
+                          : ""
+                    }`}
+                  >
                     <h6 className="mb-0 fw-bold">Verify OTP</h6>
                   </div>
                   <div className="card-body">
                     <div className="mb-3">
                       <label className="form-label">Mobile Number</label>
-                      <div className="input-group">
+                      <div className="d-flex align-items-center gap-2">
                         <input
                           type="text"
-                          className="form-control bg-light"
+                          className={`form-control bg-light fw-semibold otp-mobile-input ${
+                            mobileFieldStatus === "success"
+                              ? "otp-mobile-success"
+                              : mobileFieldStatus === "error"
+                                ? "otp-mobile-error"
+                                : ""
+                          }`}
                           value={patientToCancel.mobileNumber || ""}
                           readOnly
                         />
                         <button
                           type="button"
-                          className="btn btn-outline-primary"
+                          className={`btn otp-resend-btn ${
+                            otpVerified
+                              ? "btn-outline-success"
+                              : otpSent
+                                ? "btn-outline-warning"
+                                : "btn-outline-primary"
+                          }`}
                           onClick={handleSendOtp}
                           disabled={sendingOtp || verifyingOtp || otpVerified}
                         >
@@ -1775,48 +1950,89 @@ const BookingAppointmentHistory = () => {
 
                     <div className="mb-0">
                       <label className="form-label">Enter OTP</label>
-                      <div className="input-group">
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Enter 6-digit OTP"
-                          value={otp}
-                          maxLength={6}
-                          inputMode="numeric"
-                          onChange={(e) =>
-                            setOtp(e.target.value.replace(/\D/g, ""))
-                          }
-                          disabled={!otpSent || otpVerified || verifyingOtp}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-success"
-                          onClick={handleVerifyOtp}
-                          disabled={
-                            !otpSent ||
-                            otpVerified ||
-                            verifyingOtp ||
-                            otp.length !== 6
-                          }
-                        >
-                          {verifyingOtp && (
-                            <span
-                              className="spinner-border spinner-border-sm me-1"
-                              role="status"
-                              aria-hidden="true"
-                            ></span>
-                          )}
-                          {otpVerified ? "Verified" : "Verify"}
-                        </button>
+                      <div className="d-flex gap-2" onPaste={handleOtpPaste}>
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                          <input
+                            key={index}
+                            ref={(el) => (otpDigitRefs.current[index] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            className={`form-control text-center fw-bold otp-digit-box ${
+                              otpVerified
+                                ? "border-success text-success"
+                                : otpBoxStatus === "error"
+                                  ? "otp-box-error"
+                                  : otp[index]
+                                    ? "border-warning"
+                                    : ""
+                            } ${otpShake ? "otp-box-shake" : ""} ${
+                              vanishingOtpIndex === index
+                                ? "otp-box-vanish"
+                                : ""
+                            }`}
+                            style={{
+                              width: "44px",
+                              height: "48px",
+                              fontSize: "1.25rem",
+                              padding: 0,
+                            }}
+                            value={otp[index] || ""}
+                            onChange={(e) =>
+                              handleOtpDigitChange(index, e.target.value)
+                            }
+                            onKeyDown={(e) => handleOtpDigitKeyDown(index, e)}
+                            disabled={
+                              !otpSent ||
+                              otpVerified ||
+                              verifyingOtp ||
+                              otpBoxStatus === "error"
+                            }
+                          />
+                        ))}
+
+                        {verifyingOtp && (
+                          <span
+                            className="spinner-border spinner-border-sm text-warning align-self-center ms-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                        )}
                       </div>
+
                       {otpVerified && (
-                        <div className="text-success small mt-1">
+                        <div className="text-success small mt-2">
                           OTP verified successfully.
                         </div>
                       )}
-                      {otpSent && !otpVerified && (
-                        <div className="text-muted small mt-1">
-                          OTP sent to {patientToCancel.mobileNumber}.
+                      {otpBoxStatus === "error" && (
+                        <div className="text-danger small mt-2">
+                          Incorrect OTP. Please try again.
+                        </div>
+                      )}
+                      {otpSent && !otpVerified && otpBoxStatus !== "error" && (
+                        <div className="small mt-2">
+                          <span className="text-muted">
+                            Didn&apos;t received the code?{" "}
+                          </span>
+                          <span
+                            role="button"
+                            className="text-warning fw-semibold"
+                            style={{
+                              cursor:
+                                sendingOtp || verifyingOtp
+                                  ? "not-allowed"
+                                  : "pointer",
+                              textDecoration: "underline",
+                            }}
+                            onClick={() => {
+                              if (!sendingOtp && !verifyingOtp) {
+                                handleSendOtp();
+                              }
+                            }}
+                          >
+                            Resend Code
+                          </span>
                         </div>
                       )}
                     </div>

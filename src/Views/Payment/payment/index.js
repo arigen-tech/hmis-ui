@@ -1259,9 +1259,9 @@ const PaymentPage = () => {
 
           patientId,
 
-          billNo:
-            response?.response
-              ?.billNo,
+          billingHeaderId:
+            getBillHeaderId(),
+          
 
           paymentStatus:
             response?.response
