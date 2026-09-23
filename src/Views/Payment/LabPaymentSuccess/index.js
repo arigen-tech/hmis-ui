@@ -9,7 +9,6 @@ const LabPaymentSuccess = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
-  debugger;
   const { amount = 0, paymentResponse, source ,billingHeaderId} = location.state || {};
   
   const billNo = paymentResponse?.response?.billNo;

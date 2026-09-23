@@ -329,7 +329,6 @@ const PrescriptionIssue = () => {
       };
 
       const response = await putRequest(APPROVE_PRESCRIPTION_URL, payload);
-      debugger;
       const apiStatus = response?.status;
       const apiData = response?.data;
 
