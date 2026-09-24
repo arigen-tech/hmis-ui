@@ -939,33 +939,6 @@ const OBGDetails = forwardRef(
 
     return (
       <div className={hideHeader ? "p-0" : "content-wrapper"}>
-        <style>{`
-          .obg-section-scroll {
-            max-height: 550px;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            scrollbar-width: thin;
-            scrollbar-color: #6c757d #f1f1f1;
-          }
-
-          .obg-section-scroll::-webkit-scrollbar {
-            width: 10px;
-          }
-
-          .obg-section-scroll::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-
-          .obg-section-scroll::-webkit-scrollbar-thumb {
-            background: #6c757d;
-            border-radius: 4px;
-          }
-
-          .obg-section-scroll::-webkit-scrollbar-thumb:hover {
-            background: #495057;
-          }
-        `}</style>
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
