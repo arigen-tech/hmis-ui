@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
@@ -12,16 +12,33 @@ import {
   PENDING_COMPONENT_GENERATION_LIST,
 } from "../../../config/apiConfig";
 import {
+  BAG_COMPONENT_CONFIG,
+  COMPONENT_ALIASES,
+  FALLBACK_COMPONENT_NAMES,
+} from "../../../config/constants";
+import {
   getRequest,
   postRequest,
   putRequest,
 } from "../../../service/apiService";
 
-const BAG_COMPONENT_CONFIG = {
-  SINGLE: ["WB"],
-  DOUBLE: ["PRBC", "PLASMA"],
-  TRIPLE: ["PRBC", "PLASMA", "PLT"],
-  QUAD: ["PRBC", "PLASMA", "PLT", "CRYO"],
+const calculateDefaultExpiry = (collectionDateStr, shelfLifeDays) => {
+  if (!shelfLifeDays) return "";
+  let baseDate = new Date();
+  if (collectionDateStr) {
+    const parts = collectionDateStr.split(" ")[0].split("/");
+    if (parts.length === 3) {
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      baseDate = new Date(y, m, d);
+    }
+  }
+  baseDate.setDate(baseDate.getDate() + Number(shelfLifeDays));
+  const year = baseDate.getFullYear();
+  const month = String(baseDate.getMonth() + 1).padStart(2, "0");
+  const day = String(baseDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const PendingComponentGeneration = () => {
@@ -49,16 +66,17 @@ const PendingComponentGeneration = () => {
     fetchFailureReasons();
   }, []);
 
-  const generateAllUnitNumbers = (bagNo, components) => {
+  const generateAllUnitNumbers = (bagNo, components, collectionDate) => {
     if (!bagNo || !components?.length) return {};
 
-    const suffix = bagNo.replace("BAG-", "");
+    const suffix = bagNo.replace(/^BAG-?/i, "");
 
     const result = {};
 
     components.forEach((comp) => {
       result[comp.code] = {
         unitNo: `${comp.code}-${suffix}`,
+        expiry: calculateDefaultExpiry(collectionDate, comp.shelfLifeDays),
       };
     });
 
@@ -108,11 +126,12 @@ const PendingComponentGeneration = () => {
 
       if (response.status === 200 && response.response) {
         const activeComponents = response.response
-          .filter((item) => item.status?.toUpperCase() === "Y")
+          .filter((item) => (item.status ? item.status.toUpperCase() === "Y" : true))
           .map((item) => ({
             id: item.componentId,
-            code: item.componentCode,
+            code: (item.componentCode || "").trim().toUpperCase(),
             name: item.componentName,
+            shelfLifeDays: item.shelfLifeDays,
           }));
 
         setComponentMaster(activeComponents);
@@ -152,18 +171,15 @@ const PendingComponentGeneration = () => {
     setSelectedBag(record);
     setShowDetailView(true);
     setGenerationStatus("");
+    setComponentForm({});
     setComponentNotes("");
-
-    const getComponentsForBagType = (bagType) => {
-      const key = getBagKey(bagType);
-      return BAG_COMPONENT_CONFIG[key] || [];
-    };
   };
 
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedBag(null);
     setGenerationStatus("");
+    setComponentForm({});
     setComponents([]);
     setComponentNotes("");
   };
@@ -195,22 +211,50 @@ const PendingComponentGeneration = () => {
     return "";
   };
 
-  const allowedComponentCodes =
-    BAG_COMPONENT_CONFIG[getBagKey(selectedBag?.bagType)] || [];
+  const getComponentsForBagType = (bagType) => {
+    const bagKey = getBagKey(bagType);
+    const targetCodes = BAG_COMPONENT_CONFIG[bagKey] || [];
 
-  const allowedComponents = componentMaster.filter((comp) =>
-    allowedComponentCodes.includes(comp.code),
-  );
+    return targetCodes.map((target) => {
+      const aliases = COMPONENT_ALIASES[target] || [target];
+      const match = componentMaster.find((comp) => {
+        const code = (comp.code || "").trim().toUpperCase();
+        const name = (comp.name || "").trim().toUpperCase();
+
+        if (aliases.includes(code)) return true;
+        if (target === "WB" && name.includes("WHOLE BLOOD")) return true;
+        if (target === "PRBC" && (name.includes("PACKED RED") || name.includes("RED BLOOD"))) return true;
+        if (target === "FFP" && name.includes("PLASMA")) return true;
+        if (target === "PLT" && name.includes("PLATELET") && !name.includes("SINGLE DONOR")) return true;
+        if (target === "CRYO" && name.includes("CRYO")) return true;
+        return false;
+      });
+
+      if (match) {
+        return match;
+      }
+
+      return {
+        id: null,
+        code: target,
+        name: FALLBACK_COMPONENT_NAMES[target] || target,
+      };
+    });
+  };
+
+  const allowedComponents = getComponentsForBagType(selectedBag?.bagType);
+
   const fetchFailureReasons = async () => {
     try {
       const response = await getRequest(`${GET_FAILURE_REASONS}/getAll/1`);
 
       if (response.status === 200 && response.response) {
         const activeReasons = response.response
-          .filter((item) => item.status?.toUpperCase() === "Y")
+          .filter((item) => (item.status ? item.status.toUpperCase() === "Y" : true))
           .map((item) => ({
-            id: item.failureReasonId,
-            name: item.failureReasonName,
+            id: item.failureReasonId || item.id,
+            name: item.failureReasonName || item.reason,
+            reason: item.failureReasonName || item.reason,
             description: item.description,
           }));
         setFailureReasonOptions(activeReasons);
@@ -339,41 +383,47 @@ const PendingComponentGeneration = () => {
     }
   };
 
-  const isInitialized = useRef(false);
-
   useEffect(() => {
     if (
       generationStatus === "pass" &&
       selectedBag &&
-      allowedComponents.length > 0 &&
-      !isInitialized.current
+      allowedComponents.length > 0
     ) {
       const autoData = generateAllUnitNumbers(
         selectedBag.bagNo,
         allowedComponents,
+        selectedBag.collectionDate,
       );
 
-      setComponentForm(autoData);
-      isInitialized.current = true;
+      setComponentForm((prev) => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        allowedComponents.forEach((comp) => {
+          const existing = prev[comp.code] || {};
+          const unitNo = existing.unitNo || autoData[comp.code]?.unitNo || "";
+          const expiry = existing.expiry || autoData[comp.code]?.expiry || "";
+          if (existing.unitNo !== unitNo || existing.expiry !== expiry) {
+            hasChanges = true;
+          }
+          updated[comp.code] = {
+            ...existing,
+            unitNo,
+            expiry,
+          };
+        });
+        return hasChanges ? updated : prev;
+      });
     }
+  }, [generationStatus, selectedBag?.bagNo, selectedBag?.collectionDate, allowedComponents]);
 
-    if (generationStatus !== "pass") {
-      isInitialized.current = false;
-    }
-  }, [generationStatus, selectedBag, allowedComponents]);
   const getBagTypeBadgeClass = (bagType) => {
-    switch (bagType) {
-      case "Single":
-        return "badge bg-info";
-      case "Double":
-        return "badge bg-primary";
-      case "Triple":
-        return "badge bg-success";
-      case "Quadruple":
-        return "badge bg-warning text-dark";
-      default:
-        return "badge bg-secondary";
-    }
+    if (!bagType) return "badge bg-secondary";
+    const type = bagType.toLowerCase();
+    if (type.includes("single")) return "badge bg-info";
+    if (type.includes("double")) return "badge bg-primary";
+    if (type.includes("triple")) return "badge bg-success";
+    if (type.includes("quad")) return "badge bg-warning text-dark";
+    return "badge bg-secondary";
   };
 
   return (
@@ -599,10 +649,11 @@ const PendingComponentGeneration = () => {
                         <div className="card-header py-3 bg-success bg-opacity-10 border-bottom-1">
                           <h6 className="mb-0 fw-bold text-dark ">
                             <i className="mdi mdi-check-circle me-2"></i>
-                            Component Separation Details ({
-                              selectedBag.bagType
-                            }{" "}
-                            Bag)
+                            Component Separation Details (
+                            {selectedBag.bagType?.toLowerCase().includes("bag")
+                              ? selectedBag.bagType
+                              : `${selectedBag.bagType} Bag`}
+                            )
                           </h6>
                         </div>
                         <div className="card-body">
@@ -617,67 +668,76 @@ const PendingComponentGeneration = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {allowedComponents.map((comp, index) => (
-                                  <tr key={index}>
-                                    <td>
-                                      <input
-                                        value={comp.name}
-                                        disabled
-                                        className="form-control"
-                                      />
-                                    </td>
+                                {allowedComponents.length > 0 ? (
+                                  allowedComponents.map((comp, index) => (
+                                    <tr key={index}>
+                                      <td>
+                                        <input
+                                          value={comp.name}
+                                          disabled
+                                          className="form-control"
+                                        />
+                                      </td>
 
-                                    <td>
-                                      <input
-                                        type="text"
-                                        className="form-control"
-                                        value={
-                                          componentForm[comp.code]?.unitNo || ""
-                                        }
-                                        readOnly
-                                      />
-                                    </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={
+                                            componentForm[comp.code]?.unitNo || ""
+                                          }
+                                          readOnly
+                                        />
+                                      </td>
 
-                                    <td>
-                                      <input
-                                        type="number"
-                                        className="form-control"
-                                        value={
-                                          componentForm[comp.code]?.volume || ""
-                                        }
-                                        onChange={(e) =>
-                                          setComponentForm({
-                                            ...componentForm,
-                                            [comp.code]: {
-                                              ...(componentForm[comp.code] ||
-                                                {}),
-                                              volume: e.target.value,
-                                            },
-                                          })
-                                        }
-                                      />
-                                    </td>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control"
+                                          placeholder="Enter volume"
+                                          value={
+                                            componentForm[comp.code]?.volume || ""
+                                          }
+                                          onChange={(e) =>
+                                            setComponentForm({
+                                              ...componentForm,
+                                              [comp.code]: {
+                                                ...(componentForm[comp.code] ||
+                                                  {}),
+                                                volume: e.target.value,
+                                              },
+                                            })
+                                          }
+                                        />
+                                      </td>
 
-                                    <td>
-                                      <input
-                                        type="date"
-                                        className="form-control"
-                                        value={
-                                          componentForm[comp.code]?.expiry || ""
-                                        }
-                                        onChange={(e) =>
-                                          setComponentForm({
-                                            ...componentForm,
-                                            [comp.code]: {
-                                              ...componentForm[comp.code],
-                                              expiry: e.target.value,
-                                            },
-                                          })
-                                        }
-                                      />
+                                      <td>
+                                        <input
+                                          type="date"
+                                          className="form-control"
+                                          value={
+                                            componentForm[comp.code]?.expiry || ""
+                                          }
+                                          onChange={(e) =>
+                                            setComponentForm({
+                                              ...componentForm,
+                                              [comp.code]: {
+                                                ...componentForm[comp.code],
+                                                expiry: e.target.value,
+                                              },
+                                            })
+                                          }
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan="4" className="text-center text-muted py-3">
+                                      No components mapped for this bag type ({selectedBag?.bagType})
                                     </td>
                                   </tr>
-                                ))}
+                                )}
                               </tbody>
                             </table>
                           </div>
@@ -954,8 +1014,8 @@ const PendingComponentGeneration = () => {
                           >
                             <option value="">Select Failure Reason</option>
                             {failureReasonOptions.map((option) => (
-                              <option key={option.id} value={option.reason}>
-                                {option.reason}
+                              <option key={option.id} value={option.name || option.reason}>
+                                {option.name || option.reason}
                               </option>
                             ))}
                           </select>

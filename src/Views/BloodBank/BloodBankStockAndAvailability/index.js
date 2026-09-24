@@ -26,6 +26,10 @@ const BloodBankStockAndAvailability = () => {
   const [inventoryStatusData, setInventoryStatusData] = useState([]);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [isServerPaged, setIsServerPaged] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -47,6 +51,23 @@ const BloodBankStockAndAvailability = () => {
     });
   };
 
+  const getStatusBadge = (status) => {
+    const s = (status || "").trim().toUpperCase();
+    if (s === "AVAILABLE") {
+      return <span className="badge bg-success">AVAILABLE</span>;
+    }
+    if (s === "ALLOCATED") {
+      return <span className="badge bg-warning text-dark">ALLOCATED</span>;
+    }
+    if (s === "RESERVED") {
+      return <span className="badge bg-info text-dark">RESERVED</span>;
+    }
+    if (s === "EXPIRED") {
+      return <span className="badge bg-danger">EXPIRED</span>;
+    }
+    return <span className="badge bg-secondary">{status ? status.trim() : "-"}</span>;
+  };
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
@@ -66,12 +87,18 @@ const BloodBankStockAndAvailability = () => {
   }, []);
 
   useEffect(() => {
-    fetchStockData();
+    setCurrentPage(1);
+    fetchStockData(filters, 1, tableView, pageSize);
   }, [tableView]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchStockData(filters, newPage, tableView, pageSize);
+  };
 
   const handleSearch = () => {
     setCurrentPage(1);
-    fetchStockData();
+    fetchStockData(filters, 1, tableView, pageSize);
   };
 
   const handleReset = () => {
@@ -86,7 +113,7 @@ const BloodBankStockAndAvailability = () => {
     setFilters(resetFilters);
     setCurrentPage(1);
 
-    fetchStockData(resetFilters);
+    fetchStockData(resetFilters, 1, tableView, pageSize);
   };
 
   const fetchInventoryStatusData = async () => {
@@ -165,7 +192,12 @@ const BloodBankStockAndAvailability = () => {
   const hospitalId =
     sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
 
-  const fetchStockData = async (customFilters = filters) => {
+  const fetchStockData = async (
+    customFilters = filters,
+    pageToFetch = currentPage,
+    currentView = tableView,
+    currentSize = pageSize
+  ) => {
     try {
       setIsTableLoading(true);
 
@@ -181,21 +213,46 @@ const BloodBankStockAndAvailability = () => {
         params.append("expiryFilter", customFilters.expiryFilter);
       if (customFilters.collectionType)
         params.append("collectionType", customFilters.collectionType);
-      params.append("hospitalId", hospitalId);
 
-      params.append("viewType", tableView);
+      params.append("hospitalId", hospitalId || 1);
+      params.append("viewType", currentView);
+      params.append("page", Math.max(0, pageToFetch - 1));
+      params.append("size", currentSize);
 
       const res = await getRequest(
-        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`,
+        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`
       );
 
       if (res?.status === 200 && res?.response) {
-        setTableData(res.response);
+        if (Array.isArray(res.response.content)) {
+          setTableData(res.response.content);
+          setTotalElements(res.response.totalElements ?? 0);
+          setTotalPages(res.response.totalPages ?? 1);
+          setIsServerPaged(true);
+        } else if (Array.isArray(res.response)) {
+          setTableData(res.response);
+          setTotalElements(res.response.length);
+          setTotalPages(Math.ceil(res.response.length / currentSize) || 1);
+          setIsServerPaged(false);
+        } else {
+          setTableData([]);
+          setTotalElements(0);
+          setTotalPages(1);
+          setIsServerPaged(false);
+        }
       } else {
         setTableData([]);
+        setTotalElements(0);
+        setTotalPages(1);
+        setIsServerPaged(false);
       }
     } catch (e) {
+      console.error("Failed to load stock data", e);
       showPopup("Failed to load stock data", "error");
+      setTableData([]);
+      setTotalElements(0);
+      setTotalPages(1);
+      setIsServerPaged(false);
     } finally {
       setIsTableLoading(false);
     }
@@ -204,9 +261,9 @@ const BloodBankStockAndAvailability = () => {
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
-const sectionId = sessionStorage.getItem("sectionId") || localStorage.getItem("sectionId");
+  const sectionId = sessionStorage.getItem("sectionId") || localStorage.getItem("sectionId");
 
-const itemClassId = 1;
+  const itemClassId = 1;
 
   const generateReport = async () => {
     try {
@@ -247,10 +304,10 @@ const itemClassId = 1;
     }
   };
 
-  // Pagination logic
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentTableData = tableData.slice(indexOfFirst, indexOfLast);
+  // Pagination display logic: if server paged, use tableData directly; otherwise slice client-side
+  const currentTableData = isServerPaged
+    ? tableData
+    : tableData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="content-wrapper">
@@ -421,7 +478,6 @@ const itemClassId = 1;
                         checked={tableView === "S"}
                         onChange={() => {
                           setTableView("S");
-                          setCurrentPage(1);
                         }}
                       />
                       <label className="form-check-label" htmlFor="viewSummary">
@@ -437,7 +493,6 @@ const itemClassId = 1;
                         checked={tableView === "SL"}
                         onChange={() => {
                           setTableView("SL");
-                          setCurrentPage(1);
                         }}
                       />
                       <label className="form-check-label" htmlFor="viewDetail">
@@ -451,8 +506,13 @@ const itemClassId = 1;
               {/* TABLE DISPLAY */}
               {tableView === "S" && (
                 <div className="card mb-3">
-                  <div className="card-header py-3 border-bottom-1">
+                  <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
                     <h6 className="mb-0 fw-bold">Blood Bank Stock Summary</h6>
+                    {totalElements > 0 && (
+                      <span className="badge bg-primary">
+                        Total Records: {totalElements}
+                      </span>
+                    )}
                   </div>
                   <div className="card-body p-0 position-relative">
                     <div className="table-responsive">
@@ -468,7 +528,19 @@ const itemClassId = 1;
                           </tr>
                         </thead>
                         <tbody>
-                          {currentTableData.length === 0 ? (
+                          {isTableLoading ? (
+                            <tr>
+                              <td colSpan="6" className="text-center py-4">
+                                <div
+                                  className="spinner-border spinner-border-sm text-primary me-2"
+                                  role="status"
+                                >
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                                Loading blood stock summary...
+                              </td>
+                            </tr>
+                          ) : currentTableData.length === 0 ? (
                             <tr>
                               <td colSpan="6" className="text-center py-4">
                                 No data found
@@ -477,26 +549,45 @@ const itemClassId = 1;
                           ) : (
                             currentTableData.map((row, i) => (
                               <tr key={i}>
-                                <td>{row.bloodGroup}</td>
+                                <td>
+                                  <span className="badge bg-danger">
+                                    {row.bloodGroup}
+                                  </span>
+                                </td>
                                 <td>{row.prbc}</td>
                                 <td>{row.plasma}</td>
                                 <td>{row.platelets}</td>
                                 <td>{row.cryo}</td>
-                                <td>{row.totalUnits}</td>
+                                <td className="fw-bold">{row.totalUnits}</td>
                               </tr>
                             ))
                           )}
                         </tbody>
                       </table>
                     </div>
+                    {totalElements > 0 && (
+                      <div className="p-3">
+                        <Pagination
+                          totalItems={totalElements}
+                          itemsPerPage={pageSize}
+                          currentPage={currentPage}
+                          onPageChange={handlePageChange}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {tableView === "SL" && (
                 <div className="card mb-3">
-                  <div className="card-header py-3 border-bottom-1">
+                  <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
                     <h6 className="mb-0 fw-bold">Detailed Blood Stock List</h6>
+                    {totalElements > 0 && (
+                      <span className="badge bg-primary">
+                        Total Units: {totalElements}
+                      </span>
+                    )}
                   </div>
                   <div className="card-body p-0 position-relative">
                     <div className="table-responsive">
@@ -513,7 +604,19 @@ const itemClassId = 1;
                           </tr>
                         </thead>
                         <tbody>
-                          {currentTableData.length === 0 ? (
+                          {isTableLoading ? (
+                            <tr>
+                              <td colSpan="7" className="text-center py-4">
+                                <div
+                                  className="spinner-border spinner-border-sm text-primary me-2"
+                                  role="status"
+                                >
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                                Loading blood stock list...
+                              </td>
+                            </tr>
+                          ) : currentTableData.length === 0 ? (
                             <tr>
                               <td colSpan="7" className="text-center py-4">
                                 No data found
@@ -521,13 +624,21 @@ const itemClassId = 1;
                             </tr>
                           ) : (
                             currentTableData.map((row, i) => (
-                              <tr key={i}>
-                                <td>{row.unitNo}</td>
-                                <td>{row.component}</td>
-                                <td>{row.bloodGroup}</td>
+                              <tr key={row.unitNo ? `${row.unitNo}-${i}` : i}>
+                                <td className="fw-semibold">{row.unitNo}</td>
+                                <td>
+                                  <span className="badge bg-light text-dark border">
+                                    {row.component}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge bg-danger">
+                                    {row.bloodGroup}
+                                  </span>
+                                </td>
                                 <td>{row.volumeMl}</td>
                                 <td>{row.expiryDate}</td>
-                                <td>{row.status}</td>
+                                <td>{getStatusBadge(row.status)}</td>
                                 <td>{row.reservedFor || "-"}</td>
                               </tr>
                             ))
@@ -535,6 +646,16 @@ const itemClassId = 1;
                         </tbody>
                       </table>
                     </div>
+                    {totalElements > 0 && (
+                      <div className="p-3">
+                        <Pagination
+                          totalItems={totalElements}
+                          itemsPerPage={pageSize}
+                          currentPage={currentPage}
+                          onPageChange={handlePageChange}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
