@@ -272,7 +272,14 @@ const PendingBloodRequests = () => {
     await fetchPendingRequests(0, cleared);
   };
 
-
+  const handleSearch = async (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+    setIsSearching(true);
+    setCurrentPage(1);
+    await fetchPendingRequests(0, searchFilters);
+  };
 
   // Check inventory unit availability for each component of the request
   const fetchAvailabilityForComponents = async (components, req) => {
@@ -341,11 +348,6 @@ const PendingBloodRequests = () => {
         }
       })
     );
-  };
-
-  const handleSearch = () => {
-    setCurrentPage(1);
-    fetchPendingRequests(0, searchFilters.patientName);
   };
 
   const handleRowClick = (request) => {

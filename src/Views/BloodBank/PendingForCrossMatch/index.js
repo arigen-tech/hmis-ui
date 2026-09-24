@@ -13,7 +13,6 @@ import {
 } from "../../../config/apiConfig"
 import {
   CROSS_MATCH_RESULT_OPTIONS,
-  DEFAULT_CROSS_MATCH_TYPES,
   CROSS_MATCH_RESULTS,
 } from "../../../config/constants"
 
@@ -84,7 +83,7 @@ const PendingForCrossMatch = () => {
   const [sampleCollected, setSampleCollected] = useState(false);
   const [sampleCollectedDateTime, setSampleCollectedDateTime] = useState("");
   const [sampleReceivedBy, setSampleReceivedBy] = useState("");
-  const [crossMatchTypes, setCrossMatchTypes] = useState(DEFAULT_CROSS_MATCH_TYPES);
+  const [crossMatchTypes, setCrossMatchTypes] = useState();
   const [selectedCrossMatchTypeId, setSelectedCrossMatchTypeId] = useState("");
   const [overallRemarks, setOverallRemarks] = useState("");
 
