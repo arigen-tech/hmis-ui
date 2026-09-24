@@ -164,10 +164,7 @@ const PendingBloodRequests = () => {
     fetchPendingRequests(0, "");
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-    fetchPendingRequests(0, searchFilters.patientName);
-  };
+
 
   // Check inventory unit availability for each component of the request
   const fetchAvailabilityForComponents = async (components, req) => {
