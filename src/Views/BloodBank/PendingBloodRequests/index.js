@@ -238,6 +238,11 @@ const PendingBloodRequests = () => {
     );
   };
 
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchPendingRequests(0, searchFilters.patientName);
+  };
+
   const handleRowClick = (request) => {
     setSelectedRequest(request);
     const components = request.requestId
