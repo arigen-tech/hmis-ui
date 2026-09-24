@@ -83,7 +83,7 @@ const Login = () => {
           departmentCode,
           loggedInUserName,
         } = response.response;
-
+        debugger
         const currentTime = Date.now();
         const isTokenValid = jwtTokenExpiry > currentTime;
         const validTime = jwtTokenExpiry;
@@ -122,7 +122,7 @@ const Login = () => {
           sessionStorage.setItem("departmentId", departmentId);
           sessionStorage.setItem("departmentName", departmentName);
           sessionStorage.setItem("departmentCode", departmentCode);
-          localStorage.setItem("loggedInUserName", loggedInUserName)
+          sessionStorage.setItem("loggedInUserName", loggedInUserName)
         }
 
         // Set up a timeout to auto-mark the token as expired

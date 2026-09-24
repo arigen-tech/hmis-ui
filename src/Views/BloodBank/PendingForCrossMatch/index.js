@@ -559,7 +559,7 @@ const PendingForCrossMatch = () => {
 
       setSampleCollectedDateTime(formatted);
       if (!sampleReceivedBy) {
-        const loggedUser = sessionStorage.getItem("loggedInUserName") || localStorage.getItem("loggedInUserName") || "";
+        const loggedUser = sessionStorage.getItem("loggedInUserName") || "";
         if (loggedUser) setSampleReceivedBy(loggedUser);
       }
       if (!selectedCrossMatchTypeId && crossMatchTypes.length > 0) {
@@ -627,13 +627,35 @@ const PendingForCrossMatch = () => {
       return false;
     }
     for (let i = 0; i < crossMatchEntries.length; i++) {
-      if (!crossMatchEntries[i].crossMatchResult) {
+      const entry = crossMatchEntries[i];
+      if (!entry.crossMatchResult) {
         showPopup(`Cross-Match Result is required for row ${i + 1}`, "warning");
         return false;
       }
-      if (!crossMatchEntries[i].testDate) {
+      if (!entry.testDate) {
         showPopup(`Test Date is required for row ${i + 1}`, "warning");
         return false;
+      }
+      const isIncompatible =
+        String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+        String(entry.crossMatchResult || "").trim().toLowerCase() === CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase();
+
+      if (isIncompatible) {
+        const rowRemarks = entry.remarks?.trim();
+        if (!rowRemarks) {
+          showPopup(
+            `Remarks are mandatory for row ${i + 1} (${entry.unitNo || "Unit"}) because the cross-match result is Incompatible. Please enter the reason for incompatibility.`,
+            "warning"
+          );
+          setTimeout(() => {
+            const inputEl = document.getElementById(`remarks-input-${i}`);
+            if (inputEl) {
+              inputEl.focus();
+              inputEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 150);
+          return false;
+        }
       }
     }
     return true;
@@ -690,7 +712,7 @@ const PendingForCrossMatch = () => {
             sampleReceivedDatetime: formattedSampleReceived,
             crossmatchDatetime: currentLocalDateTime,
             overallResult: overallResult,
-            remarks: overallRemarks || "",
+            remarks: overallRemarks?.trim() || crossMatchEntries.find((e) => e.remarks?.trim())?.remarks?.trim() || "",
             units: crossMatchEntries.map((entry) => ({
               requestDtId: (entry.requestDtId ?? reqDtId) != null
                 ? Number(entry.requestDtId ?? reqDtId)
@@ -701,7 +723,7 @@ const PendingForCrossMatch = () => {
               unitNo: entry.unitNo || "",
               compatibilityResult: entry.crossMatchResult || "",
               testDate: entry.testDate || todayDateStr,
-              remarks: entry.remarks || "",
+              remarks: entry.remarks?.trim() || overallRemarks.trim() || "",
             })),
           };
 
@@ -1104,7 +1126,15 @@ const PendingForCrossMatch = () => {
                             <th style={{ width: "120px" }}>
                               Test Date <span className="text-danger">*</span>
                             </th>
-                            <th style={{ width: "200px" }}>Remarks</th>
+                            <th style={{ width: "220px" }}>
+                              Remarks{" "}
+                              {crossMatchEntries.some(
+                                (e) =>
+                                  String(e.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                  String(e.crossMatchResult || "").trim().toLowerCase() ===
+                                    CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()
+                              ) && <span className="text-danger">*</span>}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1200,8 +1230,15 @@ const PendingForCrossMatch = () => {
                                 </td>
                                 <td>
                                   <input
+                                    id={`remarks-input-${index}`}
                                     type="text"
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${(String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                        String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                          CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                      !entry.remarks?.trim()
+                                        ? "border-danger"
+                                        : ""
+                                    }`}
                                     value={entry.remarks}
                                     onChange={(e) =>
                                       handleCrossMatchEntryChange(
@@ -1210,14 +1247,38 @@ const PendingForCrossMatch = () => {
                                         e.target.value
                                       )
                                     }
-                                    placeholder={sampleCollected ? "Optional" : "Sample collection required"}
+                                    placeholder={
+                                      !sampleCollected
+                                        ? "Sample collection required"
+                                        : String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                          String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                            CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()
+                                          ? "Mandatory: Reason for incompatibility *"
+                                          : "Optional"
+                                    }
                                     disabled={!sampleCollected || isSaving}
                                     style={
                                       !sampleCollected
                                         ? { backgroundColor: "#f8f9fa", cursor: "not-allowed" }
-                                        : {}
+                                        : (String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                            String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                              CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                          !entry.remarks?.trim()
+                                          ? { borderColor: "#dc3545", backgroundColor: "#fff5f5" }
+                                          : {}
                                     }
                                   />
+                                  {(String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                    String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                      CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                    !entry.remarks?.trim() && (
+                                      <small
+                                        className="text-danger fw-semibold"
+                                        style={{ fontSize: "11px", display: "block", marginTop: "3px" }}
+                                      >
+                                        Remarks is mandatory *
+                                      </small>
+                                    )}
                                 </td>
                               </tr>
                             ))

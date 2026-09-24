@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { getRequest, postRequest } from "../../../service/apiService";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import {
   GET_PENDING_BLOOD_ISSUE,
   MAS_WARD_GET_ALL_ACTIVE,
   MAS_DEPARTMENT_GET_ALL,
   SAVE_BLOOD_ISSUE,
+  UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
 } from "../../../config/apiConfig";
 
 const PendingForIssue = () => {
@@ -240,35 +241,71 @@ const PendingForIssue = () => {
 
     setIsIssuing(true);
     try {
-      const payload = {
-        requestHdId: selectedIssueItem.requestHdId ? Number(selectedIssueItem.requestHdId) : null,
-        requestDtId: selectedIssueItem.requestDtId ? Number(selectedIssueItem.requestDtId) : null,
-        requestNo: selectedIssueItem.requestNo || "",
-        inpatientId: selectedIssueItem.inpatientId ? Number(selectedIssueItem.inpatientId) : null,
-        patientId: selectedIssueItem.patientId ? Number(selectedIssueItem.patientId) : null,
-        unitsIssued: selectedIssueItem.unitsReserved ?? 1,
-        issueDatetime: issueForm.issueDateTime
-          ? (issueForm.issueDateTime.length === 16 ? `${issueForm.issueDateTime}:00` : issueForm.issueDateTime)
-          : getTodayDateTimeLocal(),
-        issuedBy: issueForm.issuedBy.trim(),
+      const requestDtId =
+        selectedIssueItem.requestDtId != null
+          ? Number(selectedIssueItem.requestDtId)
+          : selectedIssueItem.bloodRequestDtId != null
+          ? Number(selectedIssueItem.bloodRequestDtId)
+          : selectedIssueItem.requestDetailId != null
+          ? Number(selectedIssueItem.requestDetailId)
+          : selectedIssueItem.dtId != null
+          ? Number(selectedIssueItem.dtId)
+          : null;
+
+      const inventoryId =
+        selectedIssueItem.inventoryId != null
+          ? Number(selectedIssueItem.inventoryId)
+          : selectedIssueItem.bloodInventoryId != null
+          ? Number(selectedIssueItem.bloodInventoryId)
+          : selectedIssueItem.unitId != null
+          ? Number(selectedIssueItem.unitId)
+          : (Array.isArray(selectedIssueItem.units) && selectedIssueItem.units[0]?.inventoryId != null)
+          ? Number(selectedIssueItem.units[0].inventoryId)
+          : null;
+
+      // BloodIssueStatusRequest: isIssued: true, isRejected: false, rejectedReason: null
+      const statusPayload = {
+        requestDtId: requestDtId,
+        inventoryId: inventoryId,
+        isIssued: true,
+        isRejected: false,
+        rejectedReason: null,
       };
 
-      const response = await postRequest(SAVE_BLOOD_ISSUE, payload);
+      const response = await putRequest(
+        UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
+        statusPayload
+      );
 
-      if (response?.status === 200 || response?.status === 201 || response?.success) {
+      const isSuccess =
+        response?.status === 200 ||
+        response?.data?.status === 200 ||
+        response?.data?.production === false;
+
+      if (isSuccess) {
         showPopup(
-          response?.message || `Blood units issued successfully for Request ${selectedIssueItem.requestNo}`,
+          response?.data?.message ||
+            response?.message ||
+            "Blood request status updated successfully",
           "success"
         );
         setShowIssueModal(false);
         setSelectedIssueItem(null);
         fetchPendingForIssueData(currentPage - 1, searchFiltersRef.current);
       } else {
-        showPopup(response?.message || "Failed to issue blood units.", "error");
+        showPopup(
+          response?.data?.message ||
+            response?.message ||
+            "Failed to issue blood units.",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error issuing blood:", error);
-      showPopup(error?.message || "Error occurred while issuing blood units.", "error");
+      showPopup(
+        error?.message || "Error occurred while issuing blood units.",
+        "error"
+      );
     } finally {
       setIsIssuing(false);
     }
