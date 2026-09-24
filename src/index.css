@@ -24558,10 +24558,11 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 }
 
 .main {
-  overflow-y: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   scroll-behavior: smooth;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb-color, #6c757d) var(--scroll-track-color, #f1f1f1);
   height: 100vh;
   -webkit-box-ordinal-group: 4;
   -ms-flex-order: 3;
@@ -24572,31 +24573,27 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 }
 
 .main::-webkit-scrollbar {
-  width: 4px;
+  width: var(--scroll-width, 10px);
+  height: 0px;
 }
 
-.main:hover::-webkit-scrollbar-thumb {
-  visibility: visible;
-}
-
-.main:hover::-webkit-scrollbar-track {
-  visibility: visible;
+.main::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0px !important;
 }
 
 .main::-webkit-scrollbar-track {
-  visibility: hidden;
-  background: transparent;
+  background: var(--scroll-track-color, #f1f1f1);
+  border-radius: var(--scroll-border-radius, 4px);
 }
 
 .main::-webkit-scrollbar-thumb {
-  visibility: hidden;
-  opacity: 0.2;
-  background: var(--secondary-color);
-  border-radius: 5px;
+  background: var(--scroll-thumb-color, #6c757d);
+  border-radius: var(--scroll-border-radius, 4px);
 }
 
 .main::-webkit-scrollbar-thumb:hover {
-  opacity: 1;
+  background: var(--scroll-thumb-hover-color, #495057);
 }
 
 .main .body {

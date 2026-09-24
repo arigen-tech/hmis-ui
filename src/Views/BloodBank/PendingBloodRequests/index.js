@@ -1,22 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
-  GET_BLOOD_REQUEST_TRACKING,
   GET_AVAILABLE_INVENTORY_UNITS,
   ALLOCATE_BLOOD_UNITS,
   MAS_BLOODGROUP,
+  GET_PENDING_BLOOD_REQUESTS,
+  MAS_WARD_GET_ALL_ACTIVE,
+  MAS_DEPARTMENT_GET_ALL,
 } from "../../../config/apiConfig";
 
 const PendingBloodRequests = () => {
-  const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentView, setCurrentView] = useState("list");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Unit selection state
   const [showUnitSelection, setShowUnitSelection] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
@@ -27,8 +27,12 @@ const PendingBloodRequests = () => {
   // Search state
   const [searchFilters, setSearchFilters] = useState({
     patientName: "",
-    requestedWard: ""
+    wardId: ""
   });
+
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Data is loaded from the blood request tracking API.
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -49,14 +53,8 @@ const PendingBloodRequests = () => {
   // Component details when viewing a request
   const [componentDetails, setComponentDetails] = useState([]);
 
-  // Ward options for dropdown
-  const wardOptions = [
-    { id: "", name: "All Wards" },
-    { id: "Ward", name: "Ward" },
-    { id: "ICU", name: "ICU" },
-    { id: "OT", name: "OT" },
-    { id: "Emergency", name: "Emergency" }
-  ];
+  // Wards / Departments options state
+  const [wardOptions, setWardOptions] = useState([]);
 
   const [totalItems, setTotalItems] = useState(0);
 
@@ -77,19 +75,121 @@ const PendingBloodRequests = () => {
     }
   };
 
-  const fetchPendingRequests = async (page = 0, patientName = "") => {
-    setLoading(true);
+  // Load master wards and departments on mount
+  useEffect(() => {
+    const loadWards = async () => {
+      try {
+        const [wardsRes, deptsRes] = await Promise.allSettled([
+          getRequest(MAS_WARD_GET_ALL_ACTIVE),
+          getRequest(MAS_DEPARTMENT_GET_ALL),
+        ]);
+
+        const options = [];
+        const seenIds = new Set();
+        const seenNames = new Set();
+
+        if (wardsRes.status === "fulfilled") {
+          const res = wardsRes.value;
+          const list = res?.response || res?.data || (Array.isArray(res) ? res : []);
+          if (Array.isArray(list)) {
+            list.forEach((w) => {
+              const id = w.wardId ?? w.id;
+              const name = w.wardName ?? w.name;
+              if (id !== undefined && id !== null && name) {
+                const strId = String(id);
+                const strName = String(name);
+                if (!seenIds.has(strId)) {
+                  seenIds.add(strId);
+                  seenNames.add(strName.toLowerCase());
+                  options.push({ id: strId, name: strName });
+                }
+              }
+            });
+          }
+        }
+
+        if (deptsRes.status === "fulfilled") {
+          const res = deptsRes.value;
+          const list = res?.response || res?.data || (Array.isArray(res) ? res : []);
+          if (Array.isArray(list)) {
+            list.forEach((d) => {
+              const id = d.departmentId ?? d.id;
+              const name = d.departmentName ?? d.name ?? d.deptName;
+              if (id !== undefined && id !== null && name) {
+                const strId = String(id);
+                const strName = String(name);
+                if (!seenIds.has(strId) && !seenNames.has(strName.toLowerCase())) {
+                  seenIds.add(strId);
+                  seenNames.add(strName.toLowerCase());
+                  options.push({ id: strId, name: strName });
+                }
+              }
+            });
+          }
+        }
+
+        setWardOptions(options);
+      } catch (err) {
+        console.error("Failed to load wards/departments:", err);
+      }
+    };
+    loadWards();
+  }, []);
+
+  // Combined options including any ward present in live requests
+  const allWardOptions = [
+    ...wardOptions,
+    ...Array.from(
+      new Set(
+        pendingRequests
+          .map((r) => r.ward || r.requestedWard)
+          .filter(
+            (d) =>
+              Boolean(d) &&
+              !wardOptions.some(
+                (w) => w.name.toLowerCase() === String(d).toLowerCase()
+              )
+          )
+      )
+    ).map((d) => ({ id: d, name: d })),
+  ];
+
+  const searchFiltersRef = useRef(searchFilters);
+  useEffect(() => {
+    searchFiltersRef.current = searchFilters;
+  }, [searchFilters]);
+
+  const fetchPendingRequests = useCallback(async (page = 0, filters = null) => {
+    setIsTableLoading(true);
     try {
+      const activeFilters = filters || searchFiltersRef.current;
       const params = new URLSearchParams({
         page: String(page),
         size: String(DEFAULT_ITEMS_PER_PAGE),
       });
-      if (patientName.trim()) params.set("patientName", patientName.trim());
-
-      const response = await getRequest(`${GET_BLOOD_REQUEST_TRACKING}?${params.toString()}`);
+      if (activeFilters?.patientName?.trim()) {
+        params.set("patientName", activeFilters.patientName.trim());
+      }
+      if (
+        activeFilters?.wardId !== undefined &&
+        activeFilters?.wardId !== null &&
+        String(activeFilters.wardId).trim() !== ""
+      ) {
+        params.set("wardId", String(activeFilters.wardId).trim());
+      }
+      const response = await getRequest(`${GET_PENDING_BLOOD_REQUESTS}?${params.toString()}`);
       const responsePage = response?.response;
       const requests = Array.isArray(responsePage?.content) ? responsePage.content : [];
       setPendingRequests(requests.map((request, index) => ({
+        ...request,
+        requestDtId:
+          request.requestDtId ??
+          request.bloodRequestDtId ??
+          request.requestDetailId ??
+          request.bloodRequestDetailId ??
+          request.bloodRequirementDetailId ??
+          request.dtId ??
+          (typeof request.id === "number" ? request.id : null),
         id: `${request.inpatientId || "req"}-${request.componentId || request.component || "comp"}-${request.requestedDateTime || index}-${index}`,
         requestId: request.requestNo || "",
         patientId: request.patientId,
@@ -120,6 +220,7 @@ const PendingBloodRequests = () => {
           requestDate: request.requestedDateTime,
           urgency: request.urgency,
         },
+        rawRequest: request,
       })));
       setTotalItems(responsePage?.totalElements || 0);
     } catch (error) {
@@ -128,14 +229,16 @@ const PendingBloodRequests = () => {
       setTotalItems(0);
       showPopup(error?.message || "Pending blood requests could not be loaded.", "error");
     } finally {
-      setLoading(false);
+      setIsTableLoading(false);
+      setIsSearching(false);
+      setIsResetting(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPendingRequests(0);
     fetchBloodGroups();
-  }, []);
+  }, [fetchPendingRequests]);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -155,18 +258,27 @@ const PendingBloodRequests = () => {
     }));
   };
 
-  const handleReset = () => {
-    setSearchFilters({
+  const handleReset = async (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+    setIsResetting(true);
+    const cleared = {
       patientName: "",
-      requestedWard: ""
-    });
+      wardId: ""
+    };
+    setSearchFilters(cleared);
     setCurrentPage(1);
-    fetchPendingRequests(0, "");
+    await fetchPendingRequests(0, cleared);
   };
 
-  const handleSearch = () => {
+  const handleSearch = async (e) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+    setIsSearching(true);
     setCurrentPage(1);
-    fetchPendingRequests(0, searchFilters.patientName);
+    await fetchPendingRequests(0, searchFilters);
   };
 
   // Check inventory unit availability for each component of the request
@@ -206,8 +318,8 @@ const PendingBloodRequests = () => {
           const units = Array.isArray(res?.data)
             ? res.data
             : Array.isArray(res?.response)
-            ? res.response
-            : [];
+              ? res.response
+              : [];
 
           setComponentAvailability((prev) => ({
             ...prev,
@@ -238,13 +350,9 @@ const PendingBloodRequests = () => {
     );
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-    fetchPendingRequests(0, searchFilters.patientName);
-  };
-
   const handleRowClick = (request) => {
     setSelectedRequest(request);
+    setAllocatedComponents({});
     const components = request.requestId
       ? pendingRequests.filter((req) => req.requestId === request.requestId)
       : [request];
@@ -257,6 +365,7 @@ const PendingBloodRequests = () => {
     setCurrentView("list");
     setSelectedRequest(null);
     setComponentDetails([]);
+    setAllocatedComponents({});
     setShowUnitSelection(false);
     setSelectedComponent(null);
     setSelectedUnits([]);
@@ -284,8 +393,8 @@ const PendingBloodRequests = () => {
           const units = Array.isArray(res?.data)
             ? res.data
             : Array.isArray(res?.response)
-            ? res.response
-            : [];
+              ? res.response
+              : [];
           setAvailableUnits(units);
           setComponentAvailability((prev) => ({
             ...prev,
@@ -365,53 +474,65 @@ const PendingBloodRequests = () => {
       return;
     }
 
+    const details = componentDetails
+      .filter((comp) => (allocatedComponents[comp.id] || []).length > 0)
+      .map((comp) => {
+        const rawDtId =
+          comp.requestDtId ??
+          comp.bloodRequestDtId ??
+          comp.requestDetailId ??
+          comp.bloodRequestDetailId ??
+          comp.bloodRequirementDetailId ??
+          comp.dtId ??
+          comp.rawRequest?.requestDtId ??
+          comp.rawRequest?.bloodRequestDtId ??
+          comp.rawRequest?.requestDetailId ??
+          comp.rawRequest?.bloodRequestDetailId ??
+          comp.rawRequest?.bloodRequirementDetailId ??
+          comp.rawRequest?.dtId ??
+          (typeof comp.rawRequest?.id === "number" ? comp.rawRequest.id : null) ??
+          (typeof comp.id === "number" ? comp.id : null);
+
+        const requestDtId = rawDtId != null && rawDtId !== "" ? Number(rawDtId) : null;
+        const inventoryIds = (allocatedComponents[comp.id] || [])
+          .map((u) => Number(u.inventoryId ?? u.id))
+          .filter((id) => id != null && !Number.isNaN(id));
+
+        return {
+          requestDtId,
+          inventoryIds,
+          componentType: comp.componentType,
+        };
+      });
+
+    if (details.length === 0) {
+      showPopup("Please allocate units for at least one component before submitting", "warning");
+      return;
+    }
+
+    const missingDt = details.find((d) => !d.requestDtId);
+    if (missingDt) {
+      showPopup(
+        `Request Detail ID (requestDtId) is missing for ${missingDt.componentType || "one of the components"}.`,
+        "error"
+      );
+      return;
+    }
+
+    const payload = {
+      details: details.map((d) => ({
+        requestDtId: d.requestDtId,
+        inventoryIds: d.inventoryIds,
+      })),
+    };
+
     setIsSubmitting(true);
     try {
-      const payload = {
-        requestId: selectedRequest.requestId,
-        requestNo: selectedRequest.requestId,
-        inpatientId: selectedRequest.inpatientId,
-        inpatientNo: selectedRequest.ipNo,
-        patientId: selectedRequest.patientId,
-        patientName: selectedRequest.patientName,
-        bloodGroupId: selectedRequest.bloodGroupId || selectedRequest.headerInfo?.bloodGroupId,
-        bloodGroup: selectedRequest.bloodGroup || selectedRequest.headerInfo?.bloodGroup,
-        allocatedComponents: componentDetails
-          .filter((comp) => (allocatedComponents[comp.id] || []).length > 0)
-          .map((comp) => ({
-            componentId: comp.componentId,
-            componentType: comp.componentType,
-            unitsRequired: comp.units,
-            allocatedUnitsCount: (allocatedComponents[comp.id] || []).length,
-            units: (allocatedComponents[comp.id] || []).map((u) => ({
-              inventoryId: u.inventoryId,
-              unitNo: u.unitNo,
-              bloodGroupId: u.bloodGroupId,
-              volumeMl: u.volumeMl,
-              expiryDate: u.expiryDate,
-              compatibility: u.compatibility,
-              preferred: u.preferred,
-            })),
-          })),
-        allocatedInventoryIds: Object.values(allocatedComponents)
-          .flat()
-          .map((u) => u.inventoryId)
-          .filter(Boolean),
-      };
-
-      try {
-        const response = await postRequest(ALLOCATE_BLOOD_UNITS, payload);
-        showPopup(
-          response?.message || `Allocation submitted successfully for ${totalAllocatedUnits} unit(s)!`,
-          "success"
-        );
-      } catch (err) {
-        console.warn("Backend allocate endpoint not active or returned error, confirmed locally:", err);
-        showPopup(
-          `Allocated details for ${totalAllocatedUnits} unit(s) submitted successfully!`,
-          "success"
-        );
-      }
+      const response = await postRequest(ALLOCATE_BLOOD_UNITS, payload);
+      showPopup(
+        response?.message || `Allocation submitted successfully for ${totalAllocatedUnits} unit(s)!`,
+        "success"
+      );
 
       setTimeout(() => {
         handleBackToList();
@@ -419,7 +540,10 @@ const PendingBloodRequests = () => {
       }, 1200);
     } catch (error) {
       console.error("Error submitting allocation:", error);
-      showPopup(error?.message || "Failed to submit allocation details", "error");
+      showPopup(
+        error?.response?.data?.message || error?.message || "Failed to submit allocation details",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -458,20 +582,7 @@ const PendingBloodRequests = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status?.toLowerCase()) {
-      case "available":
-        return <span className="badge bg-success">Available</span>;
-      case "quarantined":
-        return <span className="badge bg-warning text-dark">Quarantined</span>;
-      case "issued":
-        return <span className="badge bg-primary">Issued</span>;
-      case "expired":
-        return <span className="badge bg-danger">Expired</span>;
-      default:
-        return <span className="badge bg-secondary">{status}</span>;
-    }
-  };
+
 
   const getCompatibilityBadge = (compatibility) => {
     if (compatibility === "Compatible") {
@@ -483,9 +594,7 @@ const PendingBloodRequests = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+
 
   // Detail View (Review Screen) with Unit Selection
   if (currentView === "detail" && selectedRequest) {
@@ -503,9 +612,9 @@ const PendingBloodRequests = () => {
         {showUnitSelection && selectedComponent && (
           <div
             className="modal fade show"
-            style={{ 
-              display: "block", 
-              backgroundColor: "rgba(0,0,0,0.5)", 
+            style={{
+              display: "block",
+              backgroundColor: "rgba(0,0,0,0.5)",
               zIndex: 9999,
               position: 'fixed',
               top: 0,
@@ -536,9 +645,9 @@ const PendingBloodRequests = () => {
                   <h5 className="modal-title">
                     Allocate Units for {selectedComponent.componentType}
                   </h5>
-                  <button 
-                    type="button" 
-                    className="btn-close" 
+                  <button
+                    type="button"
+                    className="btn-close"
                     onClick={() => {
                       setShowUnitSelection(false);
                       setSelectedUnits([]);
@@ -576,7 +685,7 @@ const PendingBloodRequests = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -587,7 +696,7 @@ const PendingBloodRequests = () => {
                           <th>Volume (ml)</th>
                           <th>Expiry Date</th>
                           <th>Compatibility</th>
-                          <th>Status</th>
+                          {/* <th>Status</th> */}
                           <th>Preference</th>
                         </tr>
                       </thead>
@@ -638,7 +747,7 @@ const PendingBloodRequests = () => {
                                 <td>{unit.volumeMl ?? unit.volume ?? "N/A"}</td>
                                 <td>{formatDate(unit.expiryDate)}</td>
                                 <td>{getCompatibilityBadge(unit.compatibility)}</td>
-                                <td>{getStatusBadge(unit.status)}</td>
+                                {/* <td>{getStatusBadge(unit.status)}</td> */}
                                 <td>
                                   {unit.preferred ? (
                                     <span className="badge bg-success">
@@ -657,9 +766,9 @@ const PendingBloodRequests = () => {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={() => {
                       setShowUnitSelection(false);
                       setSelectedUnits([]);
@@ -667,9 +776,9 @@ const PendingBloodRequests = () => {
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-primary" 
+                  <button
+                    type="button"
+                    className="btn btn-primary"
                     onClick={handleConfirmAllocation}
                     disabled={selectedUnits.length === 0 || selectedUnits.length > selectedComponent.units}
                   >
@@ -715,7 +824,7 @@ const PendingBloodRequests = () => {
                           style={{ backgroundColor: "#e9ecef", fontWeight: "500" }}
                         />
                       </div>
-                      
+
                       {/* Patient Details (combined) */}
                       <div className="col-md-4">
                         <label className="form-label  mb-1">Patient Details</label>
@@ -727,7 +836,7 @@ const PendingBloodRequests = () => {
                           style={{ backgroundColor: "#e9ecef", fontWeight: "500" }}
                         />
                       </div>
-                      
+
                       {/* Blood Group */}
                       <div className="col-md-4">
                         <label className="form-label  mb-1">Blood Group</label>
@@ -736,14 +845,14 @@ const PendingBloodRequests = () => {
                           className="form-control"
                           value={selectedRequest.headerInfo.bloodGroup}
                           readOnly
-                          style={{ 
-                            backgroundColor: "#e9ecef", 
+                          style={{
+                            backgroundColor: "#e9ecef",
                             fontWeight: "bold",
                             color: "#dc3545"
                           }}
                         />
                       </div>
-                      
+
                       {/* Ward */}
                       <div className="col-md-4">
                         <label className="form-label mb-1">Ward</label>
@@ -755,7 +864,7 @@ const PendingBloodRequests = () => {
                           style={{ backgroundColor: "#e9ecef", fontWeight: "500" }}
                         />
                       </div>
-                      
+
                       {/* Urgency */}
                       <div className="col-md-4">
                         <label className="form-label  mb-1">Urgency</label>
@@ -763,7 +872,7 @@ const PendingBloodRequests = () => {
                           {getUrgencyBadge(selectedRequest.headerInfo.urgency)}
                         </div>
                       </div>
-                      
+
                       {/* Requested Date */}
                       <div className="col-md-4">
                         <label className="form-label  mb-1">Requested Date</label>
@@ -888,8 +997,7 @@ const PendingBloodRequests = () => {
                       className="card-header py-3 d-flex justify-content-between align-items-center"
                       style={{ backgroundColor: "#f8f9fa" }}
                     >
-                      <h6 className="mb-0 fw-bold text-success">
-                        <i className="fa fa-check-circle me-2"></i>
+                      <h6 className="mb-0 fw-bold">
                         Allocated Units Summary ({totalAllocatedUnits} Unit
                         {totalAllocatedUnits > 1 ? "s" : ""} Selected)
                       </h6>
@@ -1023,51 +1131,92 @@ const PendingBloodRequests = () => {
               <h4 className="card-title p-2 mb-0">
                 PENDING BLOOD REQUESTS
               </h4>
-             
+
             </div>
 
             <div className="card-body">
               {/* Search Section */}
               <div className="row mb-4">
                 <div className="col-md-12">
-                    <div className="card-body">
-                      <div className="row g-3 align-items-end">
-                        <div className="col-md-4">
-                          <label className="form-label fw-semibold">Patient Name</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            name="patientName"
-                            placeholder="Enter patient name"
-                            value={searchFilters.patientName}
-                            onChange={handleSearchChange}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label fw-semibold">Requested Ward</label>
-                          <select
-                            className="form-select"
-                            name="requestedWard"
-                            value={searchFilters.requestedWard}
-                            onChange={handleSearchChange}
-                          >
-                            {wardOptions.map(opt => (
-                              <option key={opt.id} value={opt.id}>{opt.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <button
-                            type="button"
-                            className="btn btn-primary me-2"
-                            onClick={handleSearch}
-                          >
-                            Search
-                          </button>
-                         
-                        </div>
+                  <div className="card-body">
+                    <div className="row g-3 align-items-end">
+                      <div className="col-md-4">
+                        <label className="form-label fw-semibold">Patient Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="patientName"
+                          placeholder="Enter patient name"
+                          value={searchFilters.patientName}
+                          onChange={handleSearchChange}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSearch(e);
+                            }
+                          }}
+                          disabled={isSearching || isResetting || isTableLoading}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-semibold">Ward</label>
+                        <select
+                          className="form-select"
+                          name="wardId"
+                          value={searchFilters.wardId}
+                          onChange={handleSearchChange}
+                          disabled={isSearching || isResetting || isTableLoading}
+                        >
+                          <option value="">All Wards</option>
+                          {allWardOptions.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4 d-flex align-items-end gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary d-inline-flex align-items-center justify-content-center"
+                          onClick={handleSearch}
+                          disabled={isSearching || isResetting || isTableLoading}
+                          style={{ minWidth: "110px" }}
+                        >
+                          {isSearching ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Searching...
+                            </>
+                          ) : (
+                            "Search"
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary d-inline-flex align-items-center justify-content-center"
+                          onClick={handleReset}
+                          disabled={isSearching || isResetting || isTableLoading}
+                          style={{ minWidth: "100px" }}
+                        >
+                          {isResetting ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                              Resetting...
+                            </>
+                          ) : (
+                            "Reset"
+                          )}
+                        </button>
                       </div>
                     </div>
+                  </div>
                 </div>
               </div>
 
@@ -1089,7 +1238,20 @@ const PendingBloodRequests = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingRequests.length === 0 ? (
+                    {isTableLoading ? (
+                      <tr>
+                        <td colSpan={11} className="text-center py-5">
+                          <div className="d-flex flex-column align-items-center justify-content-center">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <span className="mt-2 text-muted fw-semibold">
+                              Loading pending blood requests...
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : pendingRequests.length === 0 ? (
                       <tr>
                         <td colSpan={11} className="text-center py-4">
                           <div className="text-muted">
@@ -1133,7 +1295,7 @@ const PendingBloodRequests = () => {
                   currentPage={currentPage}
                   onPageChange={(page) => {
                     setCurrentPage(page);
-                    fetchPendingRequests(page - 1, searchFilters.patientName);
+                    fetchPendingRequests(page - 1, searchFilters);
                   }}
                 />
               )}

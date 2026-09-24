@@ -1,0 +1,194 @@
+/**
+ * Global & Reusable Scrollbar Styling
+ * Matches the OBG details examination scrollbar specifications:
+ * - Thumb: #6c757d (hover #495057), radius 4px
+ * - Track: #f1f1f1, radius 4px
+ * - Vertical Width: 10px (thin)
+ * - Horizontal Scroll: Disabled / hidden globally unless inside an explicit data table
+ */
+
+:root {
+  --scroll-thumb-color: #6c757d;
+  --scroll-thumb-hover-color: #495057;
+  --scroll-track-color: #f1f1f1;
+  --scroll-width: 10px;
+  --scroll-border-radius: 4px;
+}
+
+/* ==========================================================================
+   Prevent Unwanted Horizontal Scrolling (Whole Application)
+   ========================================================================== */
+html,
+body,
+#root,
+#ihealth-layout,
+.main,
+.main-panel,
+.content-wrapper {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+}
+
+/* ==========================================================================
+   Global Scrollbar Styling (Whole Application)
+   Applies consistent vertical scroll styling to every overflowing container
+   ========================================================================== */
+
+/* Firefox standard */
+*,
+*::before,
+*::after,
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb-color, #6c757d) var(--scroll-track-color, #f1f1f1);
+}
+
+/* WebKit (Chrome, Safari, Edge, Opera) standard */
+::-webkit-scrollbar {
+  width: var(--scroll-width, 10px);
+  height: 0px; /* Completely hide horizontal scrollbar by default */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scroll-track-color, #f1f1f1);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb-color, #6c757d);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover-color, #495057);
+}
+
+/* Hide horizontal scrollbars everywhere globally */
+::-webkit-scrollbar:horizontal,
+*::-webkit-scrollbar:horizontal,
+html::-webkit-scrollbar:horizontal,
+body::-webkit-scrollbar:horizontal,
+.main::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0px !important;
+  width: 0px !important;
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   Main Viewport Scroll Container (.main)
+   Ensure page-level vertical scrollbar is visible and styled properly
+   ========================================================================== */
+.main {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin !important;
+  -ms-overflow-style: auto !important;
+}
+
+.main::-webkit-scrollbar {
+  width: var(--scroll-width, 10px) !important;
+  height: 0px !important;
+}
+
+.main::-webkit-scrollbar-track {
+  background: var(--scroll-track-color, #f1f1f1) !important;
+  border-radius: var(--scroll-border-radius, 4px) !important;
+  visibility: visible !important;
+}
+
+.main::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb-color, #6c757d) !important;
+  border-radius: var(--scroll-border-radius, 4px) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.main::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover-color, #495057) !important;
+  opacity: 1 !important;
+}
+
+/* ==========================================================================
+   Common Section / Container Vertical Scroll Classes (OBG Style)
+   Use for forms, cards, tables, or sections requiring constrained vertical scroll
+   ========================================================================== */
+.obg-section-scroll,
+.ophthal-section-scroll,
+.app-vertical-scroll,
+.custom-vertical-scroll,
+.section-vertical-scroll {
+  max-height: var(--scroll-max-height, 550px);
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb-color, #6c757d) var(--scroll-track-color, #f1f1f1);
+  -webkit-overflow-scrolling: touch;
+}
+
+.obg-section-scroll::-webkit-scrollbar,
+.ophthal-section-scroll::-webkit-scrollbar,
+.app-vertical-scroll::-webkit-scrollbar,
+.custom-vertical-scroll::-webkit-scrollbar,
+.section-vertical-scroll::-webkit-scrollbar {
+  width: var(--scroll-width, 10px);
+  height: 0px;
+}
+
+.obg-section-scroll::-webkit-scrollbar-track,
+.ophthal-section-scroll::-webkit-scrollbar-track,
+.app-vertical-scroll::-webkit-scrollbar-track,
+.custom-vertical-scroll::-webkit-scrollbar-track,
+.section-vertical-scroll::-webkit-scrollbar-track {
+  background: var(--scroll-track-color, #f1f1f1);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+.obg-section-scroll::-webkit-scrollbar-thumb,
+.ophthal-section-scroll::-webkit-scrollbar-thumb,
+.app-vertical-scroll::-webkit-scrollbar-thumb,
+.custom-vertical-scroll::-webkit-scrollbar-thumb,
+.section-vertical-scroll::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb-color, #6c757d);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+.obg-section-scroll::-webkit-scrollbar-thumb:hover,
+.ophthal-section-scroll::-webkit-scrollbar-thumb:hover,
+.app-vertical-scroll::-webkit-scrollbar-thumb:hover,
+.custom-vertical-scroll::-webkit-scrollbar-thumb:hover,
+.section-vertical-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover-color, #495057);
+}
+
+/* ==========================================================================
+   Table responsive & Modal bodies
+   Only explicitly responsive tables may show a slim horizontal scrollbar if needed
+   ========================================================================== */
+.table-responsive::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  width: var(--scroll-width, 10px);
+}
+
+.table-responsive::-webkit-scrollbar:horizontal {
+  display: block !important;
+  height: 6px !important;
+}
+
+.table-responsive::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: var(--scroll-track-color, #f1f1f1);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+.table-responsive::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb-color, #6c757d);
+  border-radius: var(--scroll-border-radius, 4px);
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover-color, #495057);
+}

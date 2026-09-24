@@ -101,12 +101,15 @@ const DonorRegistrationViewUpdate = () => {
   const [errors, setErrors] = useState({});
   const [newScreeningErrors, setNewScreeningErrors] = useState({});
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
+        if (typeof onCloseCallback === "function") {
+          onCloseCallback();
+        }
       },
     });
   };
@@ -580,16 +583,29 @@ const DonorRegistrationViewUpdate = () => {
         payload,
       );
 
-      if (response?.status === 200) {
-        showPopup("Donor updated successfully!", "success");
-        handleBackToList();
-        handleSearch(currentPage - 1);
+      if (
+        response?.status === 200 ||
+        response?.status === 201 ||
+        response?.response ||
+        response?.message
+      ) {
+        showPopup(
+          response?.message || "Donor updated successfully!",
+          "success",
+          () => {
+            handleBackToList();
+            window.location.reload();
+          },
+        );
       } else {
-        showPopup("Failed to update donor", "error");
+        showPopup(response?.message || "Failed to update donor", "error");
       }
     } catch (error) {
       console.error("Update error:", error);
-      showPopup("Something went wrong", "error");
+      showPopup(
+        error?.response?.data?.message || error?.message || "Something went wrong",
+        "error",
+      );
     } finally {
       setLoading(false);
     }

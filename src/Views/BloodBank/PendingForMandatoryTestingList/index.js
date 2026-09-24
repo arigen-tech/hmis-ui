@@ -13,6 +13,14 @@ import {
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 
+const getTodayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const PendingForMandatoryTestingList = () => {
   const [data, setData] = useState([]);
   const [searchDonorName, setSearchDonorName] = useState("");
@@ -95,7 +103,7 @@ const PendingForMandatoryTestingList = () => {
             testName: item.testName,
             mandatory: item.isMandatory?.toLowerCase() === "y",
             result: "",
-            testDate: "",
+            testDate: getTodayDate(),
             remarks: "",
           }));
 
@@ -157,7 +165,7 @@ const PendingForMandatoryTestingList = () => {
       prev.map((t) => ({
         ...t,
         result: "",
-        testDate: "",
+        testDate: getTodayDate(),
         remarks: "",
       })),
     );
@@ -439,7 +447,7 @@ const PendingForMandatoryTestingList = () => {
                                 className={`form-control form-control-sm ${
                                   errors[`date-${index}`] ? "is-invalid" : ""
                                 }`}
-                                value={test.testDate}
+                                value={test.testDate || ""}
                                 onChange={(e) =>
                                   handleTestChange(
                                     index,

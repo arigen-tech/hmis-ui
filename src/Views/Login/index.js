@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import LoginImg from "../../assets/images/login-img.svg";
 import Cardiogram from "../../assets/images/cardiogram.png";
 import "./login.css";
-import { getPublicRequest, postPublicRequest} from "../../service/apiService";
+import { getPublicRequest, postPublicRequest } from "../../service/apiService";
 import { LOGIN, MAS_USER_DEPARTMENT } from "../../config/apiConfig";
 
 const Login = () => {
@@ -81,6 +81,7 @@ const Login = () => {
           departmentId,
           departmentName,
           departmentCode,
+          loggedInUserName,
         } = response.response;
 
         const currentTime = Date.now();
@@ -106,6 +107,7 @@ const Login = () => {
           localStorage.setItem("departmentId", departmentId);
           localStorage.setItem("departmentName", departmentName);
           localStorage.setItem("departmentCode", departmentCode);
+          localStorage.setItem("loggedInUserName", loggedInUserName)
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -120,6 +122,7 @@ const Login = () => {
           sessionStorage.setItem("departmentId", departmentId);
           sessionStorage.setItem("departmentName", departmentName);
           sessionStorage.setItem("departmentCode", departmentCode);
+          localStorage.setItem("loggedInUserName", loggedInUserName)
         }
 
         // Set up a timeout to auto-mark the token as expired
@@ -163,7 +166,7 @@ const Login = () => {
           <div className="body d-flex p-0 p-xl-4 align-items-center justify-content-center w-100">
             <div className="container">
               <div className="row justify-content-center align-items-center g-4">
-                
+
                 {/* Left Side: Themed Gradient Panel */}
                 <div className="col-lg-6 d-none d-lg-flex">
                   <div className="auth-left-panel">
@@ -177,7 +180,7 @@ const Login = () => {
                       <div className="left-brand-header">
                         <div className="left-logo-icon">
                           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="rgba(255,255,255,0.9)"/>
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="rgba(255,255,255,0.9)" />
                           </svg>
                         </div>
                         <div>
@@ -189,7 +192,7 @@ const Login = () => {
                       {/* Main Headline */}
                       <div className="left-headline">
                         <h2 className="left-headline-text">
-                          Empowering Healthcare,<br/>
+                          Empowering Healthcare,<br />
                           <span className="left-headline-accent">One Click at a Time</span>
                         </h2>
                         <p className="left-headline-sub">
@@ -202,9 +205,9 @@ const Login = () => {
                         <div className="health-stat-card">
                           <div className="stat-icon-wrap">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                             </svg>
                           </div>
                           <div>
@@ -215,8 +218,8 @@ const Login = () => {
                         <div className="health-stat-card">
                           <div className="stat-icon-wrap">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+                              <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                             </svg>
                           </div>
                           <div>
@@ -227,7 +230,7 @@ const Login = () => {
                         <div className="health-stat-card">
                           <div className="stat-icon-wrap">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </div>
                           <div>
@@ -238,7 +241,7 @@ const Login = () => {
                         <div className="health-stat-card">
                           <div className="stat-icon-wrap">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </div>
                           <div>
@@ -251,14 +254,14 @@ const Login = () => {
                       {/* Floating Pulse Bar */}
                       <div className="pulse-bar-wrapper">
                         <div className="pulse-bar-label">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{marginRight: '6px'}}>
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginRight: '6px' }}>
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           Live System Health
                         </div>
                         <div className="pulse-bars">
-                          {[40,65,30,80,50,90,45,70,55,85,35,75].map((h, i) => (
-                            <div key={i} className="pulse-bar-item" style={{height: `${h}%`, animationDelay: `${i * 0.1}s`}}></div>
+                          {[40, 65, 30, 80, 50, 90, 45, 70, 55, 85, 35, 75].map((h, i) => (
+                            <div key={i} className="pulse-bar-item" style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }}></div>
                           ))}
                         </div>
                       </div>
@@ -269,7 +272,7 @@ const Login = () => {
                 {/* Right Side: Sign-in Form */}
                 <div className="col-lg-6 col-md-8 col-sm-10 d-flex justify-content-center align-items-center auth-right-panel">
                   <div className="login-card w-100 p-4 p-md-5">
-                    
+
                     <form className="login-form" onSubmit={handleLogin}>
                       <div className="text-center mb-4">
                         <h1 className="login-title">Sign In</h1>
@@ -386,7 +389,7 @@ const Login = () => {
                             Remember me
                           </label>
                         </div>
-                        
+
                         <a href="/forgot-password" className="forgot-password-link">
                           Forgot Password?
                         </a>

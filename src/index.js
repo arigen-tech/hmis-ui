@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import './Components/VerticalScroll/verticalScroll.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { initGlobalAlertOverride } from './utils/alertOverride';
