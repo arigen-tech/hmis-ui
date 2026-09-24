@@ -1,7 +1,23 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from 'react-router-dom'
 import { getRequest, putRequest } from "../../../service/apiService"
-import { LAB, ALL_REPORTS, PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_HOSPITAL_ID, PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_RESULT_ENTRY_DT_ID, REQUEST_PARAM_INVESTIGATION_ID, FIXED_VALUE_DROPDOWNS_END_URL, REQUEST_PARAM_SUB_INVESTIGATION_ID, RESULT_VALIDATE_END_URL, REQUEST_PARAM_RESULT_ENTRY_HD_ID, PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE } from "../../../config/apiConfig"
+import {  PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL, 
+  REQUEST_PARAM_HOSPITAL_ID, 
+  PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, 
+  REQUEST_PARAM_RESULT_ENTRY_DT_ID, 
+  REQUEST_PARAM_INVESTIGATION_ID, 
+  FIXED_VALUE_DROPDOWNS_END_URL, 
+  REQUEST_PARAM_SUB_INVESTIGATION_ID, 
+  RESULT_VALIDATE_END_URL, 
+  REQUEST_PARAM_RESULT_ENTRY_HD_ID, 
+  PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, 
+  REQUEST_PARAM_PAGE, 
+  REQUEST_PARAM_SIZE,
+  RESULT_FLAG_DROPDOWN_END_URL,
+  DETECT_RESULT_FLAG_END_URL,
+  RESULT_FLAG_DETECT_DEBOUNCE_MS,
+  REQUEST_PARAM_RESULT,
+  REQUEST_PARAM_NORMAL_RANGE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import { FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
@@ -28,6 +44,12 @@ const ResultValidation = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
+  // Result flag master dropdown
+  const [resultFlagList, setResultFlagList] = useState([])
+
+  // Debounce timers per row (keyed by row id), for flag re-detection on result change
+  const debounceTimersRef = useRef({})
+
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
   const navigate = useNavigate()
   const hospitalId = sessionStorage.getItem("hospitalId")
@@ -36,6 +58,19 @@ const ResultValidation = () => {
   useEffect(() => {
     fetchPendingValidationHeaders()
   }, []) // Only run once on mount
+
+  // Fetch result flag master list on mount
+  useEffect(() => {
+    fetchResultFlags()
+  }, [])
+
+  // Cleanup any pending debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimersRef.current).forEach(clearTimeout)
+      debounceTimersRef.current = {}
+    }
+  }, [])
 
   // Separate effect for page changes without loading screen
   useEffect(() => {
@@ -181,6 +216,39 @@ const ResultValidation = () => {
     }
   };
 
+  // Fetch result flag master list (id + label options for the dropdown)
+  const fetchResultFlags = async () => {
+    try {
+      const data = await getRequest(`${RESULT_FLAG_DROPDOWN_END_URL}`)
+      console.log("Result Flag master response:", data)
+      if (data.status === 200 && data.response) {
+        setResultFlagList(data.response)
+      } else {
+        setResultFlagList([])
+      }
+    } catch (error) {
+      console.error("Error fetching result flags:", error)
+      setResultFlagList([])
+    }
+  }
+
+  // Detect the result flag for a given result value against a normal range
+  const detectResultFlag = async (result, normalRange) => {
+    if (!result || result.trim() === "") return null
+    if (!normalRange || normalRange.trim() === "") return null
+    try {
+      const url = `${DETECT_RESULT_FLAG_END_URL}?${REQUEST_PARAM_RESULT}=${encodeURIComponent(result)}&${REQUEST_PARAM_NORMAL_RANGE}=${encodeURIComponent(normalRange)}`
+      const data = await getRequest(url)
+      if (data.status === 200 && data.response) {
+        return data.response
+      }
+      return null
+    } catch (error) {
+      console.error("Error detecting result flag:", error)
+      return null
+    }
+  }
+
   const formatHeaderData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
@@ -245,8 +313,9 @@ const ResultValidation = () => {
   }
 
   const handleResultChange = (investigationId, value, selectedFixedId = null) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           return {
             ...inv,
@@ -256,13 +325,14 @@ const ResultValidation = () => {
         }
         return inv
       })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
+      return { ...prevResult, investigations: updatedInvestigations }
+    })
   }
 
   const handleSubTestResultChange = (investigationId, subTestId, value, selectedFixedId = null) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           const updatedSubTests = inv.subTests.map((subTest) => {
             if (subTest.id === subTestId) {
@@ -278,8 +348,77 @@ const ResultValidation = () => {
         }
         return inv
       })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+      return { ...prevResult, investigations: updatedInvestigations }
+    })
+  }
+
+  // Debounced flag re-detection, used only for free-text result inputs
+  const scheduleFlagDetection = (item, value, isSubTest, investigationId) => {
+    const key = isSubTest ? `${investigationId}-${item.id}` : `${item.id}`
+
+    if (debounceTimersRef.current[key]) {
+      clearTimeout(debounceTimersRef.current[key])
     }
+
+    // Empty value → clear the flag immediately, no API call
+    if (!value || value.trim() === "") {
+      if (isSubTest) {
+        handleSubTestValidationChange(investigationId, item.id, "resultFlagId", null)
+      } else {
+        handleValidationChange(item.id, "resultFlagId", null)
+      }
+      return
+    }
+
+    debounceTimersRef.current[key] = setTimeout(async () => {
+      const detected = await detectResultFlag(value, item.normal_range)
+      const flagId = detected?.resultFlagId || null
+
+      if (isSubTest) {
+        handleSubTestValidationChange(investigationId, item.id, "resultFlagId", flagId)
+      } else {
+        handleValidationChange(item.id, "resultFlagId", flagId)
+      }
+
+      delete debounceTimersRef.current[key]
+    }, RESULT_FLAG_DETECT_DEBOUNCE_MS)
+  }
+
+  // Immediate flag re-detection, used for the fixed-value dropdown result inputs
+  const detectFlagForDropdownResult = async (item, value, isSubTest, investigationId) => {
+    const detected = await detectResultFlag(value, item.normal_range)
+    const flagId = detected?.resultFlagId || null
+
+    if (isSubTest) {
+      handleSubTestValidationChange(investigationId, item.id, "resultFlagId", flagId)
+    } else {
+      handleValidationChange(item.id, "resultFlagId", flagId)
+    }
+  }
+
+  const renderResultFlagDropdown = (item, isSubTest = false, investigationId = null) => {
+    return (
+      <select
+        className="form-select"
+        style={{ minWidth: "100px" }}
+        value={item.resultFlagId || ""}
+        onChange={(e) => {
+          const val = e.target.value ? Number(e.target.value) : null
+          if (isSubTest && investigationId) {
+            handleSubTestValidationChange(investigationId, item.id, "resultFlagId", val)
+          } else {
+            handleValidationChange(item.id, "resultFlagId", val)
+          }
+        }}
+      >
+        <option value="">-- Select --</option>
+        {resultFlagList.map((flag) => (
+          <option key={flag.resultFlagId} value={flag.resultFlagId}>
+            {flag.flagName}
+          </option>
+        ))}
+      </select>
+    )
   }
 
   const renderResultInput = (test, isSubTest = false, investigationId = null) => {
@@ -304,6 +443,7 @@ const ResultValidation = () => {
               } else {
                 handleResultChange(test.id, resultValue, selectedFixedId);
               }
+              detectFlagForDropdownResult(test, resultValue, isSubTest, investigationId);
             }}
             style={resultStyle}
           >
@@ -326,11 +466,13 @@ const ResultValidation = () => {
           className="form-control"
           value={test.result}
           onChange={(e) => {
+            const value = e.target.value
             if (isSubTest && investigationId) {
-              handleSubTestResultChange(investigationId, test.id, e.target.value, null);
+              handleSubTestResultChange(investigationId, test.id, value, null);
             } else {
-              handleResultChange(test.id, e.target.value, null);
+              handleResultChange(test.id, value, null);
             }
+            scheduleFlagDetection(test, value, isSubTest, investigationId);
           }}
           placeholder="Enter result"
           style={resultStyle}
@@ -439,7 +581,8 @@ const ResultValidation = () => {
               fixedId: subTest.fixedId || null,
               fixedDropdownValues: fixedDropdownValues,
               generatedSampleId: subTest.generatedSampleId || inv.generatedSampleId || '',
-              inRange: inRange
+              inRange: inRange,
+              resultFlagId: subTest.resultFlagId || null
             }
           }))
 
@@ -489,7 +632,8 @@ const ResultValidation = () => {
             fixedDropdownValues: inv.fixedDropdownValues || [],
             generatedSampleId: inv.generatedSampleId || '',
             inRange: inRange,
-            subTests: []
+            subTests: [],
+            resultFlagId: inv.resultFlagId || null
           }
         }
       }))
@@ -510,6 +654,9 @@ const ResultValidation = () => {
   }
 
   const handleBackToList = () => {
+    Object.values(debounceTimersRef.current).forEach(clearTimeout)
+    debounceTimersRef.current = {}
+
     setShowDetailView(false)
     setSelectedResult(null)
     setMasterValidate(false)
@@ -517,8 +664,9 @@ const ResultValidation = () => {
   }
 
   const handleValidationChange = (investigationId, field, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           const updatedInv = { ...inv, [field]: value }
 
@@ -532,14 +680,15 @@ const ResultValidation = () => {
         }
         return inv
       })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
       updateMasterCheckboxes(updatedInvestigations)
-    }
+      return { ...prevResult, investigations: updatedInvestigations }
+    })
   }
 
   const handleSubTestValidationChange = (investigationId, subTestId, field, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) => {
         if (inv.id === investigationId) {
           const updatedSubTests = inv.subTests.map((subTest) => {
             if (subTest.id === subTestId) {
@@ -559,9 +708,9 @@ const ResultValidation = () => {
         }
         return inv
       })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
       updateMasterCheckboxes(updatedInvestigations)
-    }
+      return { ...prevResult, investigations: updatedInvestigations }
+    })
   }
 
   const updateMasterCheckboxes = (investigations) => {
@@ -660,7 +809,8 @@ const ResultValidation = () => {
                 remarks: subTest.remarks || "",
                 validated: subTest.validate === true,
                 fixedId: subTest.fixedId || null,
-                comparisonType: subTest.comparisonType || ""
+                comparisonType: subTest.comparisonType || "",
+                resultFlagId: subTest.resultFlagId || null
               });
             }
           });
@@ -672,7 +822,8 @@ const ResultValidation = () => {
               remarks: inv.remarks || "",
               validated: inv.validate === true,
               fixedId: inv.fixedId || null,
-              comparisonType: inv.comparisonType || ""
+              comparisonType: inv.comparisonType || "",
+              resultFlagId: inv.resultFlagId || null
             });
           }
         }
@@ -933,20 +1084,21 @@ const ResultValidation = () => {
                 <h5 className="mb-3">INVESTIGATIONS</h5>
 
                 <div className="table-responsive">
-                  <table className="table table-bordered table-hover">
+                  <table className="table table-bordered table-hover" style={{ minWidth: "1300px" }}>
                     <thead className="table-light">
                       <tr>
-                        <th>SI No.</th>
-                        <th>Sample Id</th>
-                        <th>Investigation</th>
-                        <th>Sample</th>
+                        <th style={{ width: "50px" }}>SI No.</th>
+                        <th style={{ width: "130px" }}>Sample Id</th>
+                        <th style={{ width: "140px" }}>Investigation</th>
+                        <th style={{ width: "90px" }}>Sample</th>
                         <th>Result</th>
-                        <th>Units</th>
+                        <th style={{ width: "70px" }}>Units</th>
                         <th>Normal Range</th>
-                        <th>Remarks</th>
-                        <th className="text-center">
-                          <div className="d-flex align-items-center">
-                            <span className="me-2">Validate</span>
+                        <th style={{ width: "110px" }}>Result Flag</th>
+                        <th style={{ width: "110px" }}>Remarks</th>
+                        <th className="text-center" style={{ width: "70px" }}>
+                          <div className="d-flex align-items-center justify-content-center">
+                            <span className="me-1">Validate</span>
                             <div className="form-check mt-1">
                               <input
                                 className="form-check-input border-primary"
@@ -958,9 +1110,9 @@ const ResultValidation = () => {
                             </div>
                           </div>
                         </th>
-                        <th className="text-center">
-                          <div className="d-flex align-items-center">
-                            <span className="me-2">Reject</span>
+                        <th className="text-center" style={{ width: "70px" }}>
+                          <div className="d-flex align-items-center justify-content-center">
+                            <span className="me-1">Reject</span>
                             <div className="form-check mt-1">
                               <input
                                 className="form-check-input border-primary"
@@ -986,7 +1138,7 @@ const ResultValidation = () => {
                                   type="text"
                                   className="form-control"
                                   value={investigation.generatedSampleId}
-                                  style={{ width: "150px" }}
+                                  style={{ width: "120px" }}
                                   readOnly
                                 />
                               </td>
@@ -1025,6 +1177,9 @@ const ResultValidation = () => {
                                   value={investigation.normal_range}
                                   readOnly
                                 ></textarea>
+                              </td>
+                              <td>
+                                {renderResultFlagDropdown(investigation)}
                               </td>
                               <td>
                                 <input
@@ -1066,7 +1221,7 @@ const ResultValidation = () => {
                               {/* Main investigation row (header) - NO generatedSampleId */}
                               <tr key={investigation.id} className="table-secondary">
                                 <td>{investigation.si_no}</td>
-                                <td colSpan="9">
+                                <td colSpan="10">
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
@@ -1079,7 +1234,7 @@ const ResultValidation = () => {
                                       type="text"
                                       className="form-control"
                                       value={subTest.generatedSampleId}
-                                      style={{ width: "150px" }}
+                                      style={{ width: "120px" }}
                                       readOnly
                                     />
                                   </td>
@@ -1118,6 +1273,9 @@ const ResultValidation = () => {
                                       value={subTest.normal_range}
                                       readOnly
                                     ></textarea>
+                                  </td>
+                                  <td>
+                                    {renderResultFlagDropdown(subTest, true, investigation.id)}
                                   </td>
                                   <td>
                                     <input

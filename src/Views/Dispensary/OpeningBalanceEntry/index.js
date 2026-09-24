@@ -10,7 +10,6 @@ import {
   GET_ALL_MANUFACTURER_FOR_DROPDOWN,
   REQUEST_PARAM_PAGE,
   REQUEST_PARAM_SIZE,
-  REQUEST_PARAM_SECTION_ID,
   REQUEST_PARAM_KEYWORD,
   GET_ALL_ITEMS_BY_NAME,
   REQUEST_PARAM_HOSPITAL_ID,
@@ -40,6 +39,7 @@ import {
   OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME,
 } from "../../../config/constants";
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {sanitizePositiveInt,blockNonDigitKeys} from "../../../utils/FormFieldsValiadtion"
 
 // PortalDropdown Component (unchanged)
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -94,6 +94,8 @@ const OpeningBalanceEntry = () => {
   const navigate = useNavigate();
 
   const [balanceType, setBalanceType] = useState("");
+  // Tracks the intended new balance type while the confirmation popup is open
+  const [pendingBalanceType, setPendingBalanceType] = useState(null);
 
   const [itemDropdown, setItemDropdown] = useState([]);
   const [itemSearch, setItemSearch] = useState("");
@@ -243,6 +245,76 @@ const OpeningBalanceEntry = () => {
     setBrandOptionsByRow({});
     fetchManufacturersByBalanceType(balanceType);
   }, [balanceType]);
+
+  // Handle balance type change with confirmation (same pattern as IndentCreation)
+  const handleBalanceTypeChange = (e) => {
+    const newBalanceType = e.target.value;
+
+    // Detect if the user has already written anything in the table
+    const hasData = drugEntries.some(
+      (entry) =>
+        (entry.drugName && entry.drugName.trim() !== "") ||
+        entry.drugId ||
+        (entry.drugCode && entry.drugCode.trim() !== "") ||
+        (entry.batchNoSerialNo && entry.batchNoSerialNo.trim() !== "") ||
+        (entry.qty !== "" && entry.qty !== null && entry.qty !== undefined)
+    );
+
+    if (hasData && newBalanceType !== balanceType) {
+      setPendingBalanceType(newBalanceType);
+
+      showConfirmationPopup(
+        "Changing Balance Type will clear all entered items. Do you want to continue?",
+        "warning",
+        () => {
+          // User confirmed → actually change the type.
+          // The existing useEffect on balanceType will clear manufacturer/brand,
+          // and we reset entries so nothing stale remains.
+          setBalanceType(newBalanceType);
+
+          setDrugEntries((prevEntries) =>
+            prevEntries.map((entry) => ({
+              ...entry,
+              drugCode: "",
+              drugName: "",
+              drugId: null,
+              unit: "",
+              batchNoSerialNo: "",
+              dom: "",
+              doe: "",
+              qty: "",
+              unitsPerPack: "",
+              purchaseRatePerUnit: "",
+              gstPercent: "",
+              mrpPerUnit: "",
+              totalCost: "",
+              brandName: "",
+              manufacturer: "",
+              drugData: null,
+            }))
+          );
+
+          setBrandOptionsByRow({});
+          setShowItemDropdown(false);
+          setActiveRowIndex(null);
+          setItemSearch("");
+          setItemDropdown([]);
+
+          setPendingBalanceType(null);
+        },
+        () => {
+          // User cancelled → do nothing, select will snap back because
+          // its value is still bound to `balanceType`.
+          setPendingBalanceType(null);
+        },
+        "Yes",
+        "No"
+      );
+    } else {
+      // No data entered (or same value) → change silently
+      setBalanceType(newBalanceType);
+    }
+  };
 
   const fetchItems = async (page, searchText = "") => {
     try {
@@ -834,7 +906,7 @@ const OpeningBalanceEntry = () => {
                     <select
                       className="form-select"
                       value={balanceType}
-                      onChange={(e) => setBalanceType(e.target.value)}
+                      onChange={handleBalanceTypeChange}
                     >
                       <option value="">Select Balance Type</option>
                       <option value="drug">Drug</option>
@@ -869,7 +941,7 @@ const OpeningBalanceEntry = () => {
                       <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
-                      <th style={{ width: "80px", minWidth: "80px" }}>Qty</th>
+                      <th style={{ width: "80px", minWidth: "80px" }}>Quantity</th>
                       <th style={{ width: "100px", minWidth: "100px" }}>Units Per Pack</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>Purchase Rate/Unit</th>
                       <th style={{ width: "100px", minWidth: "100px" }}>GST Percent</th>
@@ -1042,10 +1114,13 @@ const OpeningBalanceEntry = () => {
                             type="number"
                             className="form-control form-control-sm"
                             value={entry.qty}
-                            onChange={(e) => handleDrugEntryChange(index, "qty", e.target.value)}
+                            onChange={(e) =>
+                              handleDrugEntryChange(index, "qty", sanitizePositiveInt(e.target.value))
+                            }
+                            onKeyDown={blockNonDigitKeys}
                             placeholder="0"
-                            min="0"
-                            step="0.01"
+                            min="1"
+                            step="1"
                             style={{ minWidth: "70px" }}
                             disabled={isSaving || isSubmitting}
                           />
@@ -1057,10 +1132,11 @@ const OpeningBalanceEntry = () => {
                             className="form-control form-control-sm"
                             value={entry.unitsPerPack}
                             onChange={(e) =>
-                              handleDrugEntryChange(index, "unitsPerPack", e.target.value)
+                              handleDrugEntryChange(index, "unitsPerPack", sanitizePositiveInt(e.target.value))
                             }
+                            onKeyDown={blockNonDigitKeys}
                             placeholder="0"
-                            min="0"
+                            min="1"
                             step="1"
                             style={{ minWidth: "90px" }}
                             disabled={isSaving || isSubmitting}

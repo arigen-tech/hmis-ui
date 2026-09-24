@@ -4,7 +4,8 @@ export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.188:8080';
-//export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
+//export const API_HOST = 'http://192.168.1.29:8080';
+// export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -395,6 +396,8 @@ export const PENDING_COMPONENT_GENERATION_LIST = `/bloodBank/pendingComponentGen
 export const SAVE_BLOOD_COLLECTION_DATA = `/bloodBank/saveBloodCollection`;
 export const CREATE_BLOOD_REQUEST = `/bloodBank/createBloodRequest`;
 export const GET_BLOOD_REQUEST_TRACKING = `/bloodBank/getBloodRequestTrackingList`;
+export const GET_AVAILABLE_INVENTORY_UNITS = `/bloodBank/getAvailableInventoryUnits`;
+export const ALLOCATE_BLOOD_UNITS = `/bloodBank/allocateBloodUnits`;
 export const GET_FAILURE_REASONS = `${MASTERS}/masComponentFailureReason`;
 export const COMPONENT_GENERATION_FAIL = "/bloodBank/componentGenerationFail";
 export const COMPONENT_GENERATION_PASS = "/bloodBank/componentGenerationPass";
@@ -715,6 +718,7 @@ export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;
 
 // Stock Status Report Endpoints
 export const GET_ALL_ITEM_SECTIONS = `${MAS_ITEM_SECTION}/getAll/1`;
+export const GET_ITEM_SECTIONS_BY_TYPE = `${INVENTORY}/itemSections`;
 export const GET_ITEM_CLASS_BY_SECTION = `${MAS_ITEM_CLASS}/getAllBySectionId`;
 export const GET_ALL_STOCKS = `${INVENTORY}/getAllStocks`;
 export const STOCK_REPORT_SUMMARY_URL = `${ALL_REPORTS}/stockReportSummary`;
@@ -879,3 +883,19 @@ export const ACTIVE_ADMISSION_LIST_OT = '/otController/activeAdmissionList';
 
 export const MAS_TOOTH_BY_TYPE = `${MASTERS}/masToothByToothType`;
 export const GET_PROCEDURE_WORKLIST = `/procedure/getProcedureWorkList`;
+
+export const RAZORPAY_CREATE_ORDER = "/api/payments/create-order";
+export const RAZORPAY_VERIFY = "/api/payments/verify";
+export const RAZORPAY_REFUND = "/api/payments/refund";
+
+export const SMS = "/sms";
+export const VERIFY_CANCELLATION_OTP = `${SMS}/verify-otp`;
+export const SEND_CANCELLATION_OTP = `${SMS}/send-cancellation-otp`;
+
+
+export const RESULT_FLAG_DROPDOWN_END_URL = "/master/result-flag/all"
+export const DETECT_RESULT_FLAG_END_URL   = "/lab/detect-flag"
+export const REQUEST_PARAM_RESULT          = "result"
+export const REQUEST_PARAM_NORMAL_RANGE    = "normalRange"
+export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600   
+

@@ -342,7 +342,6 @@ const OPDServiceMaster = () => {
         response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
       }
 
-      debugger;
       const resultStatus = response?.data?.status ?? response?.status;
       const resultMessage = response?.data?.message ?? response?.message;
 

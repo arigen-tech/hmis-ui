@@ -3,7 +3,16 @@ import Popup from "../../../Components/popup"
 import './StockStatusReport.css';
 import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
 import { formatDateForDisplay } from "../../../utils/dateUtils";
-import { ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE, INVENTORY, GET_ALL_ITEM_SECTIONS, GET_ITEM_CLASS_BY_SECTION, GET_ALL_STOCKS, STOCK_REPORT_SUMMARY_URL, STOCK_REPORT_DETAIL_URL, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_ITEM_ID, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_TYPE, REQUEST_PARAM_ITEM_CLASS_ID, STATUS_P, STATUS_D } from "../../../config/apiConfig";
+import { 
+  ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE, INVENTORY, 
+  GET_ALL_ITEM_SECTIONS, GET_ITEM_CLASS_BY_SECTION, GET_ALL_STOCKS, 
+  STOCK_REPORT_SUMMARY_URL, STOCK_REPORT_DETAIL_URL, GET_ALL_ITEMS_BY_NAME, 
+  REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID, REQUEST_PARAM_SECTION_ID, 
+  REQUEST_PARAM_ITEM_ID, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, 
+  REQUEST_PARAM_SIZE, REQUEST_PARAM_TYPE, REQUEST_PARAM_ITEM_CLASS_ID, 
+  STATUS_P, STATUS_D, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS, 
+  GET_ITEM_SECTIONS_BY_TYPE
+} from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
@@ -42,6 +51,7 @@ const StockStatusReport = () => {
   const [isPrinting, setIsPrinting] = useState(false);
 
   const [filters, setFilters] = useState({
+    itemType: "All",
     class: "All",
     section: "All",
     itemSearch: "",
@@ -53,13 +63,25 @@ const StockStatusReport = () => {
   const [reportGenerated, setReportGenerated] = useState(false);
   const itemSearchInputRef = useRef(null)
 
+  // Helper to map dropdown value to API section code
+  const getItemTypeCode = (itemType) => {
+    if (itemType === "Drug") return SECTION_CODE_FOR_DRUGS;
+    if (itemType === "Non-Drug") return SECTION_CODE_FOR_NON_DRUGS;
+    return null;
+  };
+
   useEffect(() => {
-    fetchItemSection();
+    fetchItemSection(filters.itemType);
   }, []);
 
-  const fetchItemSection = async () => {
+  const fetchItemSection = async (itemType) => {
     try {
-      const data = await getRequest(GET_ALL_ITEM_SECTIONS);
+      const itemTypeCode = getItemTypeCode(itemType);
+      // If itemType is "All", we fetch all sections without the specific code path, 
+      // otherwise we use the controller endpoint /itemSections/{itemTypeCode}
+      const url = itemTypeCode ? `${GET_ITEM_SECTIONS_BY_TYPE}/${itemTypeCode}` : GET_ALL_ITEM_SECTIONS;
+      
+      const data = await getRequest(url);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSections(data.response);
       } else {
@@ -173,10 +195,23 @@ const StockStatusReport = () => {
     setFilters((prevFilters) => ({
       ...prevFilters,
       [id]: value,
+      ...(id === "itemType" ? { section: "All", class: "All", itemSearch: "" } : {}),
       ...(id === "section" ? { class: "All" } : {}),
     }));
 
     setCurrentPage(1);
+
+    if (id === "itemType") {
+      fetchItemSection(value);
+      setClasses([]);
+      setCurrentItemId(null);
+      setSearchTerm("");
+      setItemOptions([]);
+      setDropdownPage(0);
+      setDropdownHasMore(false);
+      setCurrentSearchKeyword("");
+      setCurrentSearchSection("");
+    }
 
     if (id === "section") {
       setCurrentItemId(null);
@@ -192,6 +227,7 @@ const StockStatusReport = () => {
 
   const handleReset = () => {
     setFilters({
+      itemType: "All",
       class: "All",
       section: "All",
       itemSearch: "",
@@ -207,6 +243,8 @@ const StockStatusReport = () => {
     setDropdownHasMore(false);
     setCurrentSearchKeyword("");
     setCurrentSearchSection("");
+    fetchItemSection("All");
+    setClasses([]);
   };
 
   const showPopup = (message, type = "info") => {
@@ -230,6 +268,12 @@ const StockStatusReport = () => {
         const itemId = currentItemId;
 
         let url = `${GET_ALL_STOCKS}?${REQUEST_PARAM_TYPE}=${reportType}&${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`;
+
+        // Append the Item Type code (Drug / Non-Drug) if applicable
+        const itemTypeCode = getItemTypeCode(filters.itemType);
+        if (itemTypeCode) {
+          url += `&itemTypeCode=${itemTypeCode}`;
+        }
 
         if (sectionId) url += `&${REQUEST_PARAM_SECTION_ID}=${sectionId}`;
         if (classId) url += `&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}`;
@@ -334,7 +378,21 @@ const StockStatusReport = () => {
 
               {/* Filters Section */}
               <div className="row mb-4">
-                <div className="col-md-4">
+                <div className="col-md-3">
+                  <label className="form-label">Item Type</label>
+                  <select
+                    className="form-select"
+                    id="itemType"
+                    value={filters.itemType}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="All">All</option>
+                    <option value="Drug">Drug</option>
+                    <option value="Non-Drug">Non-Drug</option>
+                  </select>
+                </div>
+
+                <div className="col-md-3">
                   <label className="form-label">Section</label>
                   <select
                     className="form-select"
@@ -351,7 +409,7 @@ const StockStatusReport = () => {
                   </select>
                 </div>
 
-                <div className="col-md-4 mb-2">
+                <div className="col-md-3 mb-2">
                   <label className="form-label">Class</label>
                   <select
                     className="form-select"
@@ -369,7 +427,7 @@ const StockStatusReport = () => {
                   </select>
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-md-3">
                   <label className="form-label">Item Code/Name</label>
                   <div style={{ position: "relative" }}>
                     <input

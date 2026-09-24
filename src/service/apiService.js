@@ -55,6 +55,48 @@ export const getRequest = async (endpoint, headers = {}) => {
   }
 };
 
+// apiService.js
+
+/**
+ * GET request for PUBLIC endpoints (no Authorization header sent).
+ * Use this for whitelisted / permitAll endpoints such as login-page helpers.
+ *
+ * @param {string} endpoint - The API endpoint
+ * @param {object} headers  - Optional extra headers
+ * @returns {Promise<object>} - API response (parsed JSON or text)
+ */
+export const getPublicRequest = async (endpoint, headers = {}) => {
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,         
+      },
+    });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const data = isJsonResponse ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (data && typeof data === "object" && data.message) ||
+        (typeof data === "string" && data) ||
+        response.statusText ||
+        "Request failed";
+
+      throw createRequestError(response.status, message, data);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("GET (public) Error:", error);
+    throw error;
+  }
+};
+
 export const getImageRequest = async (
   endpoint,
   headers = {},
@@ -141,6 +183,52 @@ export const postRequest = async (endpoint, data, options = {}) => {
     return responseData;
   } catch (error) {
     console.error("POST Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Function to call POST API for PUBLIC (whitelisted / permitAll) endpoints.
+ * Never sends an Authorization header — use for login, OTP, signup, etc.
+ *
+ * @param {string} endpoint - The API endpoint
+ * @param {object} data - Request body
+ * @param {object} options - Optional options ({ isMultipart: true } for FormData)
+ * @returns {Promise<object>} - API response
+ */
+export const postPublicRequest = async (endpoint, data, options = {}) => {
+  try {
+    const isMultipart = options.isMultipart;
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+       
+        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
+      },
+      body: isMultipart ? data : JSON.stringify(data),
+    });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const responseData = isJsonResponse
+      ? await response.json()
+      : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (responseData && typeof responseData === "object" && responseData.message) ||
+        (typeof responseData === "string" && responseData) ||
+        response.statusText ||
+        "Request failed";
+
+      throw createRequestError(response.status, message, responseData);
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error("POST (public) Error:", error);
     throw error;
   }
 };

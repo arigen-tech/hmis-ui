@@ -1,10 +1,36 @@
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef, Fragment } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { FIXED_VALUE_DROPDOWNS_END_URL, LAB, PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL, PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL, PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL, REQUEST_PARAM_AGE, REQUEST_PARAM_GENDER_CODE, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_INVESTIGATION_ID, REQUEST_PARAM_MOBILE_NO, REQUEST_PARAM_PAGE, REQUEST_PARAM_PATIENT_NAME, REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID, REQUEST_PARAM_SIZE, REQUEST_PARAM_SUB_INVESTIGATION_ID, SAVE_RESULT_ENTRY_END_URL } from "../../../config/apiConfig"
+import {
+  FIXED_VALUE_DROPDOWNS_END_URL,
+  PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL,
+  PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL,
+  PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL,
+  SAVE_RESULT_ENTRY_END_URL,
+  RESULT_FLAG_DROPDOWN_END_URL,
+  DETECT_RESULT_FLAG_END_URL,
+  RESULT_FLAG_DETECT_DEBOUNCE_MS,
+  REQUEST_PARAM_AGE,
+  REQUEST_PARAM_GENDER_CODE,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_INVESTIGATION_ID,
+  REQUEST_PARAM_MOBILE_NO,
+  REQUEST_PARAM_NORMAL_RANGE,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_PATIENT_NAME,
+  REQUEST_PARAM_RESULT,
+  REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID,
+  REQUEST_PARAM_SIZE,
+  REQUEST_PARAM_SUB_INVESTIGATION_ID,
+} from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import { FETCH_AUTO_FILL_ERR_MSG, FETCH_RESULT_VALIDATE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SUBMIT_ERR_MSG, RESULT_SUBMIT_SUCC_MSG } from "../../../config/constants"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  FETCH_RESULT_VALIDATE_ERR_MSG,
+  RESULT_ENTRY_WARN_MSG,
+  RESULT_SUBMIT_ERR_MSG,
+  RESULT_SUBMIT_SUCC_MSG,
+} from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const PendingForResultEntry = () => {
   const [resultList, setResultList] = useState([])
@@ -23,22 +49,72 @@ const PendingForResultEntry = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
+  // Result flag master dropdown
+  const [resultFlagList, setResultFlagList] = useState([])
+
+  // Debounce timers per row (keyed by row id)
+  const debounceTimersRef = useRef({})
+
   const hospitalId = sessionStorage.getItem("hospitalId")
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
 
-  // Fetch pending result entry headers on component mount
+  // Fetch pending result entry headers + result flag master on mount
   useEffect(() => {
     fetchPendingResultHeaders()
-  }, []) // Only run once on mount
+    fetchResultFlags()
+  }, [])
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimersRef.current).forEach(clearTimeout)
+      debounceTimersRef.current = {}
+    }
+  }, [])
+
+  // Fetch result flag master
+  const fetchResultFlags = async () => {
+    try {
+      const data = await getRequest(`${RESULT_FLAG_DROPDOWN_END_URL}`)
+      console.log("Result Flag master response:", data)
+      if (data.status === 200 && data.response) {
+        setResultFlagList(data.response)
+      } else {
+        setResultFlagList([])
+      }
+    } catch (error) {
+      console.error("Error fetching result flags:", error)
+      setResultFlagList([])
+    }
+  }
+
+  // Detect flag from backend
+  const detectResultFlag = async (result, normalRange) => {
+    if (!result || result.trim() === "") return null
+    if (!normalRange || normalRange.trim() === "") return null
+    try {
+      const url = `${DETECT_RESULT_FLAG_END_URL}?${REQUEST_PARAM_RESULT}=${encodeURIComponent(
+        result
+      )}&${REQUEST_PARAM_NORMAL_RANGE}=${encodeURIComponent(normalRange)}`
+      const data = await getRequest(url)
+      if (data.status === 200 && data.response) {
+        return data.response
+      }
+      return null
+    } catch (error) {
+      console.error("Error detecting result flag:", error)
+      return null
+    }
+  }
 
   // Separate effect for page changes without loading screen
   useEffect(() => {
-    if (!loading) { // Only fetch if initial load is complete
+    if (!loading) {
       fetchPendingResultHeadersForPageChange()
     }
   }, [currentPage])
 
-  // API call for headers with search filters and pagination (with loading)
+  // API call for headers with search filters and pagination
   const fetchPendingResultHeaders = async (isSearchAction = false) => {
     try {
       if (isSearchAction) {
@@ -56,35 +132,28 @@ const PendingForResultEntry = () => {
         url += `&${REQUEST_PARAM_MOBILE_NO}=${encodeURIComponent(searchData.mobileNo)}`
       }
 
-      const data = await getRequest(url);
-
-      console.log("Headers API Response:", data);
+      const data = await getRequest(url)
 
       if (data.status === 200 && data.response) {
-        const formattedData = formatHeaderData(data.response.content || []);
-        setResultList(formattedData);
-        setTotalPages(data.response.totalPages || 0);
-        setTotalElements(data.response.totalElements || 0);
-        // Check if any search filters are applied
+        const formattedData = formatHeaderData(data.response.content || [])
+        setResultList(formattedData)
+        setTotalPages(data.response.totalPages || 0)
+        setTotalElements(data.response.totalElements || 0)
         const hasFilters = searchData.patientName || searchData.mobileNo
         setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching pending result headers:', data.message);
-        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+        console.error("Error fetching pending result headers:", data.message)
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
       }
     } catch (error) {
-      console.error('Error fetching pending result headers:', error);
-      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      console.error("Error fetching pending result headers:", error)
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
     } finally {
-      if (isSearchAction) {
-        setIsSearching(false)
-      } else {
-        setLoading(false)
-      }
+      if (isSearchAction) setIsSearching(false)
+      else setLoading(false)
     }
-  };
+  }
 
-  // New function for page changes without loading screen
   const fetchPendingResultHeadersForPageChange = async () => {
     try {
       let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
@@ -96,149 +165,130 @@ const PendingForResultEntry = () => {
         url += `&${REQUEST_PARAM_MOBILE_NO}=${encodeURIComponent(searchData.mobileNo)}`
       }
 
-      const data = await getRequest(url);
-
-      console.log("Headers API Response:", data);
+      const data = await getRequest(url)
 
       if (data.status === 200 && data.response) {
-        const formattedData = formatHeaderData(data.response.content || []);
-        setResultList(formattedData);
-        setTotalPages(data.response.totalPages || 0);
-        setTotalElements(data.response.totalElements || 0);
-        // Check if any search filters are applied
+        const formattedData = formatHeaderData(data.response.content || [])
+        setResultList(formattedData)
+        setTotalPages(data.response.totalPages || 0)
+        setTotalElements(data.response.totalElements || 0)
         const hasFilters = searchData.patientName || searchData.mobileNo
         setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching pending result headers:', data.message);
-        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+        console.error("Error fetching pending result headers:", data.message)
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
       }
     } catch (error) {
-      console.error('Error fetching pending result headers:', error);
-      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      console.error("Error fetching pending result headers:", error)
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
     }
-  };
+  }
 
-  // API call for investigations when row is clicked
   const fetchInvestigations = async (sampleCollectionHeaderId) => {
     try {
-      const data = await getRequest(`${PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID}=${sampleCollectionHeaderId}`);
-
-      console.log("Investigations API Response:", data);
-
-      if (data.status === 200 && data.response) {
-        return data.response;
-      } else {
-        console.error('Error fetching investigations:', data.message);
-        return [];
-      }
+      const data = await getRequest(
+        `${PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID}=${sampleCollectionHeaderId}`
+      )
+      if (data.status === 200 && data.response) return data.response
+      return []
     } catch (error) {
-      console.error('Error fetching investigations:', error);
-      return [];
+      console.error("Error fetching investigations:", error)
+      return []
     }
-  };
+  }
 
-  // API call for sub-investigations
   const fetchSubInvestigations = async (investigationId, genderCode, age) => {
     try {
-      const data = await getRequest(`${PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_INVESTIGATION_ID}=${investigationId}&${REQUEST_PARAM_GENDER_CODE}=${genderCode}&${REQUEST_PARAM_AGE}=${encodeURIComponent(age)}`);
-
-      console.log("SubInvestigations API Response:", data);
-
-      if (data.status === 200 && data.response) {
-        return data.response;
-      } else {
-        console.error('Error fetching sub-investigations:', data.message);
-        return [];
-      }
+      const data = await getRequest(
+        `${PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_INVESTIGATION_ID}=${investigationId}&${REQUEST_PARAM_GENDER_CODE}=${genderCode}&${REQUEST_PARAM_AGE}=${encodeURIComponent(age)}`
+      )
+      if (data.status === 200 && data.response) return data.response
+      return []
     } catch (error) {
-      console.error('Error fetching sub-investigations:', error);
-      return [];
+      console.error("Error fetching sub-investigations:", error)
+      return []
     }
-  };
+  }
 
-  // API call for fixed values dropdown
   const fetchFixedValues = async (subInvestigationId) => {
     try {
-      const data = await getRequest(`${FIXED_VALUE_DROPDOWNS_END_URL}?${REQUEST_PARAM_SUB_INVESTIGATION_ID}=${subInvestigationId}`);
-
-      console.log("Fixed Values API Response:", data);
-
-      if (data.status === 200 && data.response) {
-        return data.response;
-      } else {
-        console.error('Error fetching fixed values:', data.message);
-        return [];
-      }
+      const data = await getRequest(
+        `${FIXED_VALUE_DROPDOWNS_END_URL}?${REQUEST_PARAM_SUB_INVESTIGATION_ID}=${subInvestigationId}`
+      )
+      if (data.status === 200 && data.response) return data.response
+      return []
     } catch (error) {
-      console.error('Error fetching fixed values:', error);
-      return [];
+      console.error("Error fetching fixed values:", error)
+      return []
     }
-  };
+  }
 
   const formatHeaderData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
       sampleCollectionHeaderId: item.sampleCollectionHeaderId,
-      patient_name: item.patientName || '',
-      mobile_no: item.mobileNumber || '',
-      relation: item.relation || '',
-      gender: item.patientGender || '',
-      age: item.patientAge || '',
+      patient_name: item.patientName || "",
+      mobile_no: item.mobileNumber || "",
+      relation: item.relation || "",
+      gender: item.patientGender || "",
+      age: item.patientAge || "",
       order_date: formatDate(item.orderDate),
       order_time: formatTime(item.orderTime),
       collection_date: formatDate(item.collectedDate),
       collection_time: formatTime(item.collectedTime),
-      order_no: item.orderNo || '',
+      order_no: item.orderNo || "",
       validated_date: formatDate(item.validatedDate),
       validated_time: formatTime(item.validatedTime),
-      department: item.department || '',
-      doctor_name: item.doctorName || '',
-      modality: item.subChargeCodeName || '',
-      collected_by: item.collectedBy || '',
-      validated_by: item.validatedBy || '',
-      clinical_notes: '',
+      department: item.department || "",
+      doctor_name: item.doctorName || "",
+      modality: item.subChargeCodeName || "",
+      collected_by: item.collectedBy || "",
+      validated_by: item.validatedBy || "",
+      clinical_notes: "",
       relationId: item.relationId || 0,
       mainChargeCodeId: item.mainChargeCodeId || 0,
       subChargeCodeId: item.subChargeCodeId || 0,
       visitId: item.visitId || 0,
       patientId: item.patientId || 0,
+      inpatientId: item.inpatientId || 0,
     }))
   }
 
   const formatDate = (dateString) => {
-    if (!dateString) return new Date().toLocaleDateString('en-GB');
-
+    if (!dateString) return new Date().toLocaleDateString("en-GB")
     try {
-      if (typeof dateString === 'string') {
-        const datePart = dateString.split('T')[0];
-        const date = new Date(datePart);
-        return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
+      if (typeof dateString === "string") {
+        const datePart = dateString.split("T")[0]
+        const date = new Date(datePart)
+        return isNaN(date.getTime())
+          ? new Date().toLocaleDateString("en-GB")
+          : date.toLocaleDateString("en-GB")
       }
-      return new Date().toLocaleDateString('en-GB');
+      return new Date().toLocaleDateString("en-GB")
     } catch (error) {
-      console.error('Error formatting date:', error, dateString);
-      return new Date().toLocaleDateString('en-GB');
+      console.error("Error formatting date:", error, dateString)
+      return new Date().toLocaleDateString("en-GB")
     }
   }
 
   const formatTime = (timeValue) => {
-    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
+    if (!timeValue)
+      return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     try {
-      if (typeof timeValue === 'string') {
-        const timeParts = timeValue.split('T')[1]?.split(':') || timeValue.split(':');
+      if (typeof timeValue === "string") {
+        const timeParts = timeValue.split("T")[1]?.split(":") || timeValue.split(":")
         if (timeParts.length >= 2) {
-          return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+          return `${timeParts[0].padStart(2, "0")}:${timeParts[1].padStart(2, "0")}`
         }
-      } else if (timeValue && typeof timeValue === 'object') {
-        const hours = String(timeValue.hour || 0).padStart(2, '0');
-        const minutes = String(timeValue.minute || 0).padStart(2, '0');
-        return `${hours}:${minutes}`;
+      } else if (timeValue && typeof timeValue === "object") {
+        const hours = String(timeValue.hour || 0).padStart(2, "0")
+        const minutes = String(timeValue.minute || 0).padStart(2, "0")
+        return `${hours}:${minutes}`
       }
-      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     } catch (error) {
-      console.error('Error formatting time:', error, timeValue);
-      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      console.error("Error formatting time:", error, timeValue)
+      return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     }
   }
 
@@ -266,185 +316,250 @@ const PendingForResultEntry = () => {
   }
 
   const handleShowAll = async () => {
-    setSearchData({
-      barCodeSearch: "",
-      patientName: "",
-      mobileNo: "",
-    })
+    setSearchData({ barCodeSearch: "", patientName: "", mobileNo: "" })
     setCurrentPage(1)
     setIsShowingAll(true)
 
     try {
       setLoading(true)
-
       let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
-
-      const data = await getRequest(url);
-
-      console.log("All Headers API Response:", data);
+      const data = await getRequest(url)
 
       if (data.status === 200 && data.response) {
-        const formattedData = formatHeaderData(data.response.content || []);
-        setResultList(formattedData);
-        setTotalPages(data.response.totalPages || 0);
-        setTotalElements(data.response.totalElements || 0);
+        const formattedData = formatHeaderData(data.response.content || [])
+        setResultList(formattedData)
+        setTotalPages(data.response.totalPages || 0)
+        setTotalElements(data.response.totalElements || 0)
       } else {
-        console.error('Error fetching pending result headers:', data.message);
-        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+        console.error("Error fetching pending result headers:", data.message)
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
       }
     } catch (error) {
-      console.error('Error fetching pending result headers:', error);
-      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      console.error("Error fetching pending result headers:", error)
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   const handleRowClick = async (result) => {
     try {
-      // setLoading(true)
-
-      // Fetch investigations for this sample
       const investigations = await fetchInvestigations(result.sampleCollectionHeaderId)
 
-      // Process each investigation based on its type
-      const processedInvestigations = await Promise.all(investigations.map(async (inv, index) => {
-        if (inv.investigationType === 'm') {
-          // Fetch sub-investigations for this main investigation
-          const genderCode = result.gender ? result.gender.charAt(0).toUpperCase() : 'M';
-          const subInvestigations = await fetchSubInvestigations(inv.investigationId, genderCode, result.age)
+      const processedInvestigations = await Promise.all(
+        investigations.map(async (inv, index) => {
+          if (inv.investigationType === "m") {
+            const genderCode = result.gender ? result.gender.charAt(0).toUpperCase() : "M"
+            const subInvestigations = await fetchSubInvestigations(
+              inv.investigationId,
+              genderCode,
+              result.age
+            )
 
-          // Process sub-investigations with fixed values if needed
-          const processedSubTests = await Promise.all(subInvestigations.map(async (subTest, subIndex) => {
-            let fixedValues = []
-
-            // If comparisonType is 'f', fetch fixed values dropdown
-            if (subTest.comparisonType === 'f') {
-              fixedValues = await fetchFixedValues(subTest.subInvestigationId)
-            }
+            const processedSubTests = await Promise.all(
+              subInvestigations.map(async (subTest, subIndex) => {
+                let fixedValues = []
+                if (subTest.comparisonType === "f") {
+                  fixedValues = await fetchFixedValues(subTest.subInvestigationId)
+                }
+                return {
+                  id: `${index + 1}.${subIndex + 1}`,
+                  si_no:
+                    subInvestigations.length === 1
+                      ? ""
+                      : `${index + 1}.${String.fromCharCode(97 + subIndex)}`,
+                  subInvestigationId: subTest.subInvestigationId,
+                  investigation: subTest.subInvestigationName,
+                  sample: inv.sampleName,
+                  result: "",
+                  units: subTest.unitName || "",
+                  normal_range: subTest.normalValue || "",
+                  normalId: subTest.normalId || 0,
+                  remarks: "",
+                  reject: false,
+                  resultType: subTest.resultType || "t",
+                  comparisonType: subTest.comparisonType || "n",
+                  fixedValues: fixedValues,
+                  generatedSampleId: inv.generatedSampleId || "",
+                  sampleId: inv.sampleId,
+                  fixedValueExpectedResult: subTest.fixedValueExpectedResult || null,
+                  resultFlagId: null,
+                }
+              })
+            )
 
             return {
-              id: `${index + 1}.${subIndex + 1}`,
-              si_no: subInvestigations.length === 1 ? "" : `${index + 1}.${String.fromCharCode(97 + subIndex)}`,
-              subInvestigationId: subTest.subInvestigationId,
-              investigation: subTest.subInvestigationName,
+              id: index + 1,
+              si_no: index + 1,
+              investigationId: inv.investigationId,
+              investigation: inv.investigationName,
               sample: inv.sampleName,
               result: "",
-              units: subTest.unitName || "",
-              normal_range: subTest.normalValue || "",
-              normalId: subTest.normalId || 0,
+              units: inv.unitName || "",
+              normal_range: inv.normalValue || "",
               remarks: "",
               reject: false,
-              resultType: subTest.resultType || 't',
-              comparisonType: subTest.comparisonType || 'n',
-              fixedValues: fixedValues,
-              generatedSampleId: inv.generatedSampleId || '',
+              resultType: "m",
+              investigationType: "m",
               sampleId: inv.sampleId,
-              fixedValueExpectedResult: subTest.fixedValueExpectedResult || null
+              sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+              generatedSampleId: inv.generatedSampleId || "",
+              subTests: processedSubTests,
+              resultFlagId: null,
             }
-          }))
-
-          return {
-            id: index + 1,
-            si_no: index + 1,
-            investigationId: inv.investigationId,
-            investigation: inv.investigationName,
-            sample: inv.sampleName,
-            result: "",
-            units: inv.unitName || "",
-            normal_range: inv.normalValue || "",
-            remarks: "",
-            reject: false,
-            resultType: 'm',
-            investigationType: 'm',
-            sampleId: inv.sampleId,
-            sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
-            generatedSampleId: inv.generatedSampleId || '',
-            subTests: processedSubTests
+          } else {
+            return {
+              id: index + 1,
+              si_no: index + 1,
+              investigationId: inv.investigationId,
+              investigation: inv.investigationName,
+              sample: inv.sampleName,
+              result: "",
+              units: inv.unitName || "",
+              normal_range: inv.normalValue || "",
+              remarks: "",
+              reject: false,
+              resultType: "s",
+              investigationType: "s",
+              sampleId: inv.sampleId,
+              sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+              generatedSampleId: inv.generatedSampleId || "",
+              subTests: [],
+              resultFlagId: null,
+            }
           }
-        } else {
-          // Single investigation (type 's')
-          return {
-            id: index + 1,
-            si_no: index + 1,
-            investigationId: inv.investigationId,
-            investigation: inv.investigationName,
-            sample: inv.sampleName,
-            result: "",
-            units: inv.unitName || "",
-            normal_range: inv.normalValue || "",
-            remarks: "",
-            reject: false,
-            resultType: 's',
-            investigationType: 's',
-            sampleId: inv.sampleId,
-            sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
-            generatedSampleId: inv.generatedSampleId || '',
-            subTests: []
-          }
-        }
-      }))
+        })
+      )
 
-      const completeResultData = {
-        ...result,
-        investigations: processedInvestigations
-      }
-
-      setSelectedResult(completeResultData)
+      setSelectedResult({ ...result, investigations: processedInvestigations })
       setShowDetailView(true)
     } catch (error) {
-      console.error('Error fetching result details:', error)
-      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      console.error("Error fetching result details:", error)
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, "error")
     }
-    // finally {
-    //   setLoading(false)
-    // }
   }
 
   const handleBackToList = () => {
+    // Clear all pending debounce timers when leaving detail view
+    Object.values(debounceTimersRef.current).forEach(clearTimeout)
+    debounceTimersRef.current = {}
+
     setShowDetailView(false)
     setSelectedResult(null)
   }
 
   const handleInvestigationChange = (investigationId, field, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) =>
-        inv.id === investigationId ? { ...inv, [field]: value } : inv
-      )
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
+  setSelectedResult((prevResult) => {
+    if (!prevResult) return prevResult
+    const updatedInvestigations = prevResult.investigations.map((inv) =>
+      inv.id === investigationId ? { ...inv, [field]: value } : inv
+    )
+    return { ...prevResult, investigations: updatedInvestigations }
+  })
+}
   const handleSubTestChange = (investigationId, subTestId, field, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.id === investigationId) {
-          const updatedSubTests = inv.subTests.map((subTest) =>
-            subTest.id === subTestId ? { ...subTest, [field]: value } : subTest
-          )
-          return { ...inv, subTests: updatedSubTests }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
+  setSelectedResult((prevResult) => {
+    if (!prevResult) return prevResult
+    const updatedInvestigations = prevResult.investigations.map((inv) => {
+      if (inv.id === investigationId) {
+        const updatedSubTests = inv.subTests.map((subTest) =>
+          subTest.id === subTestId ? { ...subTest, [field]: value } : subTest
+        )
+        return { ...inv, subTests: updatedSubTests }
+      }
+      return inv
+    })
+    return { ...prevResult, investigations: updatedInvestigations }
+  })
+}
+
+  // Debounced flag detection (used only for text inputs)
+  const scheduleFlagDetection = (item, value, isSubTest, investigationId) => {
+    const key = isSubTest ? `${investigationId}-${item.id}` : `${item.id}`
+
+    // Clear previous timer for this row
+    if (debounceTimersRef.current[key]) {
+      clearTimeout(debounceTimersRef.current[key])
+    }
+
+    // Empty value → clear flag immediately, no API call
+    if (!value || value.trim() === "") {
+      if (isSubTest) {
+        handleSubTestChange(investigationId, item.id, "resultFlagId", null)
+      } else {
+        handleInvestigationChange(item.id, "resultFlagId", null)
+      }
+      return
+    }
+
+    // Schedule new detection
+    debounceTimersRef.current[key] = setTimeout(async () => {
+      const detected = await detectResultFlag(value, item.normal_range)
+      const flagId = detected?.resultFlagId || null
+
+      if (isSubTest) {
+        handleSubTestChange(investigationId, item.id, "resultFlagId", flagId)
+      } else {
+        handleInvestigationChange(item.id, "resultFlagId", flagId)
+      }
+
+      delete debounceTimersRef.current[key]
+    }, RESULT_FLAG_DETECT_DEBOUNCE_MS)
+  }
+
+  // Immediate detection (used for dropdowns/radios)
+  const handleResultValueChange = async (item, value, isSubTest, investigationId) => {
+    if (isSubTest) {
+      handleSubTestChange(investigationId, item.id, "result", value)
+    } else {
+      handleInvestigationChange(item.id, "result", value)
+    }
+
+    const detected = await detectResultFlag(value, item.normal_range)
+    const flagId = detected?.resultFlagId || null
+
+    if (isSubTest) {
+      handleSubTestChange(investigationId, item.id, "resultFlagId", flagId)
+    } else {
+      handleInvestigationChange(item.id, "resultFlagId", flagId)
     }
   }
 
-  // Render result input based on result type and comparison type
+  // Result Flag dropdown renderer
+  const renderResultFlagDropdown = (item, isSubTest = false, investigationId = null) => {
+    return (
+      <select
+        className="form-select"
+        style={{ minWidth: "120px" }}
+        value={item.resultFlagId || ""}
+        onChange={(e) => {
+          const val = e.target.value ? Number(e.target.value) : null
+          if (isSubTest && investigationId) {
+            handleSubTestChange(investigationId, item.id, "resultFlagId", val)
+          } else {
+            handleInvestigationChange(item.id, "resultFlagId", val)
+          }
+        }}
+      >
+        <option value="">-- Select --</option>
+        {resultFlagList.map((flag) => (
+          <option key={flag.resultFlagId} value={flag.resultFlagId}>
+            {flag.flagName}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+  // Render result input based on type
   const renderResultInput = (item, isSubTest = false, investigationId = null) => {
-    if (isSubTest && item.comparisonType === 'f' && item.fixedValues && item.fixedValues.length > 0) {
-      // Render dropdown for fixed values
+    // Fixed values dropdown
+    if (isSubTest && item.comparisonType === "f" && item.fixedValues && item.fixedValues.length > 0) {
       return (
         <select
           className="form-select"
           value={item.result || ""}
-          onChange={(e) => {
-            if (isSubTest && investigationId) {
-              handleSubTestChange(investigationId, item.id, "result", e.target.value)
-            } else if (!isSubTest) {
-              handleInvestigationChange(item.id, "result", e.target.value)
-            }
-          }}
+          onChange={(e) => handleResultValueChange(item, e.target.value, isSubTest, investigationId)}
         >
           <option value="">Select Result</option>
           {item.fixedValues.map((fixedValue, index) => (
@@ -453,20 +568,15 @@ const PendingForResultEntry = () => {
             </option>
           ))}
         </select>
-      );
-    } else if (isSubTest && item.resultType === 'r') {
-      // Render dropdown for radio type results
+      )
+    }
+    // Radio dropdown
+    else if (isSubTest && item.resultType === "r") {
       return (
         <select
           className="form-select"
           value={item.result || ""}
-          onChange={(e) => {
-            if (isSubTest && investigationId) {
-              handleSubTestChange(investigationId, item.id, "result", e.target.value)
-            } else if (!isSubTest) {
-              handleInvestigationChange(item.id, "result", e.target.value)
-            }
-          }}
+          onChange={(e) => handleResultValueChange(item, e.target.value, isSubTest, investigationId)}
         >
           <option value="">Select Result</option>
           <option value="Positive">Positive</option>
@@ -476,32 +586,38 @@ const PendingForResultEntry = () => {
           <option value="Present">Present</option>
           <option value="Absent">Absent</option>
         </select>
-      );
-    } else {
-      // Render text input
+      )
+    }
+    // Text input — debounced auto-detect
+    else {
       return (
         <input
           type="text"
           className="form-control"
-          value={item.result}
+          value={item.result || ""}
           onChange={(e) => {
+            const value = e.target.value
+
+            // 1. Update value immediately so typing stays responsive
             if (isSubTest && investigationId) {
-              handleSubTestChange(investigationId, item.id, "result", e.target.value)
-            } else if (!isSubTest) {
-              handleInvestigationChange(item.id, "result", e.target.value)
+              handleSubTestChange(investigationId, item.id, "result", value)
+            } else {
+              handleInvestigationChange(item.id, "result", value)
             }
+
+            // 2. Schedule debounced flag detection
+            scheduleFlagDetection(item, value, isSubTest, investigationId)
           }}
         />
-      );
+      )
     }
   }
 
   const handleSubmit = async () => {
     if (selectedResult) {
       try {
-        setLoading(true);
+        setLoading(true)
 
-        // Prepare the request payload
         const requestPayload = {
           relationId: selectedResult.relationId,
           mainChargeCodeId: selectedResult.mainChargeCodeId,
@@ -510,18 +626,15 @@ const PendingForResultEntry = () => {
           sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
           patientId: selectedResult.patientId,
           visitId: selectedResult.visitId,
-          inpatientId:selectedResult.inpatientId,
-          investigationList: []
-        };
+          inpatientId: selectedResult.inpatientId,
+          investigationList: [],
+        }
 
-        // Process each investigation
         for (const inv of selectedResult.investigations) {
-          const resultEntryDetails = [];
+          const resultEntryDetails = []
 
-          if (inv.investigationType === 's') {
-            // Single investigation - handle both accepted and rejected cases
+          if (inv.investigationType === "s") {
             if (!inv.reject && inv.result && inv.result.trim() !== "") {
-              // Accepted with result
               resultEntryDetails.push({
                 result: inv.result,
                 remarks: inv.remarks || "",
@@ -533,10 +646,10 @@ const PendingForResultEntry = () => {
                 fixedId: 0,
                 normalId: 0,
                 normalRange: inv.normal_range || "",
-                fixedValue: null
-              });
+                fixedValue: null,
+                resultFlagId: inv.resultFlagId || null,
+              })
             } else if (inv.reject) {
-              // Rejected investigation - include with null result
               resultEntryDetails.push({
                 result: null,
                 remarks: inv.remarks || "Rejected",
@@ -548,29 +661,28 @@ const PendingForResultEntry = () => {
                 fixedId: 0,
                 normalId: 0,
                 normalRange: inv.normal_range || "",
-                fixedValue: null
-              });
+                fixedValue: null,
+                resultFlagId: inv.resultFlagId || null,
+              })
             }
-          } else if (inv.investigationType === 'm') {
-            // Main investigation with sub-tests
-            const hasAnySubTestResult = inv.subTests.some(subTest =>
-              !subTest.reject && subTest.result && subTest.result.trim() !== ""
-            );
+          } else if (inv.investigationType === "m") {
+            const hasAnySubTestResult = inv.subTests.some(
+              (subTest) => !subTest.reject && subTest.result && subTest.result.trim() !== ""
+            )
 
             if (hasAnySubTestResult) {
               for (const subTest of inv.subTests) {
                 if (!subTest.reject && subTest.result && subTest.result.trim() !== "") {
-                  // Sub-test with result
-                  let fixedId = 0;
-                  let normalId = 0;
+                  let fixedId = 0
+                  let normalId = 0
 
-                  if (subTest.comparisonType === 'f' && subTest.fixedValues) {
+                  if (subTest.comparisonType === "f" && subTest.fixedValues) {
                     const selectedFixedValue = subTest.fixedValues.find(
-                      fixedValue => fixedValue.fixedValue === subTest.result
-                    );
-                    fixedId = selectedFixedValue ? selectedFixedValue.fixedId : 0;
-                  } else if (subTest.comparisonType === 'n') {
-                    normalId = subTest.normalId || 0;
+                      (fixedValue) => fixedValue.fixedValue === subTest.result
+                    )
+                    fixedId = selectedFixedValue ? selectedFixedValue.fixedId : 0
+                  } else if (subTest.comparisonType === "n") {
+                    normalId = subTest.normalId || 0
                   }
 
                   resultEntryDetails.push({
@@ -584,10 +696,10 @@ const PendingForResultEntry = () => {
                     fixedId: fixedId,
                     normalId: normalId,
                     normalRange: subTest.normal_range || "",
-                    fixedValue: null
-                  });
+                    fixedValue: null,
+                    resultFlagId: subTest.resultFlagId || null,
+                  })
                 } else if (subTest.reject) {
-                  // Rejected sub-test
                   resultEntryDetails.push({
                     result: null,
                     remarks: subTest.remarks || "Rejected",
@@ -599,10 +711,10 @@ const PendingForResultEntry = () => {
                     fixedId: 0,
                     normalId: 0,
                     normalRange: subTest.normal_range || "",
-                    fixedValue: null
-                  });
+                    fixedValue: null,
+                    resultFlagId: subTest.resultFlagId || null,
+                  })
                 } else if (!subTest.reject && (!subTest.result || subTest.result.trim() === "")) {
-                  // Empty sub-test (when some sub-tests have results)
                   resultEntryDetails.push({
                     result: null,
                     remarks: null,
@@ -614,53 +726,51 @@ const PendingForResultEntry = () => {
                     fixedId: 0,
                     normalId: 0,
                     normalRange: subTest.normal_range || "",
-                    fixedValue: null
-                  });
+                    fixedValue: null,
+                    resultFlagId: null,
+                  })
                 }
               }
             }
           }
 
-          // Only add if there are result entry details
           if (resultEntryDetails.length > 0) {
             requestPayload.investigationList.push({
               investigationId: inv.investigationId,
               sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
-              resultEntryDetailsRequestList: resultEntryDetails
-            });
+              resultEntryDetailsRequestList: resultEntryDetails,
+            })
           }
         }
 
-        // Check if there are any investigations with results to submit
         if (requestPayload.investigationList.length === 0) {
-          showPopup(RESULT_ENTRY_WARN_MSG, "warning");
-          setLoading(false);
-          return;
+          showPopup(RESULT_ENTRY_WARN_MSG, "warning")
+          setLoading(false)
+          return
         }
 
-        console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2));
+        console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2))
 
-        const response = await postRequest(`${SAVE_RESULT_ENTRY_END_URL}`, requestPayload);
+        const response = await postRequest(`${SAVE_RESULT_ENTRY_END_URL}`, requestPayload)
 
         if (response.status === 200) {
-          showPopup(RESULT_SUBMIT_SUCC_MSG, "success", true);
-          setShowDetailView(false);
-          setSelectedResult(null);
+          showPopup(RESULT_SUBMIT_SUCC_MSG, "success", true)
+          setShowDetailView(false)
+          setSelectedResult(null)
         } else {
-          throw new Error(response.message || "Failed to submit results");
+          throw new Error(response.message || "Failed to submit results")
         }
       } catch (error) {
-        console.error('Error submitting results:', error);
-        showPopup(error.message || RESULT_SUBMIT_ERR_MSG, "error");
+        console.error("Error submitting results:", error)
+        showPopup(error.message || RESULT_SUBMIT_ERR_MSG, "error")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-  };
+  }
 
   const handleReset = () => {
     if (selectedResult) {
-      // Refetch data to reset
       handleRowClick(selectedResult)
     }
   }
@@ -679,10 +789,10 @@ const PendingForResultEntry = () => {
   }
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    setCurrentPage(page)
   }
 
-  // Detail View
+  // ================= DETAIL VIEW =================
   if (showDetailView && selectedResult) {
     return (
       <div className="content-wrapper">
@@ -834,16 +944,17 @@ const PendingForResultEntry = () => {
                         <th>Result</th>
                         <th>Units</th>
                         <th>Normal Range</th>
+                        <th>Result Flag</th>
                         <th>Remarks</th>
                         <th>Reject</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedResult.investigations.map((investigation) => (
-                        <>
+                        <Fragment key={investigation.id}>
                           {investigation.subTests.length === 0 ? (
-                            // Single investigation without sub-tests (type 's')
-                            <tr key={investigation.id}>
+                            // Single investigation
+                            <tr>
                               <td>{investigation.si_no}</td>
                               <td>
                                 <input
@@ -870,9 +981,7 @@ const PendingForResultEntry = () => {
                                   readOnly
                                 />
                               </td>
-                              <td>
-                                {renderResultInput(investigation)}
-                              </td>
+                              <td>{renderResultInput(investigation)}</td>
                               <td>
                                 <input
                                   type="text"
@@ -891,13 +1000,18 @@ const PendingForResultEntry = () => {
                                   readOnly
                                 ></textarea>
                               </td>
+                              <td>{renderResultFlagDropdown(investigation)}</td>
                               <td>
                                 <input
                                   type="text"
                                   className="form-control"
                                   value={investigation.remarks}
                                   onChange={(e) =>
-                                    handleInvestigationChange(investigation.id, "remarks", e.target.value)
+                                    handleInvestigationChange(
+                                      investigation.id,
+                                      "remarks",
+                                      e.target.value
+                                    )
                                   }
                                 />
                               </td>
@@ -908,24 +1022,30 @@ const PendingForResultEntry = () => {
                                     type="checkbox"
                                     checked={investigation.reject}
                                     onChange={(e) =>
-                                      handleInvestigationChange(investigation.id, "reject", e.target.checked)
+                                      handleInvestigationChange(
+                                        investigation.id,
+                                        "reject",
+                                        e.target.checked
+                                      )
                                     }
-                                    style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                    style={{
+                                      width: "20px",
+                                      height: "20px",
+                                      border: "2px solid black",
+                                    }}
                                   />
                                 </div>
                               </td>
                             </tr>
                           ) : (
-                            // Main investigation with sub-tests (type 'm')
+                            // Main investigation with sub-tests
                             <>
-                              {/* Main investigation row (header) - NO generatedSampleId */}
-                              <tr key={investigation.id} className="table-secondary">
+                              <tr className="table-secondary">
                                 <td>{investigation.si_no}</td>
-                                <td colSpan="8">
+                                <td colSpan="9">
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
-                              {/* Sub-test rows - show generatedSampleId here */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
@@ -954,9 +1074,7 @@ const PendingForResultEntry = () => {
                                       readOnly
                                     />
                                   </td>
-                                  <td>
-                                    {renderResultInput(subTest, true, investigation.id)}
-                                  </td>
+                                  <td>{renderResultInput(subTest, true, investigation.id)}</td>
                                   <td>
                                     <input
                                       type="text"
@@ -975,13 +1093,19 @@ const PendingForResultEntry = () => {
                                       readOnly
                                     ></textarea>
                                   </td>
+                                  <td>{renderResultFlagDropdown(subTest, true, investigation.id)}</td>
                                   <td>
                                     <input
                                       type="text"
                                       className="form-control"
                                       value={subTest.remarks}
                                       onChange={(e) =>
-                                        handleSubTestChange(investigation.id, subTest.id, "remarks", e.target.value)
+                                        handleSubTestChange(
+                                          investigation.id,
+                                          subTest.id,
+                                          "remarks",
+                                          e.target.value
+                                        )
                                       }
                                     />
                                   </td>
@@ -992,9 +1116,18 @@ const PendingForResultEntry = () => {
                                         type="checkbox"
                                         checked={subTest.reject}
                                         onChange={(e) =>
-                                          handleSubTestChange(investigation.id, subTest.id, "reject", e.target.checked)
+                                          handleSubTestChange(
+                                            investigation.id,
+                                            subTest.id,
+                                            "reject",
+                                            e.target.checked
+                                          )
                                         }
-                                        style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                        style={{
+                                          width: "20px",
+                                          height: "20px",
+                                          border: "2px solid black",
+                                        }}
                                       />
                                     </div>
                                   </td>
@@ -1002,7 +1135,7 @@ const PendingForResultEntry = () => {
                               ))}
                             </>
                           )}
-                        </>
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -1010,10 +1143,18 @@ const PendingForResultEntry = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
+                  <button
+                    className="btn btn-primary me-3"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                  >
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
-                  <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
+                  <button
+                    className="btn btn-secondary me-3"
+                    onClick={handleReset}
+                    disabled={loading}
+                  >
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
@@ -1028,7 +1169,7 @@ const PendingForResultEntry = () => {
     )
   }
 
-  // List View
+  // ================= LIST VIEW =================
   return (
     <div className="content-wrapper">
       {popupMessage && (
@@ -1087,13 +1228,8 @@ const PendingForResultEntry = () => {
                             pattern="[0-9]*"
                             value={searchData.mobileNo}
                             onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "");
-                              handleSearchChange({
-                                target: {
-                                  id: "mobileNo",
-                                  value
-                                }
-                              });
+                              const value = e.target.value.replace(/\D/g, "")
+                              handleSearchChange({ target: { id: "mobileNo", value } })
                             }}
                           />
                         </div>
@@ -1106,11 +1242,15 @@ const PendingForResultEntry = () => {
                           >
                             {isSearching ? (
                               <>
-                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span
+                                  className="spinner-border spinner-border-sm me-2"
+                                  role="status"
+                                  aria-hidden="true"
+                                ></span>
                                 Searching...
                               </>
                             ) : (
-                              'Search'
+                              "Search"
                             )}
                           </button>
                           <button
@@ -1165,7 +1305,9 @@ const PendingForResultEntry = () => {
                               <td>{item.department}</td>
                               <td>{item.modality}</td>
                               <td>
-                                <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
+                                <span className={`badge ${getPriorityColor(item.priority)}`}>
+                                  {item.priority}
+                                </span>
                               </td>
                             </tr>
                           ))

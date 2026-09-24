@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import LoginImg from "../../assets/images/login-img.svg";
 import Cardiogram from "../../assets/images/cardiogram.png";
 import "./login.css";
-import { postRequest, getRequest } from "../../service/apiService";
+import { getPublicRequest, postPublicRequest} from "../../service/apiService";
 import { LOGIN, MAS_USER_DEPARTMENT } from "../../config/apiConfig";
 
 const Login = () => {
@@ -38,7 +38,7 @@ const Login = () => {
   const fetchDepartments = async (flag = 1) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_USER_DEPARTMENT}/getByUserName/${formData?.username}`);
+      const response = await getPublicRequest(`${MAS_USER_DEPARTMENT}/getByUserName/${formData?.username}`);
       if (response && response.response) {
         setDepartments(response.response);
       }
@@ -61,7 +61,7 @@ const Login = () => {
   const handleLogin = async (event) => {
     event.preventDefault();
     try {
-      const response = await postRequest(LOGIN, formData);
+      const response = await postPublicRequest(LOGIN, formData);
 
       if (response?.status === 401) {
         Swal.fire({

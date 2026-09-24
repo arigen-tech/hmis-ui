@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 import DatePicker from "../../../Components/DatePicker";
 import LoadingScreen from "../../../Components/Loading";
@@ -17,6 +17,9 @@ import {
   FILTER_LAB_DEPT,
   FILTER_RADIO_DEPT,
   FILTER_OPD_DEPT,
+  RAZORPAY_REFUND,
+  SEND_CANCELLATION_OTP,
+  VERIFY_CANCELLATION_OTP,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -192,6 +195,12 @@ const APPOINTMENT_TYPE_OPTIONS = [
   { value: FILTER_RADIO_DEPT, label: "Radiology" },
 ];
 
+const PAYMENT_MODE_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "CASH", label: "Cash" },
+  { value: "RAZORPAY", label: "Online" },
+];
+
 const getAppointmentStatusLabel = (status) => {
   const normalizedStatus = String(status || "")
     .trim()
@@ -207,6 +216,12 @@ const getAppointmentStatusLabel = (status) => {
     default:
       return status ? String(status) : "Unknown";
   }
+};
+
+const toTitleCase = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  const str = String(value);
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
 const getAppointmentStatusBadgeClass = (status) => {
@@ -231,6 +246,69 @@ const isCancelledAppointment = (status) =>
     .trim()
     .toLowerCase() === "c";
 
+// ================================================================
+// Payment scenario helpers (used in Cancel popup)
+// ================================================================
+const getPaymentScenario = (patient) => {
+  const hasPaymentId = !!patient?.paymentId;
+  const gateway = String(patient?.paymentGatewayMode || "").toUpperCase();
+  const paymentStatus = String(
+    patient?.paymentV2PaymentStatusCode || "",
+  ).toUpperCase();
+
+  const isRazorpay = gateway === "RAZORPAY";
+  const isPaid = paymentStatus === "PAID";
+  const isCash = gateway === "CASH";
+
+  // Online + Paid  => cancel with refund
+  if (hasPaymentId && isRazorpay && isPaid) {
+    return "ONLINE_PAID";
+  }
+
+  // Online + NOT paid => cancel without refund
+  if (hasPaymentId && isRazorpay && !isPaid) {
+    return "ONLINE_NOT_PAID";
+  }
+
+  // Cash payment => cancel without refund
+  if (isCash) {
+    return "CASH";
+  }
+
+  // No payment at all
+  if (!hasPaymentId && !gateway && !paymentStatus) {
+    return "NO_PAYMENT";
+  }
+
+  return "OTHER";
+};
+
+const getPaymentMessageHtml = (patient) => {
+  const scenario = getPaymentScenario(patient);
+  const amount = patient?.billedAmount ?? 0;
+
+  switch (scenario) {
+    case "ONLINE_PAID":
+      return `<div class="alert alert-info p-2">
+        <p class="mb-0">This appointment was paid online. <strong>&#8377;${amount}</strong> will be refunded to the original payment method upon cancellation.</p>
+      </div>`;
+    case "ONLINE_NOT_PAID":
+      return `<div class="alert alert-warning p-2">
+        <p class="mb-0">This appointment was try to be paid online but failed. The appointment will be cancelled without any refund.</p>
+      </div>`;
+    case "NO_PAYMENT":
+      return `<div class="alert alert-secondary p-2">
+        <p class="mb-0">No payment has been made for this appointment. The appointment will be cancelled without any refund.</p>
+      </div>`;
+    case "CASH":
+      return `<div class="alert alert-info p-2">
+        <p class="mb-0">This appointment was paid in cash. Any eligible refund will be processed separately.</p>
+      </div>`;
+    default:
+      return "";
+  }
+};
+
 const BookingAppointmentHistory = () => {
   // UI States
   const [mobileNumber, setMobileNumber] = useState("");
@@ -243,6 +321,7 @@ const BookingAppointmentHistory = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedDeptTypeCode, setSelectedDeptTypeCode] =
     useState(FILTER_OPD_DEPT);
+  const [payment, setPayment] = useState(""); // Payment mode filter (optional)
 
   // Reschedule Popup States
   const [showReschedulePopup, setShowReschedulePopup] = useState(false);
@@ -272,6 +351,23 @@ const BookingAppointmentHistory = () => {
   const [patientToCancel, setPatientToCancel] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isOpdReschedule, setIsOpdReschedule] = useState(true);
+
+  // Cancellation submit-in-progress flag
+  const [cancelling, setCancelling] = useState(false);
+
+  // OTP verification states (Cancel popup)
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpSessionId, setOtpSessionId] = useState(null);
+  const otpDigitRefs = useRef([]);
+  const otpTimeoutsRef = useRef([]);
+  const [mobileFieldStatus, setMobileFieldStatus] = useState("idle"); // idle | success | error
+  const [otpBoxStatus, setOtpBoxStatus] = useState("idle"); // idle | error
+  const [otpShake, setOtpShake] = useState(false);
+  const [vanishingOtpIndex, setVanishingOtpIndex] = useState(null);
 
   // Functionality States
   const [newDate, setNewDate] = useState("");
@@ -359,6 +455,8 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
+    // NOTE: payment filter is now OPTIONAL — no validation here
+
     if (trimmedMobile && !/^\d{10}$/.test(trimmedMobile)) {
       showPopup(`${INVALID_MOBILE_NUMBER}`, "error");
       return;
@@ -369,9 +467,20 @@ const BookingAppointmentHistory = () => {
 
     try {
       const hospitalId = sessionStorage.getItem("hospitalId");
-      const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${trimmedMobile}&patientName=${encodeURIComponent(trimmedName)}&deptTypeCode=${selectedDeptTypeCode}&includeAllHistory=false`,
-      );
+
+      // Build URL conditionally — send payment only if selected
+      let url =
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}` +
+        `&mobileNo=${trimmedMobile}` +
+        `&patientName=${encodeURIComponent(trimmedName)}` +
+        `&deptTypeCode=${selectedDeptTypeCode}` +
+        `&includeAllHistory=false`;
+
+      if (payment) {
+        url += `&payment=${payment}`;
+      }
+
+      const res = await getRequest(url);
 
       if (res.status === 200) {
         const appointments =
@@ -380,7 +489,7 @@ const BookingAppointmentHistory = () => {
           res.response ||
           [];
 
-        if (!appointments || appointments.length === 0  && flag !== 1) {
+        if (!appointments || (appointments.length === 0 && flag !== 1)) {
           setReportData([]);
           setShowReport(true);
           showPopup(`${NO_APPOINTMENTS_FOUND}`, "info");
@@ -403,10 +512,7 @@ const BookingAppointmentHistory = () => {
               "N/A"
             : "N/A";
 
-          const displayDate =
-            formatDateForDisplay(sourceDateTime) ||
-            formatDateForDisplay(appointment.appointmentDate) ||
-            "N/A";
+          const displayDate = appointment.appointmentDate || "N/A";
 
           const shortDate =
             getAppointmentIsoDate(sourceDateTime) ||
@@ -437,6 +543,13 @@ const BookingAppointmentHistory = () => {
               appointment.visitStatus,
             ),
             appointmentSlot: appointmentSlot,
+
+            paymentMode: toTitleCase(appointment.paymentGatewayMode),
+            paymentModeName: appointment.paymentGatewayModeName,
+            paymentStatusDisplay: toTitleCase(
+              appointment.paymentV2PaymentStatusCode,
+            ),
+
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
             originalDate: shortDate,
@@ -450,6 +563,15 @@ const BookingAppointmentHistory = () => {
             displayDate: displayDate,
             displayTime: appointmentSlot,
             shortDate: shortDate,
+
+            // ---- Payment / refund related fields ----
+            billingHeaderId: appointment.billingHeaderId || null,
+            billedAmount: appointment.billedAmount || 0,
+            visitPaymentStatus: appointment.visitPaymentStatus || "",
+            paymentId: appointment.paymentId || null,
+            paymentGatewayMode: appointment.paymentGatewayMode || null,
+            paymentV2PaymentStatusCode:
+              appointment.paymentV2PaymentStatusCode || null,
           };
         });
 
@@ -509,7 +631,7 @@ const BookingAppointmentHistory = () => {
       }
 
       if (dateInput.includes(" ") && dateInput.includes("/")) {
-        const datePart = dateInput.split(" ")[0]; // Get "DD/MM/YYYY"
+        const datePart = dateInput.split(" ")[0];
         const [day, month, year] = datePart.split("/");
         return `${year}-${month}-${day}`;
       }
@@ -519,7 +641,7 @@ const BookingAppointmentHistory = () => {
       }
       return getTodayDate();
     };
-    // Set initial data from existing appointment
+
     const initialDate = patientData.shortDate || getTodayDate();
     setRescheduleData({
       department: patientData.departmentName,
@@ -546,6 +668,9 @@ const BookingAppointmentHistory = () => {
   const handleCancel = (patientData) => {
     setPatientToCancel(patientData);
     setSelectedReason("");
+    setOtp("");
+    setOtpSent(false);
+    setOtpVerified(false);
     setShowCancelPopup(true);
   };
 
@@ -553,8 +678,6 @@ const BookingAppointmentHistory = () => {
   const handleDateChange = async (date) => {
     if (!date) return;
 
-    // date from DatePicker should be in YYYY-MM-DD format
-    // But ensure we only take the date part if it contains time
     let cleanDate = date;
     if (date.includes(" ")) {
       cleanDate = date.split(" ")[0];
@@ -575,7 +698,6 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
-    // Store only the date in YYYY-MM-DD format
     setRescheduleData((prev) => ({
       ...prev,
       date: cleanDate,
@@ -752,7 +874,6 @@ const BookingAppointmentHistory = () => {
       ? `${formatDateToDDMMYYYY(newDate)} at ${slotToUse.slot}`
       : formatDateToDDMMYYYY(newDate);
 
-    // Get session name for display
     const sessionName =
       sessions.find((s) => String(s.id) === String(newSession))?.sessionName ||
       "";
@@ -864,8 +985,208 @@ const BookingAppointmentHistory = () => {
     }
   };
 
-  // Submit Cancellation
+  // ==========================================================
+  // OTP handlers
+  // ==========================================================
+  const resetOtpState = () => {
+    otpTimeoutsRef.current.forEach(clearTimeout);
+    otpTimeoutsRef.current = [];
+    setOtp("");
+    setOtpSent(false);
+    setOtpVerified(false);
+    setSendingOtp(false);
+    setVerifyingOtp(false);
+    setOtpSessionId(null);
+    setMobileFieldStatus("idle");
+    setOtpBoxStatus("idle");
+    setOtpShake(false);
+    setVanishingOtpIndex(null);
+  };
+
+  // Clears any pending animation timers if the component unmounts mid-sequence.
+  useEffect(() => {
+    return () => {
+      otpTimeoutsRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
+  // Runs the red-glow -> vibrate -> LIFO "dust" clear sequence used when
+  // OTP verification fails, instead of a popup.
+  const runOtpFailureAnimation = () => {
+    otpTimeoutsRef.current.forEach(clearTimeout);
+    otpTimeoutsRef.current = [];
+
+    setOtpBoxStatus("error");
+
+    const shakeTimer = setTimeout(() => {
+      setOtpShake(true);
+
+      const dustStartTimer = setTimeout(() => {
+        setOtpShake(false);
+
+        let index = 5;
+        const dustStep = () => {
+          if (index < 0) {
+            setVanishingOtpIndex(null);
+            setOtpBoxStatus("idle");
+            return;
+          }
+          setVanishingOtpIndex(index);
+          const clearTimer = setTimeout(() => {
+            setOtp((prev) => prev.slice(0, index));
+            index -= 1;
+            dustStep();
+          }, 140);
+          otpTimeoutsRef.current.push(clearTimer);
+        };
+        dustStep();
+      }, 550);
+      otpTimeoutsRef.current.push(dustStartTimer);
+    }, 1100);
+    otpTimeoutsRef.current.push(shakeTimer);
+  };
+
+  // Handles typing a single digit into one of the 6 OTP boxes and
+  // auto-advances focus to the next empty box.
+  const handleOtpDigitChange = (index, rawValue) => {
+    const digit = rawValue.replace(/\D/g, "").slice(-1);
+    const otpChars = otp.split("");
+    otpChars[index] = digit || "";
+    const nextOtp = otpChars.join("").slice(0, 6);
+    setOtp(nextOtp);
+
+    if (digit && index < 5) {
+      otpDigitRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Handles Backspace to clear the current box and move focus back.
+  const handleOtpDigitKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpDigitRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Supports pasting a full 6-digit code into any box.
+  const handleOtpPaste = (e) => {
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    setOtp(pasted);
+    const focusIndex = Math.min(pasted.length, 5);
+    otpDigitRefs.current[focusIndex]?.focus();
+  };
+
+  // Briefly glows the mobile-number field green/red to signal
+  // OTP send success/failure, instead of a popup.
+  const flashMobileField = (status) => {
+    setMobileFieldStatus(status);
+    const flashTimer = setTimeout(() => setMobileFieldStatus("idle"), 1800);
+    otpTimeoutsRef.current.push(flashTimer);
+  };
+
+  const handleSendOtp = async () => {
+    if (!patientToCancel?.mobileNumber) {
+      Swal.fire({
+        icon: "warning",
+        title: "Mobile number missing",
+        text: "No mobile number found for this appointment.",
+      });
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const res = await postRequest(
+        `${SEND_CANCELLATION_OTP}?mobileNumber=${patientToCancel.mobileNumber}`,
+        {},
+      );
+
+      if (res?.status === 200 && res?.response) {
+        setOtpSessionId(res.response);
+        setOtpSent(true);
+        setOtpVerified(false);
+        setOtp("");
+        flashMobileField("success");
+      } else {
+        setOtpSent(false);
+        setOtpSessionId(null);
+        flashMobileField("error");
+      }
+    } catch {
+      setOtpSent(false);
+      setOtpSessionId(null);
+      flashMobileField("error");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid OTP",
+        text: "Please enter the 6-digit OTP.",
+      });
+      return;
+    }
+
+    if (!otpSessionId) {
+      Swal.fire({
+        icon: "warning",
+        title: "OTP Not Sent",
+        text: "Please send the OTP before verifying.",
+      });
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      const res = await postRequest(
+        `${VERIFY_CANCELLATION_OTP}?sessionId=${otpSessionId}&otp=${otp}`,
+        {},
+      );
+
+      if (res?.status === 200 && res?.response === true) {
+        setOtpVerified(true);
+        setOtpBoxStatus("idle");
+      } else {
+        setOtpVerified(false);
+        runOtpFailureAnimation();
+      }
+    } catch {
+      setOtpVerified(false);
+      runOtpFailureAnimation();
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // Auto-verify as soon as all 6 digits are entered.
+  useEffect(() => {
+    if (otp.length === 6 && otpSent && !otpVerified && !verifyingOtp) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
+
+  // ==========================================================
+  // Submit Cancellation (updated for new payment logic + OTP)
+  // ==========================================================
   const submitCancellation = async () => {
+    if (!otpVerified) {
+      Swal.fire({
+        icon: "warning",
+        title: "OTP Not Verified",
+        text: "Please verify the OTP before cancelling the appointment.",
+      });
+      return;
+    }
+
     if (!selectedReason) {
       Swal.fire({
         icon: "warning",
@@ -875,7 +1196,6 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
-    // Get the full reason object
     const selectedReasonObj = cancellationReasons.find((r) => {
       const reasonId = r.id || r.reasonId || r.reasonCode;
       return String(reasonId) === String(selectedReason);
@@ -883,6 +1203,11 @@ const BookingAppointmentHistory = () => {
 
     const reasonName =
       selectedReasonObj?.reasonName || selectedReasonObj?.name || "Unknown";
+
+    // Determine scenario using new fields
+    const scenario = getPaymentScenario(patientToCancel);
+    const hasOnlinePayment = scenario === "ONLINE_PAID"; // only this triggers refund
+    const paymentMessageHtml = getPaymentMessageHtml(patientToCancel);
 
     const result = await Swal.fire({
       title: `${CONFIRM_CANCELLATION_TITLE}`,
@@ -892,50 +1217,95 @@ const BookingAppointmentHistory = () => {
           <div class="alert alert-warning p-2">
             <p class="mb-0"><strong>Reason:</strong> ${reasonName}</p>
           </div>
+          ${paymentMessageHtml}
         </div>
       `,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, Cancel",
+      confirmButtonText: hasOnlinePayment
+        ? "Yes, Cancel & Refund"
+        : "Yes, Cancel",
       cancelButtonText: "No",
       confirmButtonColor: "#dc3545",
     });
 
-    if (result.isConfirmed) {
-      Swal.showLoading();
-      try {
-        const cancelRequest = {
-          visitId: patientToCancel.visitId,
-          cancelReasonId: parseInt(selectedReason, 10),
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setCancelling(true);
+    Swal.showLoading();
+
+    try {
+      // STEP 1: Refund only if online payment is PAID
+      if (hasOnlinePayment) {
+        const refundRequest = {
+          billingHeaderId: patientToCancel.billingHeaderId,
+          refundAmount: patientToCancel.billedAmount,
+          refundReasonId: parseInt(selectedReason, 10),
         };
 
-        const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
+        console.log("=== INITIATING REFUND ===", refundRequest);
 
-        if (res.status === 200) {
-          setShowCancelPopup(false);
-          setSelectedReason("");
-          setPatientToCancel(null);
+        const refundRes = await postRequest(RAZORPAY_REFUND, refundRequest);
 
-          await Swal.fire({
-            icon: "success",
-            title: "Cancelled",
-            text: `${CANCELLATION_SUCCESS}`,
-            timer: 2000,
-          });
+        console.log("=== REFUND RESPONSE ===", refundRes);
 
-          await handleSearch(1);
-        } else {
-          throw new Error(res.message || "Server error");
+        if (!refundRes?.status || refundRes.status !== "REFUND_PENDING") {
+          throw new Error(
+            refundRes?.message ||
+              "Refund could not be initiated. Appointment was not cancelled.",
+          );
         }
-      } catch (error) {
-        console.error(`${CANCELLATION_ERROR}`, error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.message || `${CANCELLATION_ERROR}`,
-          timer: 2000,
-        });
       }
+
+      // STEP 2: Cancel the appointment
+      // refundAmount → billedAmount only when a refund is applicable, else null
+      // paymentMode   → paymentGatewayMode from the row response, else null
+      const cancelRequest = {
+        visitId: patientToCancel.visitId,
+        cancelReasonId: parseInt(selectedReason, 10),
+        paymentMode: patientToCancel.paymentGatewayMode || null,
+        refundAmount: patientToCancel.billedAmount || null,
+      };
+
+      console.log("=== CANCEL REQUEST ===", cancelRequest);
+
+      const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
+
+      if (res.status === 200) {
+        setShowCancelPopup(false);
+        setSelectedReason("");
+        setPatientToCancel(null);
+        resetOtpState();
+
+        await Swal.fire({
+          icon: "success",
+          title: "Cancelled",
+          text: hasOnlinePayment
+            ? `${CANCELLATION_SUCCESS} A refund of \u20B9${patientToCancel.billedAmount} has been initiated.`
+            : `${CANCELLATION_SUCCESS}`,
+          timer: 2500,
+        });
+
+        await handleSearch(1);
+      } else {
+        throw new Error(res.message || "Server error");
+      }
+    } catch (error) {
+      console.error(`${CANCELLATION_ERROR}`, error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error?.message ||
+          error?.response?.message ||
+          `${CANCELLATION_ERROR}`,
+        timer: 3500,
+      });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -950,6 +1320,54 @@ const BookingAppointmentHistory = () => {
 
   return (
     <div className="content-wrapper">
+      <style>{`
+        .otp-mobile-input {
+          border-radius: 10px !important;
+          transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .otp-mobile-input.otp-mobile-success {
+          animation: otpGlowGreen 1.8s ease;
+        }
+        .otp-mobile-input.otp-mobile-error {
+          animation: otpGlowRed 1.8s ease;
+        }
+        .otp-resend-btn {
+          border-radius: 10px !important;
+          white-space: nowrap;
+        }
+        @keyframes otpGlowGreen {
+          0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.55); border-color: #198754; }
+          45% { box-shadow: 0 0 14px 4px rgba(25, 135, 84, 0.45); border-color: #198754; }
+          100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+        @keyframes otpGlowRed {
+          0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); border-color: #dc3545; }
+          45% { box-shadow: 0 0 14px 4px rgba(220, 53, 69, 0.45); border-color: #dc3545; }
+          100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .otp-digit-box {
+          transition: border-color 0.2s ease, transform 0.15s ease;
+        }
+        .otp-digit-box.otp-box-error {
+          animation: otpGlowRed 1.6s ease;
+          border-color: #dc3545 !important;
+        }
+        .otp-digit-box.otp-box-shake {
+          animation: otpShake 0.5s ease;
+        }
+        .otp-digit-box.otp-box-vanish {
+          animation: otpDustOut 0.28s ease forwards;
+        }
+        @keyframes otpShake {
+          10%, 90% { transform: translateX(-2px); }
+          20%, 80% { transform: translateX(3px); }
+          30%, 50%, 70% { transform: translateX(-5px); }
+          40%, 60% { transform: translateX(5px); }
+        }
+        @keyframes otpDustOut {
+          to { opacity: 0; transform: translateY(-6px) scale(0.55); filter: blur(2px); }
+        }
+      `}</style>
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -960,7 +1378,7 @@ const BookingAppointmentHistory = () => {
             </div>
             <div className="card-body">
               <div className="row mb-4">
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Name</label>
                   <input
                     type="text"
@@ -971,7 +1389,7 @@ const BookingAppointmentHistory = () => {
                     onChange={(e) => setPatientName(e.target.value)}
                   />
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Mobile Number</label>
                   <input
                     type="text"
@@ -983,7 +1401,7 @@ const BookingAppointmentHistory = () => {
                   />
                 </div>
 
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <label className="form-label fw-bold">Appointment Type</label>
                   <select
                     className="form-select"
@@ -998,10 +1416,26 @@ const BookingAppointmentHistory = () => {
                   </select>
                 </div>
 
-                <div className="col-md-3 d-flex align-items-end">
+                <div className="col-md-2">
+                  <label className="form-label fw-bold">Payment Mode</label>
+                  <select
+                    className="form-select"
+                    value={payment}
+                    onChange={(e) => setPayment(e.target.value)}
+                  >
+                    <option value="">Select Payment</option>
+                    {PAYMENT_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-2 d-flex align-items-end">
                   <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-success w-100"
                     onClick={handleSearch}
                     disabled={searchLoading}
                   >
@@ -1049,6 +1483,8 @@ const BookingAppointmentHistory = () => {
                                 <th>Status</th>
                                 <th>Appointment Date</th>
                                 <th>Appointment Slot</th>
+                                <th>Payment</th>
+                                <th>Payment Status</th>
                                 <th>Actions</th>
                               </tr>
                             </thead>
@@ -1069,6 +1505,8 @@ const BookingAppointmentHistory = () => {
                                   </td>
                                   <td>{row.appointmentDate}</td>
                                   <td>{row.appointmentSlot}</td>
+                                  <td>{row.paymentModeName}</td>
+                                  <td>{row.paymentStatusDisplay}</td>
                                   <td>
                                     <div className="d-flex gap-2">
                                       <button
@@ -1405,7 +1843,9 @@ const BookingAppointmentHistory = () => {
                     setShowCancelPopup(false);
                     setSelectedReason("");
                     setPatientToCancel(null);
+                    resetOtpState();
                   }}
+                  disabled={cancelling}
                 ></button>
               </div>
               <div className="modal-body">
@@ -1435,7 +1875,166 @@ const BookingAppointmentHistory = () => {
                           <strong>Department:</strong>{" "}
                           {patientToCancel.departmentName}
                         </p>
+
+                        {/* Dynamic payment message based on scenario */}
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: getPaymentMessageHtml(patientToCancel),
+                          }}
+                        />
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ---- OTP Verification ---- */}
+                <div
+                  className={`card mb-3 ${
+                    otpVerified
+                      ? "border-success bg-success bg-opacity-10"
+                      : otpSent
+                        ? "border-warning bg-warning bg-opacity-10"
+                        : ""
+                  }`}
+                >
+                  <div
+                    className={`card-header ${
+                      otpVerified
+                        ? "bg-success bg-opacity-25"
+                        : otpSent
+                          ? "bg-warning bg-opacity-25"
+                          : ""
+                    }`}
+                  >
+                    <h6 className="mb-0 fw-bold">Verify OTP</h6>
+                  </div>
+                  <div className="card-body">
+                    <div className="mb-3">
+                      <label className="form-label">Mobile Number</label>
+                      <div className="d-flex align-items-center gap-2">
+                        <input
+                          type="text"
+                          className={`form-control bg-light fw-semibold otp-mobile-input ${
+                            mobileFieldStatus === "success"
+                              ? "otp-mobile-success"
+                              : mobileFieldStatus === "error"
+                                ? "otp-mobile-error"
+                                : ""
+                          }`}
+                          value={patientToCancel.mobileNumber || ""}
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          className={`btn otp-resend-btn ${
+                            otpVerified
+                              ? "btn-outline-success"
+                              : otpSent
+                                ? "btn-outline-warning"
+                                : "btn-outline-primary"
+                          }`}
+                          onClick={handleSendOtp}
+                          disabled={sendingOtp || verifyingOtp || otpVerified}
+                        >
+                          {sendingOtp && (
+                            <span
+                              className="spinner-border spinner-border-sm me-1"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                          )}
+                          {otpSent ? "Resend OTP" : "Send OTP"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-0">
+                      <label className="form-label">Enter OTP</label>
+                      <div className="d-flex gap-2" onPaste={handleOtpPaste}>
+                        {[0, 1, 2, 3, 4, 5].map((index) => (
+                          <input
+                            key={index}
+                            ref={(el) => (otpDigitRefs.current[index] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            className={`form-control text-center fw-bold otp-digit-box ${
+                              otpVerified
+                                ? "border-success text-success"
+                                : otpBoxStatus === "error"
+                                  ? "otp-box-error"
+                                  : otp[index]
+                                    ? "border-warning"
+                                    : ""
+                            } ${otpShake ? "otp-box-shake" : ""} ${
+                              vanishingOtpIndex === index
+                                ? "otp-box-vanish"
+                                : ""
+                            }`}
+                            style={{
+                              width: "44px",
+                              height: "48px",
+                              fontSize: "1.25rem",
+                              padding: 0,
+                            }}
+                            value={otp[index] || ""}
+                            onChange={(e) =>
+                              handleOtpDigitChange(index, e.target.value)
+                            }
+                            onKeyDown={(e) => handleOtpDigitKeyDown(index, e)}
+                            disabled={
+                              !otpSent ||
+                              otpVerified ||
+                              verifyingOtp ||
+                              otpBoxStatus === "error"
+                            }
+                          />
+                        ))}
+
+                        {verifyingOtp && (
+                          <span
+                            className="spinner-border spinner-border-sm text-warning align-self-center ms-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                        )}
+                      </div>
+
+                      {otpVerified && (
+                        <div className="text-success small mt-2">
+                          OTP verified successfully.
+                        </div>
+                      )}
+                      {otpBoxStatus === "error" && (
+                        <div className="text-danger small mt-2">
+                          Incorrect OTP. Please try again.
+                        </div>
+                      )}
+                      {otpSent && !otpVerified && otpBoxStatus !== "error" && (
+                        <div className="small mt-2">
+                          <span className="text-muted">
+                            Didn&apos;t received the code?{" "}
+                          </span>
+                          <span
+                            role="button"
+                            className="text-warning fw-semibold"
+                            style={{
+                              cursor:
+                                sendingOtp || verifyingOtp
+                                  ? "not-allowed"
+                                  : "pointer",
+                              textDecoration: "underline",
+                            }}
+                            onClick={() => {
+                              if (!sendingOtp && !verifyingOtp) {
+                                handleSendOtp();
+                              }
+                            }}
+                          >
+                            Resend Code
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1459,6 +2058,7 @@ const BookingAppointmentHistory = () => {
                           className="form-select"
                           value={selectedReason}
                           onChange={(e) => setSelectedReason(e.target.value)}
+                          disabled={cancelling}
                         >
                           <option value="">-- Select Reason --</option>
                           {cancellationReasons.map((reason) => {
@@ -1490,7 +2090,9 @@ const BookingAppointmentHistory = () => {
                     setShowCancelPopup(false);
                     setSelectedReason("");
                     setPatientToCancel(null);
+                    resetOtpState();
                   }}
+                  disabled={cancelling}
                 >
                   Back
                 </button>
@@ -1498,9 +2100,20 @@ const BookingAppointmentHistory = () => {
                   type="button"
                   className="btn btn-danger"
                   onClick={submitCancellation}
-                  disabled={!selectedReason}
+                  disabled={!selectedReason || !otpVerified || cancelling}
                 >
-                  Confirm Cancellation
+                  {cancelling ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Confirm Cancellation"
+                  )}
                 </button>
               </div>
             </div>

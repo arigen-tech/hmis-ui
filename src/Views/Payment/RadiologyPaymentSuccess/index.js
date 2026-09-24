@@ -11,13 +11,13 @@ const RadiologyPaymentSuccess = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const { amount = 0, paymentResponse, source } = location.state || {};
+  const { amount = 0, paymentResponse, source,billingHeaderId } = location.state || {};
   const billNo = paymentResponse?.response?.billNo;
   const paymentStatus = paymentResponse?.response?.paymentStatus;
 
   const generateRadiologyInvoice = async () => {
-    if (!billNo) {
-      alert("Missing bill number");
+    if (!billingHeaderId) {
+      alert("Missing Billing Header ");
       return;
     }
 
@@ -25,9 +25,7 @@ const RadiologyPaymentSuccess = () => {
     setPdfUrl(null);
 
     try {
-      const url = `${ALL_REPORTS}/radiologyInvoice?billNo=${encodeURIComponent(
-        billNo,
-      )}&flag=d`; 
+      const url = `${ALL_REPORTS}/radiologyInvoice?billHdId=${billingHeaderId}&flag=d`; 
 
       const response = await fetch(url, {
         method: "GET",
@@ -62,17 +60,15 @@ const RadiologyPaymentSuccess = () => {
   };
 
   const handlePrint = async () => {
-    if (!billNo) {
-      alert("Missing bill number");
+    if (!billingHeaderId) {
+      alert("Missing Billing Header");
       return;
     }
 
     setIsPrinting(true);
 
     try {
-      const url = `${ALL_REPORTS}/radiologyInvoice?billNo=${encodeURIComponent(
-        billNo,
-      )}&flag=p`;
+      const url = `${ALL_REPORTS}/radiologyInvoice?billHdId=${billingHeaderId}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
