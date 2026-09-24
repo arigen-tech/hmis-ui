@@ -190,7 +190,11 @@ const ItemReceivingMainScreen = () => {
     // Simulate a slight delay to show the searching state
     setTimeout(() => {
       const from = new Date(fromDate)
+      from.setHours(0, 0, 0, 0) // FIX: Set to start of the day (00:00:00.000)
+      
       const to = new Date(toDate)
+      to.setHours(23, 59, 59, 999) // FIX: Set to end of the day (23:59:59.999)
+      
       const filtered = indentHeaders.filter((item) => {
         const itemDate = new Date(item.indentDate)
         return itemDate >= from && itemDate <= to
