@@ -3,11 +3,10 @@ import Swal from "sweetalert2";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
-import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import { getRequest, putRequest } from "../../../service/apiService";
 import {
   GET_BLOOD_REQUEST_TRACKING,
   ACKNOWLEDGE_BLOOD_REQUEST,
-  UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
 } from "../../../config/apiConfig";
 
 const displayValue = (value) =>
@@ -88,21 +87,34 @@ const BloodRequestTracking = () => {
     fetchRequests(page - 1, { inpatientNo, patientName, requestNumber });
   };
 
-  const isRequestIssued = (request) => {
-    const status = String(request?.trackingStatus || "").trim().toLowerCase();
-    return status === "issued" || request?.trackingStatusId === 4;
+  const canUserAcknowledge = (request) => {
+    if (request?.canAcknowledge !== undefined && request?.canAcknowledge !== null) {
+      return Boolean(request.canAcknowledge);
+    }
+    const status = String(request?.trackingStatus || "").trim().toUpperCase();
+    return (
+      status === "ISSUED" ||
+      status === "PARTIALLY_ISSUED" ||
+      request?.trackingStatusId === 4 ||
+      Number(request?.fulfilledUnits || 0) > 0
+    );
   };
 
   const getAcknowledgeStatus = (request) => {
     const key =
+      request.requestDtId ||
       request.requestNo ||
       `${request.inpatientId}-${request.component}-${request.requestedDateTime}`;
     if (acknowledgedMap[key]) {
       return acknowledgedMap[key].status;
     }
-    if (request.acknowledgementStatus) return request.acknowledgementStatus;
-    if (request.acknowledgeStatus) return request.acknowledgeStatus;
-    if (request.ackStatus) return request.ackStatus;
+    const status =
+      request.acknowledgementStatus ||
+      request.acknowledgeStatus ||
+      request.ackStatus;
+    if (status && String(status).toUpperCase() !== "PENDING") {
+      return status;
+    }
     return null;
   };
 
@@ -124,81 +136,49 @@ const BloodRequestTracking = () => {
   const executeAcknowledge = async (request, action, remarksText) => {
     setIsSubmittingAck(true);
     try {
-      const requestDtId =
-        request.requestDtId != null
-          ? Number(request.requestDtId)
-          : request.bloodRequestDtId != null
-          ? Number(request.bloodRequestDtId)
-          : request.requestDetailId != null
-          ? Number(request.requestDetailId)
-          : request.dtId != null
-          ? Number(request.dtId)
-          : null;
+      const allocationIds =
+        Array.isArray(request.allocationIds) && request.allocationIds.length > 0
+          ? request.allocationIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id))
+          : request.allocationId != null
+          ? [Number(request.allocationId)]
+          : request.bloodAllocationId != null
+          ? [Number(request.bloodAllocationId)]
+          : request.requestDtId != null
+          ? [Number(request.requestDtId)]
+          : [];
 
-      const inventoryId =
-        request.inventoryId != null
-          ? Number(request.inventoryId)
-          : request.bloodInventoryId != null
-          ? Number(request.bloodInventoryId)
-          : request.unitId != null
-          ? Number(request.unitId)
-          : (Array.isArray(request.units) && request.units[0]?.inventoryId != null)
-          ? Number(request.units[0].inventoryId)
-          : null;
+      if (allocationIds.length === 0) {
+        throw new Error("No allocation ID found for this blood request.");
+      }
 
-      if (action === "Reject") {
-        // BloodIssueStatusRequest: isIssued: false, isRejected: true, rejectedReason: remarksText
-        const rejectPayload = {
-          requestDtId: requestDtId,
-          inventoryId: inventoryId,
-          isIssued: false,
-          isRejected: true,
-          rejectedReason: (remarksText || "").trim(),
-        };
+      // Execute acknowledgment for each allocation ID
+      const responses = await Promise.all(
+        allocationIds.map((allocId) =>
+          putRequest(ACKNOWLEDGE_BLOOD_REQUEST, {
+            allocationId: allocId,
+            accepted: action === "Accept",
+            remarks: (remarksText || "").trim(),
+          })
+        )
+      );
 
-        const response = await putRequest(
-          UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
-          rejectPayload
+      const response = responses[0];
+
+      const isSuccess =
+        response?.status === 200 ||
+        response?.data?.status === 200 ||
+        response?.data?.production === false;
+
+      if (!isSuccess && response?.status >= 400) {
+        throw new Error(
+          response?.data?.message ||
+            response?.message ||
+            "Failed to acknowledge blood request."
         );
-
-        const isSuccess =
-          response?.status === 200 ||
-          response?.data?.status === 200 ||
-          response?.data?.production === false;
-
-        if (!isSuccess && response?.status >= 400) {
-          throw new Error(
-            response?.data?.message ||
-              response?.message ||
-              "Failed to update rejection status."
-          );
-        }
-      } else {
-        const payload = {
-          requestId: request.requestId || request.id || null,
-          requestHdId: request.requestHdId || request.requestId || request.id || null,
-          requestDtId: requestDtId,
-          inventoryId: inventoryId,
-          requestNo: request.requestNo || "",
-          inpatientId: request.inpatientId || null,
-          patientId: request.patientId || null,
-          action: action, // "Accept"
-          status: "Accepted",
-          remarks: (remarksText || "").trim(),
-          acknowledgedDateTime: new Date().toISOString(),
-        };
-
-        try {
-          await postRequest(ACKNOWLEDGE_BLOOD_REQUEST, payload);
-        } catch (apiError) {
-          console.warn(
-            "Backend acknowledge API returned error or is unavailable. Proceeding with UI update:",
-            apiError,
-          );
-        }
       }
 
       const key =
+        request.requestDtId ||
         request.requestNo ||
         `${request.inpatientId}-${request.component}-${request.requestedDateTime}`;
 
@@ -215,6 +195,7 @@ const BloodRequestTracking = () => {
       setRequestData((prev) =>
         prev.map((item) => {
           const itemKey =
+            item.requestDtId ||
             item.requestNo ||
             `${item.inpatientId}-${item.component}-${item.requestedDateTime}`;
           if (itemKey === key) {
@@ -222,6 +203,7 @@ const BloodRequestTracking = () => {
               ...item,
               trackingStatus: finalStatus === "Rejected" ? "Rejected" : item.trackingStatus,
               acknowledgementStatus: finalStatus,
+              canAcknowledge: false,
             };
           }
           return item;
@@ -283,19 +265,33 @@ const BloodRequestTracking = () => {
   };
 
   const getTrackingStatusBadge = (status) => {
+    if (!status) return "-";
+    const normalized = String(status).trim().toUpperCase().replace(/[\s-]+/g, "_");
+
     const badgeClasses = {
-      Pending: "bg-secondary",
-      "Cross Matching": "bg-warning text-dark",
-      "Compatibility Testing": "bg-info",
-      Issued: "bg-success",
-      Rejected: "bg-danger",
+      ISSUED: "bg-success",
+      PARTIALLY_ISSUED: "bg-primary",
+      ALLOCATED: "bg-info text-dark",
+      PARTIALLY_ALLOCATED: "bg-warning text-dark",
+      CROSS_MATCHING: "bg-warning text-dark",
+      COMPATIBILITY_TESTING: "bg-info text-dark",
+      REQUESTED: "bg-secondary",
+      PENDING: "bg-secondary",
+      REJECTED: "bg-danger",
+      CANCELLED: "bg-danger",
     };
-    return status ? (
-      <span className={`badge ${badgeClasses[status] || "bg-secondary"}`}>
-        {status}
+
+    const formattedText = String(status)
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+    const badgeClass = badgeClasses[normalized] || "bg-secondary";
+
+    return (
+      <span className={`badge ${badgeClass}`}>
+        {formattedText}
       </span>
-    ) : (
-      ""
     );
   };
 
@@ -377,60 +373,106 @@ const BloodRequestTracking = () => {
                       <th>Patient Name</th>
                       <th>Blood Group</th>
                       <th>Component</th>
-                      <th>Units</th>
+                      <th className="text-center">Units</th>
+                      <th className="text-center">Issued</th>
+                      <th className="text-center">Acknowledged</th>
+                      <th className="text-center">Pending</th>
                       <th>Urgency</th>
                       <th>Requested Date &amp; Time</th>
                       <th>Required By</th>
                       <th>Tracking Status</th>
-                      <th className="text-center" style={{ minWidth: "130px" }}>
-                        Acknowledge
+                      <th className="text-center" style={{ minWidth: "140px" }}>
+                        Acknowledgement
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan="11" className="text-center py-4">
+                        <td colSpan="14" className="text-center py-4">
                           Loading...
                         </td>
                       </tr>
                     ) : requestData.length > 0 ? (
                       requestData.map((request, index) => {
                         const ackStatus = getAcknowledgeStatus(request);
-                        const isIssued = isRequestIssued(request);
+                        const canAck = canUserAcknowledge(request);
+                        const normalizedAck = String(ackStatus || "").toUpperCase();
+                        const isAccepted =
+                          normalizedAck === "ACCEPTED" ||
+                          normalizedAck === "FULLY_ACKNOWLEDGED";
+                        const isRejected = normalizedAck === "REJECTED";
+                        const isPartiallyAck =
+                          normalizedAck === "PARTIALLY_ACKNOWLEDGED";
 
                         return (
                           <tr
-                            key={`${request.inpatientId}-${request.component}-${request.requestedDateTime}-${index}`}
+                            key={
+                              request.requestDtId ||
+                              `${request.inpatientId}-${request.component}-${request.requestedDateTime}-${index}`
+                            }
                           >
-                            <td>{displayValue(request.requestNo)}</td>
-                            <td>{displayValue(request.inpatientNo)}</td>
-                            <td>{displayValue(request.patientName)}</td>
-                            <td>{displayValue(request.bloodGroup)}</td>
-                            <td>{displayValue(request.component)}</td>
+                            <td className="fw-semibold">{displayValue(request.requestNo) || "-"}</td>
+                            <td>{displayValue(request.inpatientNo) || "-"}</td>
+                            <td>{displayValue(request.patientName) || "-"}</td>
+                            <td>
+                              {request.bloodGroup ? (
+                                <span className="badge bg-danger">
+                                  {request.bloodGroup}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td>{displayValue(request.component) || "-"}</td>
                             <td className="text-center fw-bold">
-                              {displayValue(request.units)}
+                              {request.units != null ? request.units : "-"}
+                            </td>
+                            <td className="text-center fw-bold">
+                              {request.fulfilledUnits != null
+                                ? request.fulfilledUnits
+                                : request.issuedUnits != null
+                                ? request.issuedUnits
+                                : 0}
+                            </td>
+                            <td className="text-center fw-bold">
+                              {request.acknowledgedUnits != null
+                                ? request.acknowledgedUnits
+                                : 0}
+                            </td>
+                            <td className="text-center fw-bold">
+                              {request.pendingUnits != null
+                                ? request.pendingUnits
+                                : 0}
                             </td>
                             <td>{getUrgencyBadge(request.urgency)}</td>
-                            <td>{formatDateTime(request.requestedDateTime)}</td>
-                            <td>{formatDateTime(request.requiredByDateTime)}</td>
+                            <td>{formatDateTime(request.requestedDateTime) || "-"}</td>
+                            <td>
+                              {formatDateTime(
+                                request.requiredByDateTime || request.requiredBy,
+                              ) || "-"}
+                            </td>
                             <td>
                               {getTrackingStatusBadge(request.trackingStatus)}
                             </td>
                             <td className="text-center">
-                              {ackStatus === "Accepted" ? (
+                              {isAccepted ? (
                                 <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small fw-semibold">
                                   <i className="fa fa-check me-1"></i> Accepted
                                 </span>
-                              ) : ackStatus === "Rejected" ? (
+                              ) : isRejected ? (
                                 <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small fw-semibold">
                                   <i className="fa fa-times me-1"></i> Rejected
+                                </span>
+                              ) : isPartiallyAck && !canAck ? (
+                                <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small fw-semibold">
+                                  <i className="fa fa-clock-o me-1"></i> Partially Accepted
                                 </span>
                               ) : (
                                 <button
                                   type="button"
                                   className={`btn btn-sm ${
-                                    isIssued
+                                    canAck
                                       ? "btn-primary shadow-sm"
                                       : "btn-outline-secondary opacity-60"
                                   }`}
@@ -438,14 +480,14 @@ const BloodRequestTracking = () => {
                                     fontSize: "12px",
                                     padding: "4px 10px",
                                     borderRadius: "4px",
-                                    cursor: isIssued ? "pointer" : "not-allowed",
+                                    cursor: canAck ? "pointer" : "not-allowed",
                                   }}
-                                  disabled={!isIssued || isSubmittingAck}
+                                  disabled={!canAck || isSubmittingAck}
                                   onClick={() => handleOpenAcknowledge(request)}
                                   title={
-                                    isIssued
+                                    canAck
                                       ? "Click to Acknowledge (Accept or Reject)"
-                                      : "Acknowledge is only enabled when tracking status is Issued"
+                                      : "Acknowledge is enabled when units are issued"
                                   }
                                 >
                                   <i className="fa fa-check-square-o me-1"></i> Acknowledge
@@ -457,7 +499,7 @@ const BloodRequestTracking = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="11" className="text-center py-4">
+                        <td colSpan="14" className="text-center py-4">
                           <div className="text-muted">
                             <h6 className="mt-2">No blood requests found</h6>
                             <p className="mb-0">
@@ -516,7 +558,7 @@ const BloodRequestTracking = () => {
                   className="p-2 mb-3 rounded-2"
                   style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0" }}
                 >
-                  <div className="row g-1 text-secondary" style={{ fontSize: "12px" }}>
+                  <div className="row g-2 text-secondary" style={{ fontSize: "12px" }}>
                     <div className="col-6">
                       <span className="text-muted">Request No:</span>{" "}
                       <span className="fw-semibold text-dark">{selectedRequest.requestNo || "N/A"}</span>
@@ -540,9 +582,39 @@ const BloodRequestTracking = () => {
                       <span className="fw-semibold text-dark">{selectedRequest.component || "N/A"}</span>
                     </div>
                     <div className="col-6">
-                      <span className="text-muted">Units Issued:</span>{" "}
-                      <span className="fw-bold text-primary">{selectedRequest.units || 1}</span>
+                      <span className="text-muted">Total Units:</span>{" "}
+                      <span className="fw-bold text-dark">{selectedRequest.units ?? "N/A"}</span>
                     </div>
+                    <div className="col-6">
+                      <span className="text-muted">Units Issued:</span>{" "}
+                      <span className="fw-bold text-success">{selectedRequest.fulfilledUnits ?? selectedRequest.issuedUnits ?? 0}</span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Acknowledged (Accepted):</span>{" "}
+                      <span className="fw-bold text-dark">{selectedRequest.acknowledgedUnits ?? 0}</span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Pending Issue:</span>{" "}
+                      <span className="fw-bold text-danger">{selectedRequest.pendingUnits ?? 0}</span>
+                    </div>
+                    {selectedRequest.pendingAcknowledgementUnits != null && (
+                      <div className="col-6">
+                        <span className="text-muted">Pending Acknowledge:</span>{" "}
+                        <span className="fw-bold text-dark">{selectedRequest.pendingAcknowledgementUnits}</span>
+                      </div>
+                    )}
+                    {Array.isArray(selectedRequest.allocationIds) && selectedRequest.allocationIds.length > 0 && (
+                      <div className="col-6">
+                        <span className="text-muted">Allocation ID:</span>{" "}
+                        <span className="fw-semibold text-dark">{selectedRequest.allocationIds.join(", ")}</span>
+                      </div>
+                    )}
+                    {(selectedRequest.requestedWard || selectedRequest.ward) && (
+                      <div className="col-6">
+                        <span className="text-muted">Ward:</span>{" "}
+                        <span className="fw-semibold text-dark">{selectedRequest.requestedWard || selectedRequest.ward}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

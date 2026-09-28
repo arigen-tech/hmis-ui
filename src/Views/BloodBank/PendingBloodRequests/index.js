@@ -180,48 +180,59 @@ const PendingBloodRequests = () => {
       const response = await getRequest(`${GET_PENDING_BLOOD_REQUESTS}?${params.toString()}`);
       const responsePage = response?.response;
       const requests = Array.isArray(responsePage?.content) ? responsePage.content : [];
-      setPendingRequests(requests.map((request, index) => ({
-        ...request,
-        requestDtId:
-          request.requestDtId ??
-          request.bloodRequestDtId ??
-          request.requestDetailId ??
-          request.bloodRequestDetailId ??
-          request.bloodRequirementDetailId ??
-          request.dtId ??
-          (typeof request.id === "number" ? request.id : null),
-        id: `${request.inpatientId || "req"}-${request.componentId || request.component || "comp"}-${request.requestedDateTime || index}-${index}`,
-        requestId: request.requestNo || "",
-        patientId: request.patientId,
-        inpatientId: request.inpatientId,
-        patientName: request.patientName || "",
-        ipNo: request.inpatientNo || "",
-        ward: request.requestedWard || request.ward || request.wardName || "",
-        doctor: request.requestedBy || "",
-        requestDate: request.requestedDateTime,
-        componentType: request.component || "",
-        componentId: request.componentId,
-        bloodGroup: request.bloodGroup || "",
-        bloodGroupId: request.bloodGroupId,
-        units: request.units,
-        urgency: request.urgency,
-        requiredDateTime: request.requiredByDateTime,
-        indication: request.indication || "",
-        status: request.trackingStatus || "",
-        headerInfo: {
-          requestNo: request.requestNo || "",
+      setPendingRequests(requests.map((request, index) => {
+        const totalUnits = Number(request.units ?? 0);
+        const allocatedUnits = Number(request.allocatedUnits ?? 0);
+        const pendingUnits =
+          request.pendingUnits !== undefined && request.pendingUnits !== null
+            ? Number(request.pendingUnits)
+            : Math.max(0, totalUnits - allocatedUnits);
+
+        return {
+          ...request,
+          requestDtId:
+            request.requestDtId ??
+            request.bloodRequestDtId ??
+            request.requestDetailId ??
+            request.bloodRequestDetailId ??
+            request.bloodRequirementDetailId ??
+            request.dtId ??
+            (typeof request.id === "number" ? request.id : null),
+          id: `${request.inpatientId || "req"}-${request.componentId || request.component || "comp"}-${request.requestedDateTime || index}-${index}`,
+          requestId: request.requestNo || "",
+          patientId: request.patientId,
+          inpatientId: request.inpatientId,
           patientName: request.patientName || "",
           ipNo: request.inpatientNo || "",
-          ageGender: request.ageGender || "",
+          ward: request.requestedWard || request.ward || request.wardName || "",
+          doctor: request.requestedBy || "",
+          requestDate: request.requestedDateTime,
+          componentType: request.component || "",
+          componentId: request.componentId,
           bloodGroup: request.bloodGroup || "",
           bloodGroupId: request.bloodGroupId,
-          ward: request.requestedWard || request.ward || request.wardName || "",
-          treatingDoctor: request.requestedBy || "",
-          requestDate: request.requestedDateTime,
+          units: totalUnits,
+          allocatedUnits,
+          pendingUnits,
           urgency: request.urgency,
-        },
-        rawRequest: request,
-      })));
+          requiredDateTime: request.requiredByDateTime,
+          indication: request.indication || "",
+          status: request.trackingStatus || "",
+          headerInfo: {
+            requestNo: request.requestNo || "",
+            patientName: request.patientName || "",
+            ipNo: request.inpatientNo || "",
+            ageGender: request.ageGender || "",
+            bloodGroup: request.bloodGroup || "",
+            bloodGroupId: request.bloodGroupId,
+            ward: request.requestedWard || request.ward || request.wardName || "",
+            treatingDoctor: request.requestedBy || "",
+            requestDate: request.requestedDateTime,
+            urgency: request.urgency,
+          },
+          rawRequest: request,
+        };
+      }));
       setTotalItems(responsePage?.totalElements || 0);
     } catch (error) {
       console.error("Error fetching pending blood requests:", error);
@@ -416,17 +427,28 @@ const PendingBloodRequests = () => {
     }
   };
 
+  const getPendingUnits = (component) => {
+    if (!component) return 0;
+    if (component.pendingUnits !== undefined && component.pendingUnits !== null) {
+      return Math.max(0, Number(component.pendingUnits));
+    }
+    const total = Number(component.units || 0);
+    const allocated = Number(component.allocatedUnits || 0);
+    return Math.max(0, total - allocated);
+  };
+
   const handleUnitSelection = (unit) => {
     const unitKey = unit.inventoryId || unit.id;
+    const maxUnits = getPendingUnits(selectedComponent) || Number(selectedComponent?.units || 0);
     setSelectedUnits(prev => {
       const isSelected = prev.some(u => (u.inventoryId || u.id) === unitKey);
       if (isSelected) {
         return prev.filter(u => (u.inventoryId || u.id) !== unitKey);
       } else {
-        if (prev.length < selectedComponent.units) {
+        if (prev.length < maxUnits) {
           return [...prev, unit];
         } else {
-          showPopup(`You can only select up to ${selectedComponent.units} units for this component`, "warning");
+          showPopup(`You can only select up to ${maxUnits} unit(s) for this component`, "warning");
           return prev;
         }
       }
@@ -434,12 +456,13 @@ const PendingBloodRequests = () => {
   };
 
   const handleConfirmAllocation = () => {
+    const maxUnits = getPendingUnits(selectedComponent) || Number(selectedComponent?.units || 0);
     if (selectedUnits.length === 0) {
       showPopup("Please select at least one unit", "warning");
       return;
     }
-    if (selectedUnits.length > selectedComponent.units) {
-      showPopup(`Cannot select more than ${selectedComponent.units} units`, "warning");
+    if (selectedUnits.length > maxUnits) {
+      showPopup(`Cannot select more than ${maxUnits} units`, "warning");
       return;
     }
 
@@ -674,11 +697,12 @@ const PendingBloodRequests = () => {
                             </div>
                             <div className="col-md-3">
                               <strong>Units Required:</strong> {selectedComponent.units}
+                              {selectedComponent.allocatedUnits > 0 ? ` (${getPendingUnits(selectedComponent)} pending)` : ""}
                             </div>
                           </div>
                           <div className="row mt-2">
                             <div className="col-md-12">
-                              <strong>Selected Units:</strong> {selectedUnits.length} / {selectedComponent.units}
+                              <strong>Selected Units:</strong> {selectedUnits.length} / {getPendingUnits(selectedComponent) || selectedComponent.units}
                             </div>
                           </div>
                         </div>
@@ -736,7 +760,7 @@ const PendingBloodRequests = () => {
                                     onChange={() => handleUnitSelection(unit)}
                                     disabled={
                                       !isAvailable ||
-                                      (!isSelected && selectedUnits.length >= selectedComponent.units)
+                                      (!isSelected && selectedUnits.length >= (getPendingUnits(selectedComponent) || selectedComponent.units))
                                     }
                                   />
                                 </td>
@@ -780,7 +804,7 @@ const PendingBloodRequests = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirmAllocation}
-                    disabled={selectedUnits.length === 0 || selectedUnits.length > selectedComponent.units}
+                    disabled={selectedUnits.length === 0 || selectedUnits.length > (getPendingUnits(selectedComponent) || selectedComponent.units)}
                   >
                     Allocate Selected Units ({selectedUnits.length})
                   </button>
@@ -928,10 +952,14 @@ const PendingBloodRequests = () => {
                                       ></span>
                                       Checking Stock...
                                     </span>
+                                  ) : getPendingUnits(component) === 0 && (component.allocatedUnits || 0) > 0 ? (
+                                    <span className="badge bg-success">
+                                      Fully Allocated
+                                    </span>
                                   ) : allocated && allocated.length > 0 ? (
                                     <span className="badge bg-success">
                                       <i className="fa fa-check me-1"></i>
-                                      {allocated.length} / {component.units} Unit(s) Allocated
+                                      {allocated.length} / {getPendingUnits(component) || component.units} Unit(s) Allocated
                                     </span>
                                   ) : avail?.isAvailable ? (
                                     <span className="badge bg-success">
@@ -954,6 +982,8 @@ const PendingBloodRequests = () => {
                                     >
                                       Checking...
                                     </button>
+                                  ) : getPendingUnits(component) === 0 && (component.allocatedUnits || 0) > 0 ? (
+                                    <span className="badge bg-secondary">Completed</span>
                                   ) : allocated && allocated.length > 0 ? (
                                     <button
                                       type="button"

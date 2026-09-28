@@ -241,32 +241,22 @@ const PendingForIssue = () => {
 
     setIsIssuing(true);
     try {
-      const requestDtId =
-        selectedIssueItem.requestDtId != null
-          ? Number(selectedIssueItem.requestDtId)
-          : selectedIssueItem.bloodRequestDtId != null
-          ? Number(selectedIssueItem.bloodRequestDtId)
-          : selectedIssueItem.requestDetailId != null
-          ? Number(selectedIssueItem.requestDetailId)
-          : selectedIssueItem.dtId != null
-          ? Number(selectedIssueItem.dtId)
+      const allocationId =
+        selectedIssueItem.allocationId != null
+          ? Number(selectedIssueItem.allocationId)
+          : selectedIssueItem.bloodAllocationId != null
+          ? Number(selectedIssueItem.bloodAllocationId)
           : null;
 
-      const inventoryId =
-        selectedIssueItem.inventoryId != null
-          ? Number(selectedIssueItem.inventoryId)
-          : selectedIssueItem.bloodInventoryId != null
-          ? Number(selectedIssueItem.bloodInventoryId)
-          : selectedIssueItem.unitId != null
-          ? Number(selectedIssueItem.unitId)
-          : (Array.isArray(selectedIssueItem.units) && selectedIssueItem.units[0]?.inventoryId != null)
-          ? Number(selectedIssueItem.units[0].inventoryId)
-          : null;
+      if (!allocationId) {
+        showPopup("Allocation ID is missing for this record.", "error");
+        setIsIssuing(false);
+        return;
+      }
 
-      // BloodIssueStatusRequest: isIssued: true, isRejected: false, rejectedReason: null
+      // BloodIssueStatusRequest: allocationId, isIssued: true, isRejected: false, rejectedReason: null
       const statusPayload = {
-        requestDtId: requestDtId,
-        inventoryId: inventoryId,
+        allocationId: allocationId,
         isIssued: true,
         isRejected: false,
         rejectedReason: null,
@@ -279,14 +269,16 @@ const PendingForIssue = () => {
 
       const isSuccess =
         response?.status === 200 ||
+        response?.status === 201 ||
         response?.data?.status === 200 ||
-        response?.data?.production === false;
+        response?.success ||
+        response?.status === "SUCCESS";
 
       if (isSuccess) {
         showPopup(
           response?.data?.message ||
             response?.message ||
-            "Blood request status updated successfully",
+            "Blood request issued successfully.",
           "success"
         );
         setShowIssueModal(false);
@@ -303,7 +295,9 @@ const PendingForIssue = () => {
     } catch (error) {
       console.error("Error issuing blood:", error);
       showPopup(
-        error?.message || "Error occurred while issuing blood units.",
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error occurred while issuing blood units.",
         "error"
       );
     } finally {
@@ -456,7 +450,7 @@ const PendingForIssue = () => {
                       </tr>
                     ) : pendingList.length > 0 ? (
                       pendingList.map((item, index) => (
-                        <tr key={item.requestDtId || item.requestHdId || index}>
+                        <tr key={item.allocationId || item.requestDtId || item.requestHdId || index}>
                           <td className="fw-bold">{item.requestNo || "-"}</td>
                           <td>{item.inpatientNo || "-"}</td>
                           <td>{item.patientName || "-"}</td>
@@ -599,6 +593,12 @@ const PendingForIssue = () => {
                                   <small className="text-muted d-block">Reserved On</small>
                                   <span>{selectedIssueItem.reservedOn || "-"}</span>
                                 </div>
+                                {selectedIssueItem.inventoryId && (
+                                  <div className="col-md-4">
+                                    <small className="text-muted d-block">Inventory ID</small>
+                                    <span className="fw-bold">#{selectedIssueItem.inventoryId}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
