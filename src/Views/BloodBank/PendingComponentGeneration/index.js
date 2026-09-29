@@ -66,16 +66,13 @@ const PendingComponentGeneration = () => {
     fetchFailureReasons();
   }, []);
 
-  const generateAllUnitNumbers = (bagNo, components, collectionDate) => {
-    if (!bagNo || !components?.length) return {};
-
-    const suffix = bagNo.replace(/^BAG-?/i, "");
+  const generateDefaultComponentData = (components, collectionDate) => {
+    if (!components?.length) return {};
 
     const result = {};
 
     components.forEach((comp) => {
       result[comp.code] = {
-        unitNo: `${comp.code}-${suffix}`,
         expiry: calculateDefaultExpiry(collectionDate, comp.shelfLifeDays),
       };
     });
@@ -349,7 +346,6 @@ const PendingComponentGeneration = () => {
 
           return {
             componentId: comp.id,
-            unitNo: formData.unitNo,
             volumeMl: Number(formData.volume),
             expiryDate: formData.expiry,
           };
@@ -363,16 +359,23 @@ const PendingComponentGeneration = () => {
           }
         }
 
-        await postRequest(COMPONENT_GENERATION_PASS, {
+        const result = await postRequest(COMPONENT_GENERATION_PASS, {
           donationId: selectedBag.id,
           components,
         });
 
-        showPopup(
-          "Component generation completed",
-          "success",
-          true,
-        );
+        if (result && (result.status === 200 || result.status === 201)) {
+          showPopup(
+            "Component generation completed",
+            "success",
+            true,
+          );
+        } else {
+          showPopup(
+            result?.message || "Failed to save component generation",
+            "error"
+          );
+        }
 
       } catch (error) {
         console.error(error);
@@ -389,8 +392,7 @@ const PendingComponentGeneration = () => {
       selectedBag &&
       allowedComponents.length > 0
     ) {
-      const autoData = generateAllUnitNumbers(
-        selectedBag.bagNo,
+      const autoData = generateDefaultComponentData(
         allowedComponents,
         selectedBag.collectionDate,
       );
@@ -400,21 +402,19 @@ const PendingComponentGeneration = () => {
         let hasChanges = false;
         allowedComponents.forEach((comp) => {
           const existing = prev[comp.code] || {};
-          const unitNo = existing.unitNo || autoData[comp.code]?.unitNo || "";
           const expiry = existing.expiry || autoData[comp.code]?.expiry || "";
-          if (existing.unitNo !== unitNo || existing.expiry !== expiry) {
+          if (existing.expiry !== expiry) {
             hasChanges = true;
           }
           updated[comp.code] = {
             ...existing,
-            unitNo,
             expiry,
           };
         });
         return hasChanges ? updated : prev;
       });
     }
-  }, [generationStatus, selectedBag?.bagNo, selectedBag?.collectionDate, allowedComponents]);
+  }, [generationStatus, selectedBag?.collectionDate, allowedComponents]);
 
   const getBagTypeBadgeClass = (bagType) => {
     if (!bagType) return "badge bg-secondary";
@@ -682,11 +682,10 @@ const PendingComponentGeneration = () => {
                                       <td>
                                         <input
                                           type="text"
-                                          className="form-control"
-                                          value={
-                                            componentForm[comp.code]?.unitNo || ""
-                                          }
+                                          className="form-control text-muted"
+                                          value="System auto generate number"
                                           readOnly
+                                          disabled
                                         />
                                       </td>
 
