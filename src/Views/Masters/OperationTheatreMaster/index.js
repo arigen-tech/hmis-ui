@@ -277,9 +277,7 @@ const OperationTheatre = () => {
                         </span>
                       </div>
                     </form>
-                    <button type="button" className="btn btn-success" onClick={handleRefresh}>
-                      <i className="mdi mdi-refresh"></i> Show All
-                    </button>
+                  
                     <button
                       type="button"
                       className="btn btn-success"
@@ -290,6 +288,9 @@ const OperationTheatre = () => {
                       }}
                     >
                       <i className="mdi mdi-plus"></i> Add
+                    </button>
+                      <button type="button" className="btn btn-success" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
                     </button>
                   </>
                 ) : (

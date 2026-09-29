@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_SURGERY, MAS_SURGERY_TYPE } from "../../../config/apiConfig";
-import { ADD_SURGERY_SUCC_MSG, UPDATE_SURGERY_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
+import { ADD_SURGERY_SUCC_MSG, UPDATE_SURGERY_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, DUPLICATE_SURGERY_CODE } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const SurgeryMaster = () => {
@@ -38,7 +38,7 @@ const SurgeryMaster = () => {
   const [process, setProcess] = useState(false);
 
   const SURGERY_CODE_MAX_LENGTH = 8;
-  const SURGERY_NAME_MAX_LENGTH = 30;
+  const SURGERY_NAME_MAX_LENGTH = 200;
 
   const surgeryLevelOptions = [
     { value: "MINOR", label: "Minor" },
@@ -116,8 +116,15 @@ const SurgeryMaster = () => {
     try {
       const data = await getRequest(`${MAS_SURGERY_TYPE}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setSurgeryTypeData(data.response);
-        return data.response;
+        const filteredData = data.response.filter((type) => {
+          if (!type || !type.surgeryTypeName) return false;
+          const name = type.surgeryTypeName.trim().toLowerCase();
+          const isDummy = name.includes("dummy") || name.includes("test");
+          const isActive = !type.status || type.status.toLowerCase() === "y";
+          return !isDummy && isActive;
+        });
+        setSurgeryTypeData(filteredData);
+        return filteredData;
       } else {
         console.error("Unexpected API response format:", data);
         setSurgeryTypeData([]);
@@ -159,9 +166,23 @@ const SurgeryMaster = () => {
       return;
     }
 
+    // Check for duplicate Surgery Code
+    const trimmedCode = formData.surgeryCode.trim().toLowerCase();
+    const isDuplicate = surgeryData.some(
+      (surgery) =>
+        surgery.surgeryId !== (editingSurgery ? editingSurgery.surgeryId : null) &&
+        surgery.surgeryCode?.trim().toLowerCase() === trimmedCode
+    );
+
+    if (isDuplicate) {
+      setProcess(false);
+      showPopup(DUPLICATE_SURGERY_CODE, "error");
+      return;
+    }
+
     const payload = {
-      surgeryCode: formData.surgeryCode,
-      surgeryName: formData.surgeryName,
+      surgeryCode: formData.surgeryCode.trim(),
+      surgeryName: formData.surgeryName.trim(),
       surgeryTypeId: parseInt(formData.surgeryTypeId, 10),
       surgeryLevel: formData.surgeryLevel,
       isAnesthesiaRequired: formData.isAnesthesiaRequired,
@@ -178,7 +199,7 @@ const SurgeryMaster = () => {
         );
         if (response.status === 200) {
           setPopupMessage({
-            message: "Surgery updated successfully!",
+            message: UPDATE_SURGERY_SUCC_MSG,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
@@ -194,7 +215,7 @@ const SurgeryMaster = () => {
         response = await postRequest(`${MAS_SURGERY}/create`, payload);
         if (response.status === 201 || response.status === 200) {
           setPopupMessage({
-            message: "Surgery added successfully!",
+            message: ADD_SURGERY_SUCC_MSG,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
@@ -209,7 +230,28 @@ const SurgeryMaster = () => {
       }
     } catch (error) {
       console.error("Error saving Surgery:", error);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      const serverMsg =
+        (error?.response && typeof error.response === "object" && (error.response.message || error.response.data?.message)) ||
+        error?.message;
+
+      if (
+        serverMsg &&
+        (serverMsg.toLowerCase().includes("duplicate") ||
+          serverMsg.toLowerCase().includes("already exist") ||
+          serverMsg.toLowerCase().includes("surgery code"))
+      ) {
+        showPopup(DUPLICATE_SURGERY_CODE, "error");
+      } else if (
+        serverMsg &&
+        serverMsg !== "Request failed" &&
+        serverMsg !== "Save failed" &&
+        serverMsg !== "Update failed" &&
+        serverMsg !== "Creation failed"
+      ) {
+        showPopup(serverMsg, "error");
+      } else {
+        showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      }
     } finally {
       setProcess(false);
     }
@@ -372,7 +414,7 @@ const SurgeryMaster = () => {
                         </span>
                       </div>
                     </form>
-                  
+
                     <button
                       type="button"
                       className="btn btn-success"
@@ -392,7 +434,7 @@ const SurgeryMaster = () => {
                     >
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                      <button
+                    <button
                       type="button"
                       className="btn btn-success"
                       onClick={handleRefresh}
@@ -550,11 +592,17 @@ const SurgeryMaster = () => {
                           disabled={process}
                         >
                           <option value="">Select Surgery Type</option>
-                          {surgeryTypeData.map((type) => (
-                            <option key={type.surgeryTypeId} value={type.surgeryTypeId}>
-                              {type.surgeryTypeName}
-                            </option>
-                          ))}
+                          {surgeryTypeData
+                            .filter((type) => {
+                              if (!type || !type.surgeryTypeName) return false;
+                              const name = type.surgeryTypeName.trim().toLowerCase();
+                              return !name.includes("dummy") && !name.includes("test") && (!type.status || type.status.toLowerCase() === "y");
+                            })
+                            .map((type) => (
+                              <option key={type.surgeryTypeId} value={type.surgeryTypeId}>
+                                {type.surgeryTypeName}
+                              </option>
+                            ))}
                         </select>
                       </div>
                       <div className="form-group col-md-4 mt-3">
