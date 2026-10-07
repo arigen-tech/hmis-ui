@@ -218,8 +218,21 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
   const getMissingFields = () => {
     const missing = [];
 
+    // --- NURSING VALIDATION ---
     if (!nursing.consciousness) missing.push("Consciousness");
-    if (!nursing.gcsScore) missing.push("GCS Score");
+
+    // GCS Score: required, digits only, between 3 and 15
+    if (!nursing.gcsScore) {
+      missing.push("GCS Score");
+    } else if (!/^\d+$/.test(String(nursing.gcsScore))) {
+      missing.push("GCS Score (only digits allowed)");
+    } else {
+      const gcs = Number(nursing.gcsScore);
+      if (gcs < 3 || gcs > 15) {
+        missing.push("GCS Score (must be between 3 and 15)");
+      }
+    }
+
     if (!nursing.painScore) missing.push("Pain Score");
     if (!nursing.mobility) missing.push("Mobility");
     if (!nursing.fallRiskScore) missing.push("Fall Risk Score");
@@ -237,13 +250,53 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
     if (!nursing.relativeOrientation) missing.push("Relative Orientation");
     if (!nursing.nursingCarePlan) missing.push("Nursing Care Plan");
 
+    // --- MEDICAL VALIDATION ---
     if (!medical.chiefComplaint) missing.push("Chief Complaint");
     if (!medical.historyOfPresentIllness) missing.push("History of Present Illness");
-    if (!medical.pulse) missing.push("Pulse");
-    if (!medical.bp) missing.push("BP");
-    if (!medical.temperature) missing.push("Temperature");
-    if (!medical.rr) missing.push("RR");
-    if (!medical.spo2) missing.push("SpO2");
+
+    // Pulse Validation
+    if (!medical.pulse) {
+      missing.push("Pulse");
+    } else if (isNaN(medical.pulse) || Number(medical.pulse) <= 0) {
+      missing.push("Pulse (must be a valid positive number)");
+    }
+
+    // BP Validation
+    if (!medical.bp) {
+      missing.push("BP");
+    } else {
+      const bpRegex = /^\d{2,3}\/\d{2,3}$/;
+      if (!bpRegex.test(medical.bp)) {
+        missing.push("BP (must be in format systolic/diastolic, e.g., 120/80)");
+      } else {
+        const [sys, dia] = medical.bp.split("/").map(Number);
+        if (sys <= dia) {
+          missing.push("BP (systolic must be greater than diastolic)");
+        }
+      }
+    }
+
+    // Temperature Validation
+    if (!medical.temperature) {
+      missing.push("Temperature");
+    } else if (isNaN(medical.temperature)) {
+      missing.push("Temperature (must be a valid number)");
+    }
+
+    // RR Validation
+    if (!medical.rr) {
+      missing.push("RR");
+    } else if (isNaN(medical.rr) || Number(medical.rr) <= 0) {
+      missing.push("RR (must be a valid positive number)");
+    }
+
+    // SpO2 Validation
+    if (!medical.spo2) {
+      missing.push("SpO2");
+    } else if (isNaN(medical.spo2) || Number(medical.spo2) < 0 || Number(medical.spo2) > 100) {
+      missing.push("SpO2 (must be between 0 and 100)");
+    }
+
     if (!medical.rs) missing.push("RS");
     if (!medical.cvs) missing.push("CVS");
     if (!medical.pa) missing.push("P/A");
@@ -403,12 +456,21 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                   </label>
                   <div className="input-group input-group-sm">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
                       className="form-control form-control-sm"
-                      min="3"
-                      max="15"
                       value={nursing.gcsScore}
-                      onChange={(e) => updateNursing("gcsScore", e.target.value)}
+                      onChange={(e) => {
+                        const onlyDigits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                        if (onlyDigits === "") {
+                          updateNursing("gcsScore", "");
+                          return;
+                        }
+                        if (Number(onlyDigits) > 15) return;
+                        updateNursing("gcsScore", onlyDigits);
+                      }}
                       placeholder="3-15"
                     />
                     <span className="input-group-text">/ 15</span>
@@ -783,10 +845,11 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                         Pulse (/min) <Required />
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="form-control form-control-sm"
                         value={medical.pulse}
-                        onChange={(e) => updateMedical("pulse", e.target.value)}
+                        onChange={(e) => updateMedical("pulse", e.target.value.replace(/\D/g, ""))}
                         placeholder="e.g., 92"
                       />
                     </div>
@@ -798,7 +861,12 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                         type="text"
                         className="form-control form-control-sm"
                         value={medical.bp}
-                        onChange={(e) => updateMedical("bp", e.target.value)}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9/]/g, "");
+                          const parts = val.split("/");
+                          if (parts.length > 2) return; // Prevent multiple slashes
+                          updateMedical("bp", val);
+                        }}
                         placeholder="e.g., 130/80"
                       />
                     </div>
@@ -808,9 +876,14 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                       </label>
                       <input
                         type="text"
+                        inputMode="decimal"
                         className="form-control form-control-sm"
                         value={medical.temperature}
-                        onChange={(e) => updateMedical("temperature", e.target.value)}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, "");
+                          if ((val.match(/\./g) || []).length > 1) return; // Prevent multiple dots
+                          updateMedical("temperature", val);
+                        }}
                         placeholder="e.g., 101"
                       />
                     </div>
@@ -819,10 +892,11 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                         RR (/min) <Required />
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="form-control form-control-sm"
                         value={medical.rr}
-                        onChange={(e) => updateMedical("rr", e.target.value)}
+                        onChange={(e) => updateMedical("rr", e.target.value.replace(/\D/g, ""))}
                         placeholder="e.g., 20"
                       />
                     </div>
@@ -831,10 +905,11 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                         SpO2 (%) <Required />
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="form-control form-control-sm"
                         value={medical.spo2}
-                        onChange={(e) => updateMedical("spo2", e.target.value)}
+                        onChange={(e) => updateMedical("spo2", e.target.value.replace(/\D/g, ""))}
                         placeholder="e.g., 98"
                       />
                     </div>

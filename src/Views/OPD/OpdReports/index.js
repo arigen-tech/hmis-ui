@@ -3,6 +3,7 @@ import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiS
 import LoadingScreen from "../../../Components/Loading";
 import Popup from "../../../Components/popup";
 import Pagination from "../../../Components/Pagination";
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 import {
   ALL_REPORTS,
   GET_OPD_REPORTS_LIST,
@@ -475,7 +476,7 @@ const OPDReports = () => {
                                 <td>{patient.age}</td>
                                 <td>{patient.specialty}</td>
                                 <td>{patient.doctorName}</td>
-                                <td>{patient.visitDateTime}</td>
+                                <td>{formatDateTimeForDisplay(patient.visitDateTime)}</td>
                                 <td className="text-center">
                                   {patient.nisNo ? (
                                     <button

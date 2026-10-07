@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getRequest, postRequest } from '../../../../service/apiService';
 import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE, GET_MEDICAL_CONSUMABLE_ITEMS, SAVE_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS, GET_ITEM_BATCHES, SAVE_NURSING_CARE_PROCEDURE, GET_NURSING_CARE_PROCEDURE } from '../../../../config/apiConfig';
+import { formatDateForDisplay, formatDateTimeForDisplay } from '../../../../utils/dateUtils';
 
 const NursingCareModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
@@ -874,7 +875,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                       <tr key={proc.id}>
                         <td>{proc.id}</td>
                         <td>{proc.procedure}</td>
-                        <td>{new Date(proc.dateTime).toLocaleString()}</td>
+                        <td>{formatDateTimeForDisplay(proc.dateTime)}</td>
                         <td>{proc.performedBy}</td>
                         <td>
                           {proc.remarks !== '—' ? (
@@ -946,10 +947,10 @@ const NursingCareModule = ({ selectedPatient }) => {
                           <td>{cons.item}</td>
                           <td>{cons.qty}</td>
                           <td>{refText}</td>
-                          <td>{new Date(cons.dateTime).toLocaleString()}</td>
+                          <td>{formatDateTimeForDisplay(cons.dateTime)}</td>
                           <td>{cons.usedBy}</td>
                           <td>{cons.batch}</td>
-                          <td>{cons.expiry}</td>
+                          <td>{formatDateForDisplay(cons.expiry)}</td>
                           <td>{cons.remarks || '—'}</td>
                         </tr>
                       );
@@ -1012,9 +1013,9 @@ const NursingCareModule = ({ selectedPatient }) => {
                 <div className="mb-2">
                   <label className="form-label small">Date & Time *</label>
                   <input
-                    type="datetime-local"
+                    type="text"
                     className="form-control form-control-sm"
-                    value={newProcedure.dateTime}
+                    value={formatDateTimeForDisplay(newProcedure.dateTime)}
                     disabled
                   />
                 </div>

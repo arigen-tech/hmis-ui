@@ -16,6 +16,7 @@ import {
   BED_TRANSFER_CANCEL_FAILURE,
   BED_TRANSFER_CANCEL_ERROR
 } from "../../../config/constants"
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -767,7 +768,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
         <div className="card">
           <div className="card-header bg-primary text-white py-2">
             <strong>WARD / BED TRANSFER REQUEST</strong>
-            <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTime(new Date().toISOString())}</span>
+            <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTimeForDisplay(new Date().toISOString())}</span>
           </div>
           <div className="card-body">
             {selectedPatient && (

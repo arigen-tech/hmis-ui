@@ -4,6 +4,7 @@ import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import { postRequest, getRequest } from "../../../service/apiService";
 import { SAVE_SHIFT_HANDOVER, GET_SHIFT_HANDOVER } from "../../../config/apiConfig";
+import { formatDateForDisplay, formatDateTimeForDisplay } from "../../../utils/dateUtils";
 
 const MAX_NOTES_LENGTH = 2000;
 
@@ -237,7 +238,7 @@ const ShiftHandover = ({ selectedPatient }) => {
                 ) : (
                   history.map(h => (
                     <tr key={h.id}>
-                      <td>{h.dateTime}</td>
+                      <td>{formatDateTimeForDisplay(h.dateTime)}</td>
                       <td>{h.enteredBy}</td>
                       <td dangerouslySetInnerHTML={{ __html: h.notes }}></td>
                     </tr>

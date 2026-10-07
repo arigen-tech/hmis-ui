@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { getRequest, postRequest } from '../../../service/apiService';
 import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS, SAVE_ADVERSE_REACTION, GET_ADVERSE_REACTION_DETAILS} from '../../../config/apiConfig';
 import ConfirmationPopup from '../../../Components/ConfirmationPopup';
+import { formatDateForDisplay, formatDateTimeForDisplay, formatDateTimeWithSecondsForDisplay } from '../../../utils/dateUtils';
 
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
@@ -957,9 +958,9 @@ const MedicationModule = ({ selectedPatient }) => {
                           <td>{med.route}</td>
                           <td>{med.dose}</td>
                           <td>{med.frequency}</td>
-                          <td>{med.startDate ? new Date(med.startDate).toLocaleString() : ''}</td>
-                          <td>{med.administeredBy || '—'}</td>
-                          <td>{med.stopDate ? new Date(med.stopDate).toLocaleString() : '—'}</td>
+                          <td>{formatDateTimeWithSecondsForDisplay(med.startDate)}</td>
+                          <td>{med.administeredBy || 'N/A'}</td>
+                          <td>{formatDateTimeWithSecondsForDisplay(med.stopDate)}</td>
                           <td>
                             <button
                               className="btn btn-sm btn-outline-danger me-1"
@@ -1038,13 +1039,13 @@ const MedicationModule = ({ selectedPatient }) => {
                     ) : dynamicMarLogs.length > 0 ? (
                       dynamicMarLogs.map((log, index) => (
                         <tr key={index}>
-                          <td>{log.administrationTime ? new Date(log.administrationTime).toLocaleString() : ''}</td>
+                          <td>{formatDateTimeWithSecondsForDisplay(log.administrationTime)}</td>
                           <td>{log.nomenclature}</td>
                           <td>{log.routeName}</td>
                           <td>{log.dose}</td>
                           <td>{log.administeredQty}</td>
                           <td>{log.batchNo}</td>
-                          <td>{log.expiryDate}</td>
+                          <td>{formatDateForDisplay(log.expiryDate)}</td>
                           <td>{log.administeredBy}</td>
                           <td>—</td>
                           <td>{log.remarks || '—'}</td>
