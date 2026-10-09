@@ -83,7 +83,6 @@ const Login = () => {
           departmentCode,
           loggedInUserName,
         } = response.response;
-        debugger
         const currentTime = Date.now();
         const isTokenValid = jwtTokenExpiry > currentTime;
         const validTime = jwtTokenExpiry;

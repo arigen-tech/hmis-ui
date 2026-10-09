@@ -1,5 +1,5 @@
 export const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
+    if (!dateString) return "N/A";
     try {
         const date = new Date(dateString);
         const day = String(date.getDate()).padStart(2, '0');
@@ -8,12 +8,12 @@ export const formatDateForDisplay = (dateString) => {
         return `${day}/${month}/${year}`;
     } catch (error) {
         console.error("Error formatting date:", error);
-        return "";
+        return "N/A";
     }
 };
 
 export const formatDateTimeForDisplay = (dateTimeString) => {
-    if (!dateTimeString) return "";
+    if (!dateTimeString) return "N/A";
     try {
         const date = new Date(dateTimeString);
         const day = String(date.getDate()).padStart(2, '0');
@@ -24,7 +24,7 @@ export const formatDateTimeForDisplay = (dateTimeString) => {
         return `${day}/${month}/${year} ${hours}:${minutes}`;
     } catch (error) {
         console.error("Error formatting date time:", error);
-        return "";
+        return "N/A";
     }
 };
 

@@ -17,30 +17,25 @@ const DieticianDashboard = () => {
      ============================ LIST VIEW STATE ===========================
      ========================================================================= */
 
-  // States for search fields
   const [searchPatientName, setSearchPatientName] = useState("");
   const [searchMobile, setSearchMobile] = useState("");
   const [searchWard, setSearchWard] = useState("");
 
-  // States for button spinners
   const [isSearching, setIsSearching] = useState(false);
   const [isShowingAll, setIsShowingAll] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Server-side pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
   const [dietData, setDietData] = useState([]);
   
-  // Wards and Diet Categories data for dropdowns
   const [wards, setWards] = useState([]);
   const [dietCategoryOptions, setDietCategoryOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserName, setCurrentUserName] = useState(sessionStorage.getItem("username") || "System");
 
-  // Fetch Wards and Diet Categories on component mount
   useEffect(() => {
     const fetchDropdowns = async () => {
       setIsLoading(true);
@@ -136,13 +131,11 @@ const DieticianDashboard = () => {
     }
   };
 
-  // Handle page change
   const handlePageChange = (page) => {
     setCurrentPage(page);
     fetchDieticianDashboard(page - 1)
   };
 
-  // Handle search
   const handleSearch = async () => {
     setIsSearching(true);
     setCurrentPage(1);
@@ -158,7 +151,6 @@ const DieticianDashboard = () => {
     setSearchWard("");
     setCurrentPage(1);
 
-    // Call API with empty filters
     setTableLoading(true);
     try {
       const res = await getRequest(`${ACTIVE_DIET_BY_INPATIENT}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`);
@@ -183,12 +175,10 @@ const DieticianDashboard = () => {
     setIsRefreshing(false);
   };
 
-  // Navigates to the patient diet entry screen (Change Diet / New Diet Entry)
   const handleDietAction = (item, e) => {
     e.stopPropagation();
     setSelectedPatient(item);
 
-    // Auto-fill patient profile
     setPatientProfile({
       patientId: item.uhid,
       patientName: item.patientName,
@@ -196,7 +186,6 @@ const DieticianDashboard = () => {
       age: item.age,
     });
 
-    // Auto-fill ward details
     setWardDetails({
       wardBed: (item.ward && item.bed) ? `${item.ward} / ${item.bed}` : '-',
       admissionNo: item.admissionNo,
@@ -281,7 +270,6 @@ const DieticianDashboard = () => {
      =========================== DIET ENTRY VIEW STATE ======================
      ========================================================================= */
 
-  // ---------- Patient Profile (Auto-Populated, Read-Only) ----------
   const [patientProfile, setPatientProfile] = useState({
     patientId: "P00042",
     patientName: "Ananya Sharma",
@@ -289,7 +277,6 @@ const DieticianDashboard = () => {
     age: "42",
   });
 
-  // ---------- Ward Details (Auto-Populated, Read-Only) ----------
   const [wardDetails, setWardDetails] = useState({
     wardBed: "ICU-2 / Bed-04",
     admissionNo: "ADM-2025-000812",
@@ -297,16 +284,14 @@ const DieticianDashboard = () => {
     attendingDoctor: "Dr. R. Deshmukh",
   });
 
-  // ---------- Diet History (Previous diet entries) ----------
   const [dietHistory, setDietHistory] = useState([]);
 
-  // ---------- New Diet Entry ----------
+  // ---------- New Diet Entry (remarks field removed) ----------
   const [newDietEntry, setNewDietEntry] = useState({
     dietCategory: "",
     specialInstruction: "",
     effectiveFrom: "",
     orderedBy: currentUserName,
-    remarks: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -339,7 +324,6 @@ const DieticianDashboard = () => {
     setErrors((prev) => ({ ...prev, [id]: "" }));
   };
 
-  // Stop / discontinue an existing (active) diet entry before assigning a new one
   const handleStopDiet = (entryId) => {
     setIsStopping(entryId);
     console.log("Stopping diet entry:", entryId);
@@ -365,7 +349,6 @@ const DieticianDashboard = () => {
         specialInstruction: newDietEntry.specialInstruction,
         effectiveFrom: newDietEntry.effectiveFrom.split("T")[0],
         orderedBy: parseInt(localStorage.getItem("userId") || "0", 10),
-        remark: newDietEntry.remarks,
         inpatientId: selectedPatient?.inpatientId || 0
       };
 
@@ -373,13 +356,11 @@ const DieticianDashboard = () => {
       
       if (res?.status === 200) {
         
-        // Reset form
         setNewDietEntry({
           ...newDietEntry,
           dietCategory: "",
           specialInstruction: "",
           effectiveFrom: "",
-          remarks: "",
           orderedBy: currentUserName,
         });
         setErrors({});
@@ -390,7 +371,6 @@ const DieticianDashboard = () => {
           text: "Diet order saved successfully!",
         });
 
-        // Refresh diet history after OK is clicked
         if (selectedPatient?.inpatientId) {
           fetchDietHistory(selectedPatient.inpatientId);
         }
@@ -523,7 +503,6 @@ const DieticianDashboard = () => {
               </div>
 
               <div className="card-body p-2 pb-0">
-                {/* Patient Details */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
@@ -558,7 +537,6 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* Diet Order */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
@@ -613,7 +591,6 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* Diet Execution History + Capture */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
@@ -672,14 +649,6 @@ const DieticianDashboard = () => {
                           </table>
                         </div>
                         )}
-
-                        {/* <button
-                          type="button"
-                          className="btn btn-success btn-sm"
-                          onClick={handleAddNewEntry}
-                        >
-                          New Entry
-                        </button> */}
                       </div>
                     </div>
                   </div>
@@ -780,7 +749,6 @@ const DieticianDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Vitals Entry (Read-only for Dietician) */}
                   <div className="col-md-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-2">
@@ -947,7 +915,7 @@ const DieticianDashboard = () => {
                   </div>
                 )}
 
-                {/* New Diet Entry */}
+                {/* New Diet Entry (Remarks field removed, layout rebalanced) */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
@@ -956,7 +924,7 @@ const DieticianDashboard = () => {
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
-                          <div className="col-md-2">
+                          <div className="col-md-3">
                             <label className="form-label">Diet Category *</label>
                             <select
                               className={`form-select ${hasError("dietCategory")}`}
@@ -977,7 +945,7 @@ const DieticianDashboard = () => {
                               </div>
                             )}
                           </div>
-                          <div className="col-md-4">
+                          <div className="col-md-5">
                             <label className="form-label">Special Instruction</label>
                             <textarea
                               className="form-control"
@@ -1012,17 +980,6 @@ const DieticianDashboard = () => {
                               value={newDietEntry.orderedBy}
                               readOnly
                               disabled
-                            />
-                          </div>
-                          <div className="col-md-2">
-                            <label className="form-label">Remarks</label>
-                            <textarea
-                              className="form-control"
-                              id="remarks"
-                              placeholder="Enter Remarks"
-                              value={newDietEntry.remarks}
-                              onChange={handleNewEntryChange}
-                              rows={1}
                             />
                           </div>
                         </div>
