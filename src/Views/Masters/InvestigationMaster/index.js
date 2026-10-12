@@ -344,16 +344,17 @@ const InvestigationMaster = () => {
     }
   }
 
-  const handleRowClick = (investigation) => {
     const mapInvestigationTypeToResultType = (investigationType) => {
-      const typeMap = {
-        m: "Multiple",
-        r: "Range",
-        s: "Single",
-      }
-      return typeMap[investigationType?.toLowerCase()] || "Select"
+    const typeMap = {
+      m: "Multiple",
+      r: "Range",
+      s: "Single",
+      t: "Template",
     }
+    return typeMap[investigationType?.toLowerCase()] || "Select"
+  }
 
+  const handleRowClick = (investigation) => {
     const prepText = investigation.preparationText || ""
 
     setSelectedInvestigation(investigation)
@@ -367,10 +368,10 @@ const InvestigationMaster = () => {
       sampleName: investigation.sampleName || "",
       containerId: investigation.collectionId || "",
       containerName: investigation.collectionName || "",
-      methodId: investigation.methodId || '',
-      methodName: investigation.methodName || '',
-      categoryId: investigation.categoryId || '',
-      categoryName: investigation.categoryName || '',
+      methodId: investigation.methodId || "",
+      methodName: investigation.methodName || "",
+      categoryId: investigation.categoryId || "",
+      categoryName: investigation.categoryName || "",
       uomId: investigation.uomId || "",
       uomName: investigation.uomName || "",
       resultType: mapInvestigationTypeToResultType(investigation.investigationType) || "Select",
@@ -383,7 +384,7 @@ const InvestigationMaster = () => {
       pandemic: false,
       pandemicCases: "",
       status: investigation.status || "n",
-      interpretation: investigation.interpretation,
+      interpretation: investigation.interpretation || "",
       preparationRequired: prepText,
       turnaroundTime: investigation.tatHours || "",
       estimatedDays: investigation.estimatedDays || "",
@@ -866,17 +867,18 @@ const InvestigationMaster = () => {
                             </label>
                             <div className="d-flex align-items-center">
                               <select
-                                className="form-select flex-grow-1"
-                                name="resultType"
-                                value={formData.resultType}
-                                onChange={handleInputChange}
-                                disabled={saving}
-                              >
-                                <option value="Select">Select</option>
-                                <option value="Multiple">Multiple</option>
-                                <option value="Single">Single</option>
-                                <option value="Range">Range</option>
-                              </select>
+  className="form-select flex-grow-1"
+  name="resultType"
+  value={formData.resultType}
+  onChange={handleInputChange}
+  disabled={saving}
+>
+  <option value="Select">Select</option>
+  <option value="Multiple">Multiple</option>
+  <option value="Single">Single</option>
+  <option value="Range">Range</option>
+  <option value="Template">Template</option>
+</select>
                               {selectedInvestigation && formData.resultType === "Multiple" && (
                                 <button
                                   type="button"
