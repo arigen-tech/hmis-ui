@@ -111,6 +111,7 @@ export const DOCTOR = `/users`;
 export const SESSION = `/opd-session`;
 export const APPOINTMENT = `/admin`;
 export const LOGIN = `/authController/login`;
+export const REFRESH_TOKEN = `/authController/refreshToken`;
 export const SWITCH_USER_CONTEXT = `/authController/switchContext`;
 export const ALL_GENDER = `${MASTERS}/gender/getAll`;
 export const ALL_RELATION = `${MASTERS}/relation/getAll`;

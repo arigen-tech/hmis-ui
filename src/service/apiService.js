@@ -1,5 +1,4 @@
-import { data } from "react-router-dom";
-import { API_HOST } from "../config/apiConfig";
+import { API_HOST, REFRESH_TOKEN } from "../config/apiConfig.js";
 const BASE_URL = API_HOST;
 
 const createRequestError = (status, message, response) => {
@@ -11,59 +10,67 @@ const createRequestError = (status, message, response) => {
 };
 
 /**
- * Function to call GET API
- * @param {string} endpoint - The API endpoint
- * @param {object} headers - Optional headers
- * @returns {Promise<object>} - API response
+ * Identify whether user session was stored in localStorage or sessionStorage
  */
-export const getRequest = async (endpoint, headers = {}) => {
-  try {
-    let token;
-    if (localStorage.token) {
-      token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-    } else {
-      token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
-    }
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...token,
-        ...headers,
-      },
-    });
+export const getActiveStorage = () => {
+  if (localStorage.getItem("refreshToken") || localStorage.getItem("token")) {
+    return localStorage;
+  }
+  if (sessionStorage.getItem("refreshToken") || sessionStorage.getItem("token")) {
+    return sessionStorage;
+  }
+  return null;
+};
 
-    const isJsonResponse = response.headers
-      .get("content-type")
-      ?.includes("application/json");
-    const data = isJsonResponse ? await response.json() : await response.text();
+/**
+ * Update the active storage (localStorage or sessionStorage) with new auth payload
+ */
+export const updateStorageWithAuthData = (data, targetStorage = null) => {
+  const storage = targetStorage || getActiveStorage() || localStorage;
+  if (!data || !storage) return;
 
-    if (!response.ok) {
-      const message =
-        (data && typeof data === "object" && data.message) ||
-        (typeof data === "string" && data) ||
-        response.statusText ||
-        "Request failed";
+  const currentTime = Date.now();
+  const isTokenValid = data.jwtTokenExpiry ? data.jwtTokenExpiry > currentTime : true;
 
-      throw createRequestError(response.status, message, data);
-    }
+  if (data.jwtToken) storage.setItem("token", data.jwtToken);
+  if (data.refreshToken) storage.setItem("refreshToken", data.refreshToken);
+  if (data.username !== undefined) storage.setItem("username", String(data.username));
+  if (data.userId !== undefined) {
+    storage.setItem("userId", String(data.userId));
+    localStorage.setItem("userId", String(data.userId));
+  }
+  if (data.roleId !== undefined) {
+    storage.setItem("roleId", String(data.roleId));
+    if (!storage.getItem("activeRoleId")) storage.setItem("activeRoleId", String(data.roleId));
+    if (!storage.getItem("assignedRoleIds")) storage.setItem("assignedRoleIds", String(data.roleId));
+  }
+  if (data.jwtTokenExpiry !== undefined) {
+    storage.setItem("AuthValidation", String(data.jwtTokenExpiry));
+    storage.setItem("isTokenValid", String(isTokenValid));
+  }
+  if (data.hospitalId !== undefined) storage.setItem("hospitalId", String(data.hospitalId));
+  if (data.departmentId !== undefined) storage.setItem("departmentId", String(data.departmentId));
+  if (data.departmentName !== undefined) storage.setItem("departmentName", String(data.departmentName));
+  if (data.departmentCode !== undefined) storage.setItem("departmentCode", String(data.departmentCode));
+  if (data.loggedInUserName !== undefined) storage.setItem("loggedInUserName", String(data.loggedInUserName));
+};
 
-    return data;
-  } catch (error) {
-    console.error("GET Error:", error);
-    throw error;
+let isRedirecting = false;
+const redirectToLogin = () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  if (typeof window !== "undefined" && window.location.pathname !== "/" && !isRedirecting) {
+    isRedirecting = true;
+    window.location.href = "/";
   }
 };
 
-// apiService.js
+const getAuthToken = () => {
+  return localStorage.getItem("token") || sessionStorage.getItem("token");
+};
 
 /**
- * GET request for PUBLIC endpoints (no Authorization header sent).
- * Use this for whitelisted / permitAll endpoints such as login-page helpers.
- *
- * @param {string} endpoint - The API endpoint
- * @param {object} headers  - Optional extra headers
- * @returns {Promise<object>} - API response (parsed JSON or text)
+ * Public GET request (no Authorization header).
  */
 export const getPublicRequest = async (endpoint, headers = {}) => {
   try {
@@ -71,7 +78,7 @@ export const getPublicRequest = async (endpoint, headers = {}) => {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...headers,         
+        ...headers,
       },
     });
 
@@ -97,104 +104,9 @@ export const getPublicRequest = async (endpoint, headers = {}) => {
   }
 };
 
-export const getImageRequest = async (
-  endpoint,
-  headers = {},
-  responseType = "json",
-) => {
-  try {
-    let token;
-    if (localStorage.token) {
-      token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-    } else {
-      token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
-    }
-
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "GET",
-      headers: {
-        ...(responseType === "json" && { "Content-Type": "application/json" }),
-        ...token,
-        ...headers,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`GET request failed: ${response.status}`);
-    }
-
-    switch (responseType) {
-      case "blob":
-        return await response.blob();
-      case "text":
-        return await response.text();
-      case "json":
-      default:
-        return await response.json();
-    }
-  } catch (error) {
-    console.error("GET Error:", error);
-    throw error;
-  }
-};
-
 /**
- * Function to call POST API
- * @param {string} endpoint - The API endpoint
- * @param {object} data - Request body
- * @param {object} headers - Optional headers
- * @returns {Promise<object>} - API response
- */
-export const postRequest = async (endpoint, data, options = {}) => {
-  try {
-    let token;
-    if (localStorage.token) {
-      token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-    } else {
-      token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
-    }
-
-    const isMultipart = options.isMultipart;
-
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "POST",
-      headers: {
-        ...token,
-        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
-      },
-      body: isMultipart ? data : JSON.stringify(data),
-    });
-
-    const isJsonResponse = response.headers
-      .get("content-type")
-      ?.includes("application/json");
-    const responseData = isJsonResponse ? await response.json() : await response.text();
-
-    if (!response.ok) {
-      const message =
-        (responseData && typeof responseData === "object" && responseData.message) ||
-        (typeof responseData === "string" && responseData) ||
-        response.statusText ||
-        "Request failed";
-
-      throw createRequestError(response.status, message, responseData);
-    }
-
-    return responseData;
-  } catch (error) {
-    console.error("POST Error:", error);
-    throw error;
-  }
-};
-
-/**
- * Function to call POST API for PUBLIC (whitelisted / permitAll) endpoints.
- * Never sends an Authorization header — use for login, OTP, signup, etc.
- *
- * @param {string} endpoint - The API endpoint
- * @param {object} data - Request body
- * @param {object} options - Optional options ({ isMultipart: true } for FormData)
- * @returns {Promise<object>} - API response
+ * Public POST request (no Authorization header).
+ * Used for login, OTP, and refreshToken API.
  */
 export const postPublicRequest = async (endpoint, data, options = {}) => {
   try {
@@ -203,7 +115,6 @@ export const postPublicRequest = async (endpoint, data, options = {}) => {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
-       
         ...(isMultipart ? {} : { "Content-Type": "application/json" }),
       },
       body: isMultipart ? data : JSON.stringify(data),
@@ -233,26 +144,204 @@ export const postPublicRequest = async (endpoint, data, options = {}) => {
   }
 };
 
+let refreshPromise = null;
+
+/**
+ * Refresh access token using the stored refresh token.
+ * Prevents multiple simultaneous refresh calls via singleton promise.
+ */
+export const refreshAuthToken = async () => {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const storage = getActiveStorage();
+        const currentRefreshToken = storage?.getItem("refreshToken");
+
+        if (!currentRefreshToken) {
+          redirectToLogin();
+          throw new Error("No refresh token available");
+        }
+
+        // Call refresh token API without Authorization header
+        const res = await postPublicRequest(REFRESH_TOKEN, {
+          refreshToken: currentRefreshToken,
+        });
+
+        if (res?.status === 200 && res?.response?.jwtToken) {
+          updateStorageWithAuthData(res.response, storage);
+          return res.response.jwtToken;
+        }
+
+        throw new Error(res?.message || "Failed to refresh token");
+      } catch (error) {
+        redirectToLogin();
+        throw error;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+};
+
+/**
+ * Internal fetch wrapper with automatic token injection and 401 refresh retry.
+ */
+const fetchWithAuth = async (url, options = {}) => {
+  let tokenUsed = getAuthToken();
+
+  const makeRequest = () => {
+    tokenUsed = getAuthToken();
+    const authHeaders = tokenUsed ? { Authorization: `Bearer ${tokenUsed}` } : {};
+    const cleanHeaders = { ...(options.headers || {}) };
+    delete cleanHeaders.Authorization;
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...authHeaders,
+        ...cleanHeaders,
+      },
+    });
+  };
+
+  let response = await makeRequest();
+
+  if (response.status === 401) {
+    const currentToken = getAuthToken();
+    if (currentToken && currentToken !== tokenUsed) {
+      // If another request already refreshed token concurrently, retry immediately
+      response = await makeRequest();
+    } else {
+      await refreshAuthToken();
+      response = await makeRequest();
+    }
+  }
+
+  return response;
+};
+
+/**
+ * Function to call GET API with authorization and auto refresh on 401
+ */
+export const getRequest = async (endpoint, headers = {}) => {
+  try {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+    });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const data = isJsonResponse ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (data && typeof data === "object" && data.message) ||
+        (typeof data === "string" && data) ||
+        response.statusText ||
+        "Request failed";
+
+      throw createRequestError(response.status, message, data);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("GET Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Function to call GET API for images/blobs/json
+ */
+export const getImageRequest = async (
+  endpoint,
+  headers = {},
+  responseType = "json",
+) => {
+  try {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        ...(responseType === "json" && { "Content-Type": "application/json" }),
+        ...headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`GET request failed: ${response.status}`);
+    }
+
+    switch (responseType) {
+      case "blob":
+        return await response.blob();
+      case "text":
+        return await response.text();
+      case "json":
+      default:
+        return await response.json();
+    }
+  } catch (error) {
+    console.error("GET Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Function to call POST API with authorization and auto refresh on 401
+ */
+export const postRequest = async (endpoint, data, options = {}) => {
+  try {
+    const isMultipart = options.isMultipart;
+
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
+        ...(options.headers || {}),
+      },
+      body: isMultipart ? data : JSON.stringify(data),
+    });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const responseData = isJsonResponse ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (responseData && typeof responseData === "object" && responseData.message) ||
+        (typeof responseData === "string" && responseData) ||
+        response.statusText ||
+        "Request failed";
+
+      throw createRequestError(response.status, message, responseData);
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error("POST Error:", error);
+    throw error;
+  }
+};
+
 /**
  * Function to call POST API with FormData
- * @param {string} endpoint - The API endpoint
- * @param {FormData} formData - FormData object
- * @returns {Promise<object>} - API response
  */
 export const postRequestWithFormData = async (endpoint, formData) => {
   try {
-    let token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-
     console.log(`Sending request to: ${endpoint}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`, 
-      },
+      signal: controller.signal,
       body: formData,
     });
 
@@ -286,22 +375,13 @@ export const postRequestWithFormData = async (endpoint, formData) => {
 
 /**
  * Function to call PUT API with FormData
- * @param {string} endpoint - The API endpoint
- * @param {FormData} formData - FormData object
- * @returns {Promise<object>} - API response
  */
 export const putRequestWithFormData = async (endpoint, formData) => {
   try {
-    let token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-
     console.log(`Sending PUT request to: ${endpoint}`);
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       body: formData,
     });
 
@@ -329,30 +409,13 @@ export const putRequestWithFormData = async (endpoint, formData) => {
 
 /**
  * Function to call PUT API
- * @param {string} endpoint - The API endpoint
- * @param {object} data - Request body
- * @param {object} headers - Optional headers
- * @returns {Promise<object>} - API response
  */
 export const putRequest = async (endpoint, data, headers = {}) => {
   try {
-    let token;
-
-    if (localStorage.token) {
-      token = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      };
-    } else {
-      token = {
-        Authorization: `Bearer ${sessionStorage.getItem("token")}`
-      };
-    }
-
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        ...token,
         ...headers,
       },
       body: JSON.stringify(data),
@@ -382,7 +445,6 @@ export const putRequest = async (endpoint, data, headers = {}) => {
       status: response.status,
       data: responseData,
     };
-
   } catch (error) {
     console.error("PUT Error:", error);
     throw error;
@@ -391,13 +453,9 @@ export const putRequest = async (endpoint, data, headers = {}) => {
 
 /**
  * Fetch PDF report from the server
- * @param {string} reportUrl - The base URL for the report endpoint
- * @param {string} flag - The flag parameter ('d' for download/view, 'p' for print)
- * @returns {Promise<Blob>} - Returns a promise that resolves to a PDF blob
- * @throws {Error} - Throws an error if the request fails
  */
 export const fetchPdfReportForViewAndPrint = async (reportUrl, flag) => {
-  const response = await fetch(`${reportUrl}&flag=${flag}`, {
+  const response = await fetchWithAuth(`${reportUrl}&flag=${flag}`, {
     method: "GET",
     headers: {
       Accept: "application/pdf",
@@ -411,51 +469,10 @@ export const fetchPdfReportForViewAndPrint = async (reportUrl, flag) => {
   return await response.blob();
 };
 
-const uploadFileWithJson = async (endpoint, jsonData, files) => {
+export const uploadFileWithJson = async (endpoint, jsonData, files) => {
   if (!files || !(files instanceof FileList || files instanceof File)) {
     throw new Error("No valid file provided!");
   }
-
-  let token = localStorage.token
-    ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    : { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
-
-  const formData = new FormData();
-  formData.append(
-    "json",
-    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
-  );
-
-  // Add the file (only the first file if it's a FileList)
-  if (files instanceof FileList) {
-    formData.append("files", files[0]); // Backend expects a single file
-  } else {
-    formData.append("files", files); // Single file
-  }
-
-  try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "POST",
-      headers: { ...token },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error during file upload:", error.message);
-    throw error;
-  }
-};
-export { uploadFileWithJson };
-
-const updateFileWithJson = async (endpoint, jsonData, files) => {
-  let token = localStorage.token
-    ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    : { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
 
   const formData = new FormData();
   formData.append(
@@ -470,9 +487,8 @@ const updateFileWithJson = async (endpoint, jsonData, files) => {
   }
 
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "PUT",
-      headers: { ...token },
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "POST",
       body: formData,
     });
 
@@ -486,16 +502,38 @@ const updateFileWithJson = async (endpoint, jsonData, files) => {
     throw error;
   }
 };
-export { updateFileWithJson };
 
-async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
-  let token;
-  if (localStorage.token) {
-    token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+export const updateFileWithJson = async (endpoint, jsonData, files) => {
+  const formData = new FormData();
+  formData.append(
+    "json",
+    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
+  );
+
+  if (files instanceof FileList) {
+    formData.append("files", files[0]);
   } else {
-    token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
+    formData.append("files", files);
   }
 
+  try {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "PUT",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error during file upload:", error.message);
+    throw error;
+  }
+};
+
+export async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   const formData = new FormData();
   formData.append(
     "json",
@@ -505,11 +543,8 @@ async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   formData.append(`thumbImage`, files2);
 
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
       method: "POST",
-      headers: {
-        ...token,
-      },
       body: formData,
     });
 
@@ -525,16 +560,7 @@ async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   }
 }
 
-export { uploadMultiFileWithJson };
-
-async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
-  let token;
-  if (localStorage.token) {
-    token = { Authorization: `Bearer ${localStorage.getItem("token")}` };
-  } else {
-    token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
-  }
-
+export async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
   const formData = new FormData();
   formData.append(
     "json",
@@ -548,11 +574,8 @@ async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
   }
 
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "PUT", // Use PUT or PATCH based on your API
-      headers: {
-        ...token,
-      },
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "PUT",
       body: formData,
     });
 
@@ -567,4 +590,3 @@ async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
     throw error;
   }
 }
-export { updateMultiFileWithJson };
