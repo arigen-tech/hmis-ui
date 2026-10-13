@@ -68,6 +68,7 @@ import Pagination, {
 } from "../../../Components/Pagination";
 import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryPopup";
 import PregnancySection from "../Pregnancy";
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 
 const OpdRRecallPatient = () => {
   const currentDoctorId =
@@ -1321,7 +1322,7 @@ const OpdRRecallPatient = () => {
   const fetchMasProcedureData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
-        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
+        `${MASTERS}/masProcedures/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
       );
 
       if (data.status === 200 && data.response?.content) {
@@ -4881,7 +4882,7 @@ const OpdRRecallPatient = () => {
                           <input
                             type="text"
                             id="dob"
-                            value={selectedPatient?.dob}
+                            value={formatDateForDisplay(selectedPatient?.dob)}
                             name="dob"
                             className="form-control"
                             placeholder="dd/mm/yyyy"
@@ -7838,10 +7839,10 @@ const OpdRRecallPatient = () => {
                               Follow Up date
                             </label>
                             <input
-                              type="date"
+                              type="text"
                               className="form-control"
                               style={{ width: "170px" }}
-                              value={followUps.followUpDate}
+                              value={formatDateForDisplay(followUps.followUpDate)}
                               readOnly
                             />
                           </div>
