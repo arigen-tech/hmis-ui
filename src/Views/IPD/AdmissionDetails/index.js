@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getRequest } from "../../../service/apiService";
 import { GET_ADMISSION_DETAILS_BY_INPATIENT, API_HOST } from "../../../config/apiConfig";
 import DocumentPreview from "../../../Components/DocumentPreview";
+import { formatDateTimeWithSecondsForDisplay } from "../../../utils/dateUtils";
 
 const AdmissionDetails = ({ selectedPatient }) => {
   const [loading, setLoading] = useState(false);
@@ -35,7 +36,7 @@ const AdmissionDetails = ({ selectedPatient }) => {
 
           setAdmissionInformation({
             admissionNo: data.admissionNo || "",
-            admissionDateTime: `${data.admissionDate || ""} ${data.admissionTime || ""}`.trim(),
+            admissionDateTime: formatDateTimeWithSecondsForDisplay(`${data.admissionDate || ""} ${data.admissionTime || ""}`.trim()),
             admissionCategory: data.admissionCategory || "",
             admissionType: data.admissionType || "",
             admissionSource: data.admissionSource || "",

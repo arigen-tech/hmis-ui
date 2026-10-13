@@ -18,6 +18,7 @@ import AdmissionDetails from "../AdmissionDetails";
 import OTDetails from "../OTDetails"
 // import OTDetails from "../OTDetails"
 import ShiftHandover from "../ShiftHandover"
+import { formatDateForDisplay } from "../../../utils/dateUtils"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -624,7 +625,7 @@ const WardManagement = () => {
                                 <div className="text-center mb-1">
                                   <div className="small fw-bold" style={{ fontSize: "0.65rem" }}>{patient.admissionNo}</div>
                                   {patient.admissionDate && (
-                                    <div className="small" style={{ fontSize: "0.6rem", opacity: 0.8 }}>{patient.admissionDate}</div>
+                                    <div className="small" style={{ fontSize: "0.6rem", opacity: 0.8 }}>{formatDateForDisplay(patient.admissionDate)}</div>
                                   )}
                                 </div>
                               ) : (
@@ -748,7 +749,7 @@ const WardManagement = () => {
                                 </div>
                                 <div>
                                   <i className="fa fa-calendar me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>{selectedPatient.admissionDate} {selectedPatient.admissionTime}</span>
+                                  <span style={{ fontSize: '0.8rem' }}>{formatDateForDisplay(selectedPatient.admissionDate)} {selectedPatient.admissionTime}</span>
                                 </div>
                                 <div>
                                   <i className="fa fa-clock me-1" style={{ fontSize: '0.85rem' }}></i>
@@ -825,7 +826,11 @@ const WardManagement = () => {
 )}
 
 {activeTab === "Blood / Transfusion" && (
-  <BloodTransfusion selectedPatient={selectedPatient} />
+  <BloodTransfusion 
+  selectedPatient={selectedPatient}
+  selectedWard={selectedWard}
+   />
+
 )}
 {activeTab === "OT Details" && (
   <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />

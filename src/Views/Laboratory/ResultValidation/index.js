@@ -23,6 +23,7 @@ import Popup from "../../../Components/popup"
 import { FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { checkInRange, getResultTextStyle } from "../../../utils/rangeCheckService";
+import TemplateResultEditor from "../../Laboratory/TemplateResultEditor"
 
 const ResultValidation = () => {
   const [resultList, setResultList] = useState([])
@@ -46,6 +47,10 @@ const ResultValidation = () => {
 
   // Result flag master dropdown
   const [resultFlagList, setResultFlagList] = useState([])
+
+  // Template (investigationType === "t") editor modal state
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false)
+  const [editingInvestigationId, setEditingInvestigationId] = useState(null)
 
   // Debounce timers per row (keyed by row id), for flag re-detection on result change
   const debounceTimersRef = useRef({})
@@ -260,6 +265,7 @@ const ResultValidation = () => {
       department: item.mainChargeCodeName || '',
       doctor_name: item.doctorName || '',
       modality: item.subChargeCodeName || '',
+      subChargeCodeId: item.subChargeCodeId || 0,
       priority: '',
       age: item.patientAge || '',
       gender: item.patientGender || '',
@@ -352,6 +358,30 @@ const ResultValidation = () => {
     })
   }
 
+  // ---------------- Template editor handlers ----------------
+  const handleOpenTemplateEditor = (investigation) => {
+    setEditingInvestigationId(investigation.id)
+    setShowTemplateEditor(true)
+  }
+
+  const handleTemplateEditorSave = ({ templateResult, templateCode, templateName }) => {
+    if (editingInvestigationId == null) return
+    setSelectedResult((prev) => {
+      if (!prev) return prev
+      const updatedInvestigations = prev.investigations.map((inv) =>
+        inv.id === editingInvestigationId
+          ? { ...inv, result: templateResult, templateCode, templateName }
+          : inv
+      )
+      return { ...prev, investigations: updatedInvestigations }
+    })
+  }
+
+  const handleCloseTemplateEditor = () => {
+    setShowTemplateEditor(false)
+    setEditingInvestigationId(null)
+  }
+
   // Debounced flag re-detection, used only for free-text result inputs
   const scheduleFlagDetection = (item, value, isSubTest, investigationId) => {
     const key = isSubTest ? `${investigationId}-${item.id}` : `${item.id}`
@@ -397,11 +427,14 @@ const ResultValidation = () => {
   }
 
   const renderResultFlagDropdown = (item, isSubTest = false, investigationId = null) => {
+    const isTemplateType = !isSubTest && item.investigationType === "t"
+
     return (
       <select
         className="form-select"
         style={{ minWidth: "100px" }}
         value={item.resultFlagId || ""}
+        disabled={isTemplateType}
         onChange={(e) => {
           const val = e.target.value ? Number(e.target.value) : null
           if (isSubTest && investigationId) {
@@ -422,6 +455,21 @@ const ResultValidation = () => {
   }
 
   const renderResultInput = (test, isSubTest = false, investigationId = null) => {
+    // Template-type investigation → clickable box that opens the template result editor
+    if (!isSubTest && test.investigationType === "t") {
+      return (
+        <input
+          type="text"
+          className="form-control"
+          readOnly
+          style={{ cursor: "pointer", minWidth: "180px", background: "#f8f9fa" }}
+          value={test.templateName || (test.result ? "Click to view result" : "Click to enter result")}
+          onClick={() => handleOpenTemplateEditor(test)}
+          title="Click to open template result editor"
+        />
+      )
+    }
+
     const resultStyle = getResultTextStyle(test.inRange);
 
     if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
@@ -609,6 +657,33 @@ const ResultValidation = () => {
             inRange: mainInRange,
             subTests: processedSubTests
           }
+        } else if (inv.investigationType === 't') {
+          // ---- Template-type investigation ----
+          // Saved template text comes back in inv.result; opened in the template editor
+          return {
+            id: index + 1,
+            si_no: index + 1,
+            resultEntryDetailsId: inv.resultEntryDetailsId,
+            investigationId: inv.investigationId,
+            investigation: inv.investigationName,
+            sample: inv.sampleName,
+            result: inv.result || "",
+            units: inv.unit || '',
+            normal_range: inv.normalValue || '',
+            remarks: inv.remarks || "",
+            reject: false,
+            validate: true,
+            comparisonType: "",
+            fixedId: null,
+            fixedDropdownValues: [],
+            generatedSampleId: inv.generatedSampleId || '',
+            subTests: [],
+            resultFlagId: null,
+            investigationType: 't',
+            // template-specific fields
+            templateCode: inv.templateCode || "",
+            templateName: inv.templateName || ""
+          }
         } else {
           // Single investigation (type 's')
           // Calculate inRange for single investigation
@@ -656,6 +731,10 @@ const ResultValidation = () => {
   const handleBackToList = () => {
     Object.values(debounceTimersRef.current).forEach(clearTimeout)
     debounceTimersRef.current = {}
+
+    // Close template editor if open
+    setShowTemplateEditor(false)
+    setEditingInvestigationId(null)
 
     setShowDetailView(false)
     setSelectedResult(null)
@@ -971,6 +1050,30 @@ const ResultValidation = () => {
         )}
 
         {loading && <LoadingScreen />}
+
+        {/* Template Result Editor Modal */}
+        {showTemplateEditor &&
+          editingInvestigationId != null &&
+          (() => {
+            const inv = selectedResult.investigations.find(
+              (i) => i.id === editingInvestigationId
+            )
+            if (!inv) return null
+            return (
+              <TemplateResultEditor
+                show={showTemplateEditor}
+                onClose={handleCloseTemplateEditor}
+                onSave={handleTemplateEditorSave}
+                modalityId={selectedResult.subChargeCodeId}
+                modalityType={selectedResult.modality}
+                initialData={{
+                  templateResult: inv.result,
+                  templateCode: inv.templateCode,
+                  templateName: inv.templateName,
+                }}
+              />
+            )
+          })()}
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">

@@ -1,192 +1,553 @@
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Swal from "sweetalert2"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { getRequest, postRequest, putRequest } from "../../../service/apiService"
+import {
+  CREATE_BLOOD_REQUEST,
+  MAS_BLOOD_COMPONENT_GET_ALL,
+  MAS_BLOODGROUP,
+  GET_BLOOD_REQUEST_TRACKING,
+  ACKNOWLEDGE_BLOOD_REQUEST,
+} from "../../../config/apiConfig"
 
-const COMPONENT_TYPES = ["PRBC", "Platelet", "Plasma", "Whole Blood", "Cryoprecipitate"]
-const URGENCY_OPTIONS = ["Routine", "Urgent", "Emergency"]
-const INDICATION_OPTIONS = ["Anemia", "Surgery", "Trauma", "Bleeding Disorder", "Other"]
+/* ------------------------------------------------------------------ */
+/*  Static options                                                     */
+/* ------------------------------------------------------------------ */
 
-const DUMMY_TRACKING_LIST = [
-  { requestNo: "BT-2026", ipNo: "IPD-1001", patientName: "John Mathew", bloodGroup: "A+", component: "PRBC", units: 1, department: "General Ward", urgency: "Routine", requestedDateTime: "01-Aug-2026 09:15 AM", requiredBy: "01-Aug-2026 01:00 PM", status: "Issued" },
-  { requestNo: "BT-2026", ipNo: "IPD-1002", patientName: "Sarah Khan", bloodGroup: "O-", component: "Whole Blood", units: 2, department: "Surgery", urgency: "Urgent", requestedDateTime: "01-Aug-2026 10:30 AM", requiredBy: "01-Aug-2026 11:30 AM", status: "Ready for Issue" },
-  { requestNo: "BT-2026", ipNo: "IPD-1003", patientName: "Mohammed Ali", bloodGroup: "B+", component: "Platelet", units: 1, department: "Oncology", urgency: "Emergency", requestedDateTime: "01-Aug-2026 11:45 AM", requiredBy: "ASAP", status: "Cross Matching" },
-  { requestNo: "BT-2026", ipNo: "IPD-1004", patientName: "Deepa Krishnan", bloodGroup: "AB+", component: "Plasma", units: 2, department: "ICU", urgency: "Routine", requestedDateTime: "01-Aug-2026 01:20 PM", requiredBy: "01-Aug-2026 05:00 PM", status: "Pending" },
-  { requestNo: "BT-2026", ipNo: "IPD-1005", patientName: "Ramesh Iyer", bloodGroup: "O+", component: "Cryoprecipitate", units: 3, department: "Trauma", urgency: "Emergency", requestedDateTime: "01-Aug-2026 02:00 PM", requiredBy: "ASAP", status: "Compatibility Testing" }
+const URGENCY_OPTIONS = ["Routine", "Emergency", "Urgent"]
+
+const INDICATION_OPTIONS = [
+  "Anemia",
+  "Surgery",
+  "Bleeding",
+  "Trauma",
+  "Thalassemia",
+  "Hemophilia",
+  "Cancer",
+  "Liver Disease",
 ]
 
-const DUMMY_ISSUED_UNITS = [
-  { id: 1, component: "PRBC", group: "A+", unitNo: "PRBC-2026-001", expiry: "25-Sep-2026", issuedAt: "01-Aug-2026 16:45" },
-  { id: 2, component: "Whole Blood", group: "O-", unitNo: "WB-2026-045", expiry: "10-Sep-2026", issuedAt: "01-Aug-2026 17:10" },
-  { id: 3, component: "Platelet", group: "B+", unitNo: "PLT-2026-089", expiry: "05-Aug-2026", issuedAt: "01-Aug-2026 17:30" },
-  { id: 4, component: "Plasma", group: "AB+", unitNo: "PLS-2026-023", expiry: "30-Nov-2026", issuedAt: "01-Aug-2026 18:05" }
-]
+const newRequestRow = (id) => ({
+  id,
+  componentType: "",
+  unitsRequired: "",
+  urgency: "",
+  requiredDateTime: "",
+  indication: "",
+  remarks: "",
+})
 
-const BloodTransfusion = ({ selectedPatient }) => {
+const displayValue = (value) =>
+  value === null || value === undefined ? "" : value
+
+const formatDateTime = (value) => {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (number) => String(number).padStart(2, "0")
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
+const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
   const [activeView, setActiveView] = useState("request")
 
-  const [requestRows, setRequestRows] = useState([
-    { id: 1, componentType: "", units: "", urgency: "", requiredDateTime: "", indication: "", remarks: "" }
-  ])
+  /* ---------------- master data ---------------- */
+  const [componentOptions, setComponentOptions] = useState([])
+  const [bloodGroupOptions, setBloodGroupOptions] = useState([])
+  const [isLoadingMaster, setIsLoadingMaster] = useState(false)
 
+  /* ---------------- request form ---------------- */
+  const [bloodGroupId, setBloodGroupId] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [requestRows, setRequestRows] = useState([newRequestRow(1)])
+
+  /* ---------------- tracking ---------------- */
+  const [trackingList, setTrackingList] = useState([])
+  const [trackingTotal, setTrackingTotal] = useState(0)
+  const [trackingPage, setTrackingPage] = useState(1)
+  const [isLoadingTracking, setIsLoadingTracking] = useState(false)
+  const [acknowledgedMap, setAcknowledgedMap] = useState({})
+
+  /* ---------------- acknowledge modal ---------------- */
+  const [showModal, setShowModal] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [selectedAction, setSelectedAction] = useState("Accept")
+  const [remarks, setRemarks] = useState("")
+  const [isSubmittingAck, setIsSubmittingAck] = useState(false)
+
+  /* ---------------- placeholders ---------------- */
+  const [pendingUnits] = useState([])
+  const [receivedUnits] = useState([])
+
+  /* ================================================================ */
+  /*  Fetch masters                                                    */
+  /* ================================================================ */
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      setIsLoadingMaster(true)
+      try {
+        const [componentsResponse, bloodGroupsResponse] = await Promise.all([
+          getRequest(MAS_BLOOD_COMPONENT_GET_ALL),
+          getRequest(`${MAS_BLOODGROUP}/getAll/1`),
+        ])
+        const components = componentsResponse?.response || []
+        const bloodGroups = bloodGroupsResponse?.response || []
+        setComponentOptions(Array.isArray(components) ? components : [])
+        setBloodGroupOptions(Array.isArray(bloodGroups) ? bloodGroups : [])
+      } catch (error) {
+        console.error("Error fetching blood components / blood groups:", error)
+        setComponentOptions([])
+        setBloodGroupOptions([])
+        Swal.fire(
+          "Unable to Load Data",
+          "Blood component and blood group data could not be loaded.",
+          "error",
+        )
+      } finally {
+        setIsLoadingMaster(false)
+      }
+    }
+    fetchMasterData()
+  }, [])
+
+  /* ================================================================ */
+  /*  Fetch tracking list (auto-loads by inpatientId)                  */
+  /* ================================================================ */
+  const fetchTracking = useCallback(
+    async (page = 0) => {
+      if (!selectedPatient?.inpatientId) {
+        setTrackingList([])
+        setTrackingTotal(0)
+        return
+      }
+      setIsLoadingTracking(true)
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          size: String(DEFAULT_ITEMS_PER_PAGE),
+          inpatientId: String(selectedPatient.inpatientId),
+        })
+        const response = await getRequest(
+          `${GET_BLOOD_REQUEST_TRACKING}?${params.toString()}`,
+        )
+        const responsePage = response?.response
+        setTrackingList(
+          Array.isArray(responsePage?.content) ? responsePage.content : [],
+        )
+        setTrackingTotal(responsePage?.totalElements || 0)
+      } catch (error) {
+        console.error("Error fetching blood request tracking data:", error)
+        setTrackingList([])
+        setTrackingTotal(0)
+        Swal.fire(
+          "Unable to Load Data",
+          error?.message || "Blood request tracking data could not be loaded.",
+          "error",
+        )
+      } finally {
+        setIsLoadingTracking(false)
+      }
+    },
+    [selectedPatient?.inpatientId],
+  )
+
+  useEffect(() => {
+    fetchTracking(0)
+    setTrackingPage(1)
+  }, [fetchTracking])
+
+  const handleTrackingPageChange = (page) => {
+    setTrackingPage(page)
+    fetchTracking(page - 1)
+  }
+
+  /* ================================================================ */
+  /*  Acknowledge helpers                                              */
+  /* ================================================================ */
+  const canUserAcknowledge = (request) => {
+    if (
+      request?.canAcknowledge !== undefined &&
+      request?.canAcknowledge !== null
+    ) {
+      return Boolean(request.canAcknowledge)
+    }
+    const status = String(request?.trackingStatus || "").trim().toUpperCase()
+    return (
+      status === "ISSUED" ||
+      status === "PARTIALLY_ISSUED" ||
+      request?.trackingStatusId === 4 ||
+      Number(request?.fulfilledUnits || 0) > 0
+    )
+  }
+
+  const getAcknowledgeStatus = (request) => {
+    const key =
+      request.requestDtId ||
+      request.requestNo ||
+      `${request.inpatientId}-${request.component}-${request.requestedDateTime}`
+    if (acknowledgedMap[key]) {
+      return acknowledgedMap[key].status
+    }
+    const status =
+      request.acknowledgementStatus ||
+      request.acknowledgeStatus ||
+      request.ackStatus
+    if (status && String(status).toUpperCase() !== "PENDING") {
+      return status
+    }
+    return null
+  }
+
+  const handleOpenAcknowledge = (request) => {
+    setSelectedRequest(request)
+    setSelectedAction("Accept")
+    setRemarks("")
+    setShowModal(true)
+  }
+
+  const handleCloseModal = () => {
+    if (isSubmittingAck) return
+    setShowModal(false)
+    setSelectedRequest(null)
+    setSelectedAction("Accept")
+    setRemarks("")
+  }
+
+  const executeAcknowledge = async (request, action, remarksText) => {
+    setIsSubmittingAck(true)
+    try {
+      const allocationIds =
+        Array.isArray(request.allocationIds) && request.allocationIds.length > 0
+          ? request.allocationIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id))
+          : request.allocationId != null
+          ? [Number(request.allocationId)]
+          : request.bloodAllocationId != null
+          ? [Number(request.bloodAllocationId)]
+          : request.requestDtId != null
+          ? [Number(request.requestDtId)]
+          : []
+
+      if (allocationIds.length === 0) {
+        throw new Error("No allocation ID found for this blood request.")
+      }
+
+      const responses = await Promise.all(
+        allocationIds.map((allocId) =>
+          putRequest(ACKNOWLEDGE_BLOOD_REQUEST, {
+            allocationId: allocId,
+            accepted: action === "Accept",
+            remarks: (remarksText || "").trim(),
+          }),
+        ),
+      )
+
+      const response = responses[0]
+      const isSuccess =
+        response?.status === 200 ||
+        response?.data?.status === 200 ||
+        response?.data?.production === false
+
+      if (!isSuccess && response?.status >= 400) {
+        throw new Error(
+          response?.data?.message ||
+            response?.message ||
+            "Failed to acknowledge blood request.",
+        )
+      }
+
+      const key =
+        request.requestDtId ||
+        request.requestNo ||
+        `${request.inpatientId}-${request.component}-${request.requestedDateTime}`
+
+      const finalStatus = action === "Accept" ? "Accepted" : "Rejected"
+
+      setAcknowledgedMap((prev) => ({
+        ...prev,
+        [key]: { status: finalStatus, remarks: (remarksText || "").trim() },
+      }))
+
+      setTrackingList((prev) =>
+        prev.map((item) => {
+          const itemKey =
+            item.requestDtId ||
+            item.requestNo ||
+            `${item.inpatientId}-${item.component}-${item.requestedDateTime}`
+          if (itemKey === key) {
+            return {
+              ...item,
+              trackingStatus:
+                finalStatus === "Rejected" ? "Rejected" : item.trackingStatus,
+              acknowledgementStatus: finalStatus,
+              canAcknowledge: false,
+            }
+          }
+          return item
+        }),
+      )
+
+      handleCloseModal()
+
+      Swal.fire({
+        icon: "success",
+        title: `Request ${finalStatus}!`,
+        text:
+          action === "Reject"
+            ? `Blood Request ${request.requestNo || ""} status updated to Rejected successfully.`
+            : `Blood Request ${request.requestNo || ""} has been accepted successfully.`,
+        timer: 1800,
+        showConfirmButton: false,
+      })
+
+      fetchTracking(trackingPage - 1)
+    } catch (error) {
+      console.error("Error processing acknowledgment:", error)
+      Swal.fire(
+        "Error",
+        error?.message || "Failed to process acknowledgment.",
+        "error",
+      )
+    } finally {
+      setIsSubmittingAck(false)
+    }
+  }
+
+  const handleModalSubmit = async () => {
+    if (!selectedAction) {
+      Swal.fire(
+        "Selection Required",
+        "Please select either Accept or Reject.",
+        "warning",
+      )
+      return
+    }
+    if (selectedAction === "Reject" && !remarks.trim()) {
+      Swal.fire(
+        "Remarks Required",
+        "Please provide a reason for rejecting the blood units.",
+        "warning",
+      )
+      return
+    }
+    await executeAcknowledge(selectedRequest, selectedAction, remarks)
+  }
+
+  /* ================================================================ */
+  /*  Auto-select the patient's blood group when available             */
+  /* ================================================================ */
+  useEffect(() => {
+    if (!selectedPatient?.bloodGroup || bloodGroupOptions.length === 0) return
+    const match = bloodGroupOptions.find(
+      (bg) =>
+        String(bg.bloodGroupName || bg.bloodGroupCode || "")
+          .trim()
+          .toLowerCase() ===
+        String(selectedPatient.bloodGroup).trim().toLowerCase(),
+    )
+    if (match) setBloodGroupId(String(match.bloodGroupId))
+  }, [selectedPatient?.bloodGroup, bloodGroupOptions])
+
+  /* ================================================================ */
+  /*  Row handlers                                                     */
+  /* ================================================================ */
   const handleRowChange = (id, field, value) => {
-    setRequestRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r))
+    setRequestRows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+    )
+  }
+
+  const handleUnitsChange = (id, value) => {
+    handleRowChange(id, "unitsRequired", value.replace(/\D/g, ""))
   }
 
   const handleAddRow = () => {
-    setRequestRows(prev => [...prev, { id: prev.length ? Math.max(...prev.map(r => r.id)) + 1 : 1, componentType: "", units: "", urgency: "", requiredDateTime: "", indication: "", remarks: "" }])
+    setRequestRows((prev) => [
+      ...prev,
+      newRequestRow(prev.length ? Math.max(...prev.map((r) => r.id)) + 1 : 1),
+    ])
   }
 
   const handleRemoveRow = (id) => {
-    setRequestRows(prev => (prev.length > 1 ? prev.filter(r => r.id !== id) : prev))
+    setRequestRows((prev) =>
+      prev.length > 1 ? prev.filter((r) => r.id !== id) : prev,
+    )
   }
 
   const handleResetForm = () => {
-    setRequestRows([{ id: 1, componentType: "", units: "", urgency: "", requiredDateTime: "", indication: "", remarks: "" }])
+    setRequestRows([newRequestRow(1)])
   }
 
-  const handleSubmitRequest = () => {
-    const invalid = requestRows.some(r => !r.componentType || !r.units || !r.urgency || !r.requiredDateTime)
-    if (invalid) {
-      Swal.fire({
-        title: "Warning",
-        text: "Please fill all required fields for each component.",
-        icon: "warning"
-      })
+  /* ================================================================ */
+  /*  Submit request                                                   */
+  /* ================================================================ */
+  const handleSubmitRequest = async () => {
+    const patientId = Number(selectedPatient?.patientId)
+    const inpatientId = Number(selectedPatient?.inpatientId)
+    const wardIdNum = Number(selectedWard?.wardId)
+    const requestDepartment = Number(
+      sessionStorage.getItem("departmentId") ||
+        localStorage.getItem("departmentId"),
+    )
+    const selectedBloodGroupId = Number(bloodGroupId)
+
+    if (!Number.isInteger(patientId) || patientId < 1) {
+      Swal.fire(
+        "Patient ID Missing",
+        "The selected inpatient does not contain a valid patient ID.",
+        "error",
+      )
+      return
+    }
+    if (!Number.isInteger(inpatientId) || inpatientId < 1) {
+      Swal.fire(
+        "Inpatient ID Missing",
+        "The selected inpatient does not contain a valid inpatient ID.",
+        "error",
+      )
+      return
+    }
+    if (!Number.isInteger(wardIdNum) || wardIdNum < 1) {
+      Swal.fire("Ward Required", "A valid ward could not be determined for this request.", "error")
+      return
+    }
+    if (!Number.isInteger(selectedBloodGroupId) || selectedBloodGroupId < 1) {
+      Swal.fire("Blood Group Required", "Please select a blood group.", "error")
+      return
+    }
+    if (!Number.isInteger(requestDepartment) || requestDepartment < 1) {
+      Swal.fire(
+        "Department Required",
+        "A valid department could not be found. Please log in again.",
+        "error",
+      )
       return
     }
 
-    const requestNo = "BT-2026-" + String(Math.floor(Math.random() * 900) + 100)
-    Swal.fire({
-      title: "Success",
-      text: `Blood Request ${requestNo} submitted successfully!`,
-      icon: "success"
-    }).then(() => {
-      handleResetForm()
-      setActiveView("tracking")
-    })
-  }
+    const hasMissingFields = requestRows.some((row) =>
+      ["componentType", "unitsRequired", "urgency", "requiredDateTime", "indication"].some(
+        (field) => !row[field],
+      ),
+    )
 
-  const [pendingUnits, setPendingUnits] = useState(DUMMY_ISSUED_UNITS)
-  const [receivedUnits, setReceivedUnits] = useState([])
-  const [showReceiveModal, setShowReceiveModal] = useState(false)
-  const [receiveTarget, setReceiveTarget] = useState(null)
-  const [unitCondition, setUnitCondition] = useState("Acceptable")
-  const [receiveRemarks, setReceiveRemarks] = useState("")
+    const hasInvalidUnits = requestRows.some(
+      (row) =>
+        !Number.isInteger(Number(row.unitsRequired)) ||
+        Number(row.unitsRequired) < 1,
+    )
 
-  const handleOpenReceive = (unit) => {
-    setReceiveTarget(unit)
-    setUnitCondition("Acceptable")
-    setReceiveRemarks("")
-    setShowReceiveModal(true)
-  }
-
-  const handleConfirmReceipt = () => {
-    const now = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    setReceivedUnits(prev => [
-      ...prev,
-      { ...receiveTarget, receivedAt: now, receivedBy: "Nurse A", unitCondition, receiveRemarks, status: "Received in Ward" }
-    ])
-    setPendingUnits(prev => prev.filter(u => u.id !== receiveTarget.id))
-    setShowReceiveModal(false)
-    Swal.fire({
-      title: "Success",
-      text: `Blood unit ${receiveTarget.unitNo} received in ward.`,
-      icon: "success"
-    }).then(() => setReceiveTarget(null))
-  }
-
-  const [showStartModal, setShowStartModal] = useState(false)
-  const [transfusionTarget, setTransfusionTarget] = useState(null)
-  const [verifiedBy, setVerifiedBy] = useState("")
-  const [vitals, setVitals] = useState({ temperature: "98.4", pulse: "82", bpSys: "120", bpDia: "80", respRate: "18", spo2: "98" })
-  const [transfusionRemarks, setTransfusionRemarks] = useState("")
-
-  const handleOpenStart = (unit) => {
-    setTransfusionTarget(unit)
-    setVerifiedBy("")
-    setVitals({ temperature: "98.4", pulse: "82", bpSys: "120", bpDia: "80", respRate: "18", spo2: "98" })
-    setTransfusionRemarks("")
-    setShowStartModal(true)
-  }
-
-  const handleVitalsChange = (field, value) => {
-    setVitals(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleStartTransfusion = () => {
-    if (!verifiedBy) {
-      Swal.fire({
-        title: "Warning",
-        text: "Please select the verifying nurse / user.",
-        icon: "warning"
-      })
+    if (hasMissingFields || hasInvalidUnits) {
+      Swal.fire(
+        "Incomplete Request",
+        "Please complete all required blood details.",
+        "warning",
+      )
       return
     }
-    const now = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    setReceivedUnits(prev => prev.map(u =>
-      u.id === transfusionTarget.id
-        ? { ...u, status: "Transfusion Started", startedAt: now, verifiedBy, vitals, transfusionRemarks }
-        : u
-    ))
-    setShowStartModal(false)
-    Swal.fire({
-      title: "Success",
-      text: `Transfusion started for unit ${transfusionTarget.unitNo}.`,
-      icon: "success"
-    }).then(() => setTransfusionTarget(null))
-  }
 
-  const handleCompleteTransfusion = (unit) => {
-    Swal.fire({
-      title: "Complete Transfusion?",
-      text: `Mark transfusion for unit ${unit.unitNo} as completed. Blood Bank / Component Charge and Blood Transfusion Charge will be posted to IPD billing.`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Complete",
-      cancelButtonText: "Cancel"
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const now = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-        setReceivedUnits(prev => prev.map(u =>
-          u.id === unit.id ? { ...u, status: "Transfusion Completed", completedAt: now } : u
-        ))
-        Swal.fire({
+    const payload = {
+      inpatientId,
+      wardId: wardIdNum,
+      patientId,
+      requestDepartment,
+      bloodGroupId: selectedBloodGroupId,
+      bloodRequirementDetails: requestRows.map((row) => ({
+        componentId: Number(row.componentType),
+        unitsRequired: Number(row.unitsRequired),
+        urgency: row.urgency,
+        requiredDateTime: row.requiredDateTime,
+        indication: row.indication,
+        remarks: row.remarks,
+      })),
+    }
+
+    setIsSubmitting(true)
+    try {
+      const response = await postRequest(CREATE_BLOOD_REQUEST, payload)
+      if (response?.status === 200 || response?.status === 201) {
+        await Swal.fire({
           title: "Success",
-          html: `Transfusion for unit <b>${unit.unitNo}</b> marked COMPLETED.<br/><br/>
-                 <div class="text-start ps-4">
-                   ✓ Blood Bank / Component Charge (₹1,500 per unit) added<br/>
-                   ✓ Blood Transfusion Charge (₹500 per unit) added
-                 </div>`,
-          icon: "success"
+          text: response.message || "Blood request submitted successfully.",
+          icon: "success",
+          confirmButtonText: "OK",
+          allowOutsideClick: false,
         })
+        handleResetForm()
+        setActiveView("tracking")
+        // Refresh tracking list so the new request appears immediately
+        fetchTracking(0)
+        setTrackingPage(1)
+      } else {
+        Swal.fire(
+          "Unable to Submit",
+          response?.message || "Blood request could not be submitted.",
+          "error",
+        )
       }
-    })
-  }
-
-  const getUrgencyBadge = (urgency) => {
-    const map = { Routine: "info", Urgent: "warning", Emergency: "danger" }
-    return map[urgency] || "secondary"
-  }
-
-  const getTrackingBadge = (status) => {
-    const map = {
-      "Pending": "secondary",
-      "Cross Matching": "warning",
-      "Compatibility Testing": "info",
-      "Ready for Issue": "primary",
-      "Issued": "success"
+    } catch (error) {
+      console.error("Error submitting blood request:", error)
+      Swal.fire("Unable to Submit", "Blood request could not be submitted.", "error")
+    } finally {
+      setIsSubmitting(false)
     }
-    return map[status] || "secondary"
+  }
+
+  /* ================================================================ */
+  /*  Badge helpers                                                    */
+  /* ================================================================ */
+  const getUrgencyBadge = (urgency) => {
+    const badgeClasses = {
+      Emergency: "bg-danger",
+      Urgent: "bg-warning text-dark",
+      Routine: "bg-info",
+    }
+    return urgency ? (
+      <span className={`badge ${badgeClasses[urgency] || "bg-secondary"}`}>
+        {urgency}
+      </span>
+    ) : (
+      "-"
+    )
+  }
+
+  const getTrackingStatusBadge = (status) => {
+    if (!status) return "-"
+    const normalized = String(status).trim().toUpperCase().replace(/[\s-]+/g, "_")
+    const badgeClasses = {
+      ISSUED: "bg-success",
+      PARTIALLY_ISSUED: "bg-primary",
+      ALLOCATED: "bg-info text-dark",
+      PARTIALLY_ALLOCATED: "bg-warning text-dark",
+      CROSS_MATCHING: "bg-warning text-dark",
+      COMPATIBILITY_TESTING: "bg-info text-dark",
+      REQUESTED: "bg-secondary",
+      PENDING: "bg-secondary",
+      REJECTED: "bg-danger",
+      CANCELLED: "bg-danger",
+    }
+    const formattedText = String(status)
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+    const badgeClass = badgeClasses[normalized] || "bg-secondary"
+    return <span className={`badge ${badgeClass}`}>{formattedText}</span>
   }
 
   const getTransfusionBadge = (status) => {
     const map = {
       "Received in Ward": "info",
       "Transfusion Started": "warning",
-      "Transfusion Completed": "success"
+      "Transfusion Completed": "success",
     }
     return map[status] || "secondary"
   }
 
+  /* ================================================================ */
+  /*  Render                                                           */
+  /* ================================================================ */
   return (
     <div>
       <div className="d-flex gap-2 mb-3 flex-wrap">
@@ -202,7 +563,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
           onClick={() => setActiveView("tracking")}
           style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
-          Tracking Request ({DUMMY_TRACKING_LIST.length})
+          Tracking Request ({trackingTotal})
         </button>
         <button
           className={`btn btn-sm ${activeView === "pending" ? "btn-primary" : "btn-outline-primary"}`}
@@ -220,17 +581,34 @@ const BloodTransfusion = ({ selectedPatient }) => {
         </button>
       </div>
 
+      {/* ============================ BLOOD REQUEST ============================ */}
       {activeView === "request" && (
         <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong>Blood Requirement Details</strong>
-            {selectedPatient && (
-              <span className="ms-3 small opacity-75">
-                {selectedPatient.patientName} ({selectedPatient.ageGender}) | {selectedPatient.ward} / {selectedPatient.bedNo}
-              </span>
-            )}
+            <strong style={{ fontSize: "0.8rem" }}>Blood Requirement Details</strong>
           </div>
           <div className="card-body">
+            <div className="row g-2 mb-3">
+              <div className="col-md-4">
+                <label className="form-label mb-1" style={{ fontSize: "0.7rem" }}>
+                  Blood Group <span className="text-danger">*</span>
+                </label>
+                <select
+                  className="form-select form-select-sm"
+                  value={bloodGroupId}
+                  onChange={(event) => setBloodGroupId(event.target.value)}
+                  disabled={isSubmitting || isLoadingMaster}
+                >
+                  <option value="">Select Blood Group</option>
+                  {bloodGroupOptions.map((bloodGroup) => (
+                    <option key={bloodGroup.bloodGroupId} value={bloodGroup.bloodGroupId}>
+                      {bloodGroup.bloodGroupName || bloodGroup.bloodGroupCode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="table-responsive">
               <table className="table table-bordered table-sm align-middle" style={{ fontSize: "0.75rem" }}>
                 <thead className="table-light">
@@ -239,32 +617,45 @@ const BloodTransfusion = ({ selectedPatient }) => {
                     <th>Units <span className="text-danger">*</span></th>
                     <th>Urgency <span className="text-danger">*</span></th>
                     <th>Required Date &amp; Time <span className="text-danger">*</span></th>
-                    <th>Indication</th>
+                    <th>Indication <span className="text-danger">*</span></th>
                     <th>Remarks</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {requestRows.map(row => (
+                  {requestRows.map((row) => (
                     <tr key={row.id}>
                       <td>
                         <select
                           className="form-select form-select-sm"
                           value={row.componentType}
                           onChange={(e) => handleRowChange(row.id, "componentType", e.target.value)}
+                          disabled={isSubmitting || isLoadingMaster}
                         >
-                          <option value="">Select Component</option>
-                          {COMPONENT_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="">
+                            {isLoadingMaster ? "Loading..." : "Select Component"}
+                          </option>
+                          {componentOptions.map((component) => (
+                            <option key={component.componentId} value={component.componentId}>
+                              {component.componentName}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td>
                         <input
                           type="number"
                           min="1"
+                          step="1"
+                          inputMode="numeric"
                           className="form-control form-control-sm"
                           placeholder="Units"
-                          value={row.units}
-                          onChange={(e) => handleRowChange(row.id, "units", e.target.value)}
+                          value={row.unitsRequired}
+                          onKeyDown={(e) =>
+                            ["-", "+", ".", "e", "E"].includes(e.key) && e.preventDefault()
+                          }
+                          onChange={(e) => handleUnitsChange(row.id, e.target.value)}
+                          disabled={isSubmitting}
                         />
                       </td>
                       <td>
@@ -272,9 +663,12 @@ const BloodTransfusion = ({ selectedPatient }) => {
                           className="form-select form-select-sm"
                           value={row.urgency}
                           onChange={(e) => handleRowChange(row.id, "urgency", e.target.value)}
+                          disabled={isSubmitting}
                         >
                           <option value="">Select</option>
-                          {URGENCY_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                          {URGENCY_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
                         </select>
                       </td>
                       <td>
@@ -283,6 +677,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
                           className="form-control form-control-sm"
                           value={row.requiredDateTime}
                           onChange={(e) => handleRowChange(row.id, "requiredDateTime", e.target.value)}
+                          disabled={isSubmitting}
                         />
                       </td>
                       <td>
@@ -290,9 +685,12 @@ const BloodTransfusion = ({ selectedPatient }) => {
                           className="form-select form-select-sm"
                           value={row.indication}
                           onChange={(e) => handleRowChange(row.id, "indication", e.target.value)}
+                          disabled={isSubmitting}
                         >
                           <option value="">Select Indication</option>
-                          {INDICATION_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
+                          {INDICATION_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
                         </select>
                       </td>
                       <td>
@@ -302,13 +700,15 @@ const BloodTransfusion = ({ selectedPatient }) => {
                           placeholder="Optional remarks"
                           value={row.remarks}
                           onChange={(e) => handleRowChange(row.id, "remarks", e.target.value)}
+                          disabled={isSubmitting}
                         />
                       </td>
                       <td className="text-center">
                         <button
+                          type="button"
                           className="btn btn-danger btn-sm"
                           onClick={() => handleRemoveRow(row.id)}
-                          disabled={requestRows.length === 1}
+                          disabled={requestRows.length === 1 || isSubmitting}
                         >
                           ✕
                         </button>
@@ -319,65 +719,194 @@ const BloodTransfusion = ({ selectedPatient }) => {
               </table>
             </div>
 
-            <button className="btn btn-success btn-sm mb-3" onClick={handleAddRow}>
+            <button
+              className="btn btn-success btn-sm mb-3"
+              onClick={handleAddRow}
+              disabled={isSubmitting}
+            >
               + Add Another Component
             </button>
 
             <div className="d-flex justify-content-end gap-2">
-              <button className="btn btn-secondary btn-sm" onClick={handleResetForm}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleResetForm}
+                disabled={isSubmitting}
+              >
                 Reset
               </button>
-              <button className="btn btn-primary btn-sm" onClick={handleSubmitRequest}>
-                Submit Request
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSubmitRequest}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Request"}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ============================ TRACKING ============================ */}
       {activeView === "tracking" && (
-        <div className="table-responsive">
-          <table className="table table-bordered table-sm table-hover" style={{ fontSize: "0.72rem" }}>
-            <thead className="table-light">
-              <tr>
-                <th>Request No</th>
-                <th>Inpatient No</th>
-                <th>Patient Name</th>
-                <th>Blood Group</th>
-                <th>Component</th>
-                <th>Units</th>
-                <th>Urgency</th>
-                <th>Requested Date &amp; Time</th>
-                <th>Requested By (Due Date/Time)</th>
-                <th>Tracking Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DUMMY_TRACKING_LIST.length === 0 ? (
+        <>
+          <div className="table-responsive">
+            <table className="table table-bordered table-sm table-hover align-middle" style={{ fontSize: "0.72rem" }}>
+              <thead className="table-light">
                 <tr>
-                  <td colSpan={11} className="text-center py-3 text-muted">No blood requests found.</td>
+                  <th>Request No</th>
+                  <th>Blood Group</th>
+                  <th>Component</th>
+                  <th className="text-center">Units</th>
+                  <th className="text-center">Issued</th>
+                  <th className="text-center">Acknowledged</th>
+                  <th className="text-center">Pending</th>
+                  <th>Urgency</th>
+                  <th>Requested Date &amp; Time</th>
+                  <th>Required By</th>
+                  <th>Tracking Status</th>
+                  <th className="text-center" style={{ minWidth: "140px" }}>
+                    Acknowledgement
+                  </th>
                 </tr>
-              ) : (
-                DUMMY_TRACKING_LIST.map(t => (
-                  <tr key={t.requestNo}>
-                    <td className="fw-bold">{t.requestNo}</td>
-                    <td>{t.ipNo}</td>
-                    <td>{t.patientName}</td>
-                    <td>{t.bloodGroup}</td>
-                    <td>{t.component}</td>
-                    <td className="text-center fw-bold">{t.units}</td>
-                    <td><span className={`badge bg-${getUrgencyBadge(t.urgency)}`}>{t.urgency}</span></td>
-                    <td>{t.requestedDateTime}</td>
-                    <td>{t.requiredBy}</td>
-                    <td><span className={`badge bg-${getTrackingBadge(t.status)}`}>{t.status}</span></td>
+              </thead>
+              <tbody>
+                {isLoadingTracking ? (
+                  <tr>
+                    <td colSpan="12" className="text-center py-4">
+                      Loading...
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : trackingList.length > 0 ? (
+                  trackingList.map((request, index) => {
+                    const ackStatus = getAcknowledgeStatus(request)
+                    const canAck = canUserAcknowledge(request)
+                    const normalizedAck = String(ackStatus || "").toUpperCase()
+                    const isAccepted =
+                      normalizedAck === "ACCEPTED" ||
+                      normalizedAck === "FULLY_ACKNOWLEDGED"
+                    const isRejected = normalizedAck === "REJECTED"
+                    const isPartiallyAck =
+                      normalizedAck === "PARTIALLY_ACKNOWLEDGED"
+
+                    return (
+                      <tr
+                        key={
+                          request.requestDtId ||
+                          `${request.inpatientId}-${request.component}-${request.requestedDateTime}-${index}`
+                        }
+                      >
+                        <td className="fw-semibold">
+                          {displayValue(request.requestNo) || "-"}
+                        </td>
+                        <td>
+                          {request.bloodGroup ? (
+                            <span className="badge bg-danger">
+                              {request.bloodGroup}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td>{displayValue(request.component) || "-"}</td>
+                        <td className="text-center fw-bold">
+                          {request.units != null ? request.units : "-"}
+                        </td>
+                        <td className="text-center fw-bold">
+                          {request.fulfilledUnits != null
+                            ? request.fulfilledUnits
+                            : request.issuedUnits != null
+                            ? request.issuedUnits
+                            : 0}
+                        </td>
+                        <td className="text-center fw-bold">
+                          {request.acknowledgedUnits != null
+                            ? request.acknowledgedUnits
+                            : 0}
+                        </td>
+                        <td className="text-center fw-bold">
+                          {request.pendingUnits != null
+                            ? request.pendingUnits
+                            : 0}
+                        </td>
+                        <td>{getUrgencyBadge(request.urgency)}</td>
+                        <td>{formatDateTime(request.requestedDateTime) || "-"}</td>
+                        <td>
+                          {formatDateTime(
+                            request.requiredByDateTime || request.requiredBy,
+                          ) || "-"}
+                        </td>
+                        <td>{getTrackingStatusBadge(request.trackingStatus)}</td>
+                        <td className="text-center">
+                          {isAccepted ? (
+                            <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small fw-semibold">
+                              <i className="fa fa-check me-1"></i> Accepted
+                            </span>
+                          ) : isRejected ? (
+                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 small fw-semibold">
+                              <i className="fa fa-times me-1"></i> Rejected
+                            </span>
+                          ) : isPartiallyAck && !canAck ? (
+                            <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 small fw-semibold">
+                              <i className="fa fa-clock-o me-1"></i> Partially Accepted
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${
+                                canAck
+                                  ? "btn-primary shadow-sm"
+                                  : "btn-outline-secondary opacity-60"
+                              }`}
+                              style={{
+                                fontSize: "12px",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                cursor: canAck ? "pointer" : "not-allowed",
+                              }}
+                              disabled={!canAck || isSubmittingAck}
+                              onClick={() => handleOpenAcknowledge(request)}
+                              title={
+                                canAck
+                                  ? "Click to Acknowledge (Accept or Reject)"
+                                  : "Acknowledge is enabled when units are issued"
+                              }
+                            >
+                              <i className="fa fa-check-square-o me-1"></i> Acknowledge
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="12" className="text-center py-4">
+                      <div className="text-muted">
+                        <h6 className="mt-2">No blood requests found</h6>
+                        <p className="mb-0">
+                          Create a blood request to see it here.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {trackingTotal > 0 && (
+            <Pagination
+              totalItems={trackingTotal}
+              itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+              currentPage={trackingPage}
+              onPageChange={handleTrackingPageChange}
+            />
+          )}
+        </>
       )}
 
+      {/* ============================ PENDING (placeholder) ============================ */}
       {activeView === "pending" && (
         <div className="table-responsive">
           <table className="table table-bordered table-sm table-hover" style={{ fontSize: "0.72rem" }}>
@@ -397,7 +926,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
                   <td colSpan={6} className="text-center py-3 text-muted">No blood units pending receipt.</td>
                 </tr>
               ) : (
-                pendingUnits.map(u => (
+                pendingUnits.map((u) => (
                   <tr key={u.id}>
                     <td>{u.component}</td>
                     <td>{u.group}</td>
@@ -405,9 +934,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
                     <td>{u.expiry}</td>
                     <td>{u.issuedAt}</td>
                     <td>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleOpenReceive(u)}>
-                        Receive
-                      </button>
+                      <button className="btn btn-primary btn-sm">Receive</button>
                     </td>
                   </tr>
                 ))
@@ -417,6 +944,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
         </div>
       )}
 
+      {/* ============================ TRANSFUSION (placeholder) ============================ */}
       {activeView === "transfusion" && (
         <div className="table-responsive">
           <table className="table table-bordered table-sm table-hover" style={{ fontSize: "0.72rem" }}>
@@ -427,6 +955,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
                 <th>Unit / Bag No</th>
                 <th>Expiry</th>
                 <th>Received At</th>
+                <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -436,7 +965,7 @@ const BloodTransfusion = ({ selectedPatient }) => {
                   <td colSpan={7} className="text-center py-3 text-muted">No received blood units yet.</td>
                 </tr>
               ) : (
-                receivedUnits.map(u => (
+                receivedUnits.map((u) => (
                   <tr key={u.id}>
                     <td>{u.component}</td>
                     <td>{u.group}</td>
@@ -444,20 +973,9 @@ const BloodTransfusion = ({ selectedPatient }) => {
                     <td>{u.expiry}</td>
                     <td>{u.receivedAt}</td>
                     <td>
-                      {u.status === "Received in Ward" && (
-                        <button className="btn btn-primary btn-sm" onClick={() => handleOpenStart(u)}>
-                          Start
-                        </button>
-                      )}
-                      {u.status === "Transfusion Started" && (
-                        <button className="btn btn-success btn-sm" onClick={() => handleCompleteTransfusion(u)}>
-                          Complete
-                        </button>
-                      )}
-                      {u.status === "Transfusion Completed" && (
-                        <span className="text-muted">—</span>
-                      )}
+                      <span className={`badge bg-${getTransfusionBadge(u.status)}`}>{u.status}</span>
                     </td>
+                    <td>—</td>
                   </tr>
                 ))
               )}
@@ -466,120 +984,238 @@ const BloodTransfusion = ({ selectedPatient }) => {
         </div>
       )}
 
-      {showReceiveModal && receiveTarget && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1055 }} onClick={() => setShowReceiveModal(false)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header bg-primary text-white py-2">
-                <h6 className="modal-title">Receive Blood Unit</h6>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowReceiveModal(false)}></button>
+      {/* ============================ ACKNOWLEDGE MODAL ============================ */}
+      {showModal && selectedRequest && (
+        <div
+          className="modal fade show"
+          tabIndex="-1"
+          style={{ display: "block", backgroundColor: "rgba(15, 23, 42, 0.55)" }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: "480px" }}>
+            <div className="modal-content shadow-lg border-0 rounded-3 overflow-hidden">
+              <div className="modal-header py-2 px-3 bg-light border-bottom">
+                <h6 className="modal-title fw-bold mb-0 text-dark d-flex align-items-center">
+                  <i className="fa fa-check-square-o text-primary me-2"></i>
+                  Acknowledge Blood Request
+                </h6>
+                <button
+                  type="button"
+                  className="btn-close"
+                  style={{ fontSize: "10px" }}
+                  onClick={handleCloseModal}
+                  disabled={isSubmittingAck}
+                ></button>
               </div>
-              <div className="modal-body">
-                <p className="mb-1"><strong>Component:</strong> {receiveTarget.component}</p>
-                <p className="mb-1"><strong>Blood Group:</strong> {receiveTarget.group}</p>
-                <p className="mb-1"><strong>Unit / Bag No.:</strong> {receiveTarget.unitNo}</p>
-                <p className="mb-1"><strong>Expiry Date:</strong> {receiveTarget.expiry}</p>
-                <p className="mb-3"><strong>Issued Date/Time:</strong> {receiveTarget.issuedAt}</p>
 
-                <p className="mb-1"><strong>Received Date/Time:</strong> <span className="text-muted"></span></p>
-                <p className="mb-3"><strong>Received By:</strong> <span className="text-muted">Nurse A </span></p>
-
-                <label className="form-label small fw-bold">Unit Condition <span className="text-danger">*</span></label>
-                <select
-                  className="form-select form-select-sm mb-3"
-                  value={unitCondition}
-                  onChange={(e) => setUnitCondition(e.target.value)}
+              <div className="modal-body p-3">
+                <div
+                  className="p-2 mb-3 rounded-2"
+                  style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0" }}
                 >
-                  <option value="Acceptable">Acceptable</option>
-                  <option value="Damaged">Damaged</option>
-                  <option value="Leaking">Leaking</option>
-                  <option value="Temperature Excursion">Temperature Excursion</option>
-                </select>
-
-                <label className="form-label small fw-bold">Remarks</label>
-                <textarea
-                  className="form-control form-control-sm"
-                  rows={2}
-                  placeholder="Optional remarks"
-                  value={receiveRemarks}
-                  onChange={(e) => setReceiveRemarks(e.target.value)}
-                />
-              </div>
-              <div className="modal-footer py-2">
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowReceiveModal(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleConfirmReceipt}>Confirm Receipt</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showStartModal && transfusionTarget && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1055 }} onClick={() => setShowStartModal(false)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header bg-primary text-white py-2">
-                <h6 className="modal-title">Start Transfusion</h6>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowStartModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p className="mb-1"><strong>Component:</strong> {transfusionTarget.component}</p>
-                <p className="mb-1"><strong>Blood Group:</strong> {transfusionTarget.group}</p>
-                <p className="mb-1"><strong>Unit / Bag No.:</strong> {transfusionTarget.unitNo}</p>
-                <p className="mb-3"><strong>Expiry Date:</strong> {transfusionTarget.expiry}</p>
-
-                <label className="form-label small fw-bold">Verified By <span className="text-danger">*</span></label>
-                <select
-                  className="form-select form-select-sm mb-3"
-                  value={verifiedBy}
-                  onChange={(e) => setVerifiedBy(e.target.value)}
-                >
-                  <option value="">Select Nurse / User</option>
-                  <option value="Nurse A">Nurse A</option>
-                  <option value="Nurse B">Nurse B</option>
-                  <option value="Dr. Mehta">Dr. Mehta</option>
-                </select>
-
-                <label className="form-label small fw-bold mb-2">Pre-Transfusion Vitals</label>
-                <div className="row g-2 mb-3">
-                  <div className="col-6">
-                    <label className="form-label small">Temperature (°F)</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.temperature} onChange={(e) => handleVitalsChange("temperature", e.target.value)} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small">Pulse (bpm)</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.pulse} onChange={(e) => handleVitalsChange("pulse", e.target.value)} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small">BP Systolic</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.bpSys} onChange={(e) => handleVitalsChange("bpSys", e.target.value)} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small">BP Diastolic</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.bpDia} onChange={(e) => handleVitalsChange("bpDia", e.target.value)} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small">Respiratory Rate (/min)</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.respRate} onChange={(e) => handleVitalsChange("respRate", e.target.value)} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small">SpO₂ (%)</label>
-                    <input type="text" className="form-control form-control-sm" value={vitals.spo2} onChange={(e) => handleVitalsChange("spo2", e.target.value)} />
+                  <div className="row g-2 text-secondary" style={{ fontSize: "12px" }}>
+                    <div className="col-6">
+                      <span className="text-muted">Request No:</span>{" "}
+                      <span className="fw-semibold text-dark">
+                        {selectedRequest.requestNo || "N/A"}
+                      </span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Blood Group:</span>{" "}
+                      <span className="badge bg-danger ms-1" style={{ fontSize: "10.5px" }}>
+                        {selectedRequest.bloodGroup || "N/A"}
+                      </span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Component:</span>{" "}
+                      <span className="fw-semibold text-dark">
+                        {selectedRequest.component || "N/A"}
+                      </span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Total Units:</span>{" "}
+                      <span className="fw-bold text-dark">{selectedRequest.units ?? "N/A"}</span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Units Issued:</span>{" "}
+                      <span className="fw-bold text-success">
+                        {selectedRequest.fulfilledUnits ?? selectedRequest.issuedUnits ?? 0}
+                      </span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Acknowledged:</span>{" "}
+                      <span className="fw-bold text-dark">
+                        {selectedRequest.acknowledgedUnits ?? 0}
+                      </span>
+                    </div>
+                    <div className="col-6">
+                      <span className="text-muted">Pending Issue:</span>{" "}
+                      <span className="fw-bold text-danger">
+                        {selectedRequest.pendingUnits ?? 0}
+                      </span>
+                    </div>
+                    {Array.isArray(selectedRequest.allocationIds) &&
+                      selectedRequest.allocationIds.length > 0 && (
+                        <div className="col-6">
+                          <span className="text-muted">Allocation ID:</span>{" "}
+                          <span className="fw-semibold text-dark">
+                            {selectedRequest.allocationIds.join(", ")}
+                          </span>
+                        </div>
+                      )}
                   </div>
                 </div>
 
-                <label className="form-label small fw-bold">Remarks</label>
-                <textarea
-                  className="form-control form-control-sm"
-                  rows={2}
-                  placeholder="Optional remarks"
-                  value={transfusionRemarks}
-                  onChange={(e) => setTransfusionRemarks(e.target.value)}
-                />
+                <label className="form-label fw-semibold text-dark mb-1" style={{ fontSize: "12.5px" }}>
+                  Acknowledgment Decision <span className="text-danger">*</span>
+                </label>
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <div
+                      onClick={() => !isSubmittingAck && setSelectedAction("Accept")}
+                      className="p-2 rounded-2 border d-flex align-items-center gap-2"
+                      style={{
+                        cursor: isSubmittingAck ? "not-allowed" : "pointer",
+                        backgroundColor: selectedAction === "Accept" ? "#e8f5e9" : "#ffffff",
+                        borderColor: selectedAction === "Accept" ? "#2e7d32" : "#e2e8f0",
+                        borderWidth: selectedAction === "Accept" ? "1.5px" : "1px",
+                        borderStyle: "solid",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="ackDecision"
+                        checked={selectedAction === "Accept"}
+                        onChange={() => setSelectedAction("Accept")}
+                        disabled={isSubmittingAck}
+                        className="form-check-input mt-0"
+                        style={{ cursor: "pointer" }}
+                      />
+                      <div className="d-flex flex-column lh-sm">
+                        <span
+                          className="fw-bold"
+                          style={{
+                            fontSize: "13px",
+                            color: selectedAction === "Accept" ? "#2e7d32" : "#334155",
+                          }}
+                        >
+                          <i className="fa fa-check-circle me-1 text-success"></i> Accept
+                        </span>
+                        <span className="text-muted" style={{ fontSize: "10.5px" }}>
+                          Units received in ward
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-6">
+                    <div
+                      onClick={() => !isSubmittingAck && setSelectedAction("Reject")}
+                      className="p-2 rounded-2 border d-flex align-items-center gap-2"
+                      style={{
+                        cursor: isSubmittingAck ? "not-allowed" : "pointer",
+                        backgroundColor: selectedAction === "Reject" ? "#ffebee" : "#ffffff",
+                        borderColor: selectedAction === "Reject" ? "#c62828" : "#e2e8f0",
+                        borderWidth: selectedAction === "Reject" ? "1.5px" : "1px",
+                        borderStyle: "solid",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="ackDecision"
+                        checked={selectedAction === "Reject"}
+                        onChange={() => setSelectedAction("Reject")}
+                        disabled={isSubmittingAck}
+                        className="form-check-input mt-0"
+                        style={{ cursor: "pointer" }}
+                      />
+                      <div className="d-flex flex-column lh-sm">
+                        <span
+                          className="fw-bold"
+                          style={{
+                            fontSize: "13px",
+                            color: selectedAction === "Reject" ? "#c62828" : "#334155",
+                          }}
+                        >
+                          <i className="fa fa-times-circle me-1 text-danger"></i> Reject
+                        </span>
+                        <span className="text-muted" style={{ fontSize: "10.5px" }}>
+                          Return to blood bank
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <label className="form-label fw-semibold text-dark mb-0" style={{ fontSize: "12.5px" }}>
+                      Remarks
+                    </label>
+                    {selectedAction === "Reject" ? (
+                      <span className="text-danger" style={{ fontSize: "11px" }}>
+                        * Reason required
+                      </span>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: "11px" }}>
+                        Optional
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    style={{ fontSize: "12.5px", borderRadius: "6px" }}
+                    placeholder={
+                      selectedAction === "Reject"
+                        ? "Enter reason for rejecting these units..."
+                        : "Enter any remarks or notes..."
+                    }
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    disabled={isSubmittingAck}
+                  ></textarea>
+                </div>
               </div>
-              <div className="modal-footer py-2">
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowStartModal(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleStartTransfusion}>Start Transfusion</button>
+
+              <div className="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm px-3"
+                  style={{ fontSize: "12.5px", borderRadius: "5px" }}
+                  onClick={handleCloseModal}
+                  disabled={isSubmittingAck}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm px-3 fw-semibold ${
+                    selectedAction === "Reject" ? "btn-danger" : "btn-success"
+                  }`}
+                  style={{ fontSize: "12.5px", borderRadius: "5px" }}
+                  onClick={handleModalSubmit}
+                  disabled={isSubmittingAck || !selectedAction}
+                >
+                  {isSubmittingAck ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-1"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <i className={`fa ${selectedAction === "Reject" ? "fa-times" : "fa-check"} me-1`}></i>
+                      Confirm {selectedAction || "Action"}
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

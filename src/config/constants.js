@@ -1266,6 +1266,7 @@ export const SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG = "Please select both
 //Surgery Master
 export const ADD_SURGERY_SUCC_MSG = "Surgery added successfully!";
 export const UPDATE_SURGERY_SUCC_MSG = "Surgery updated successfully!";
+export const DUPLICATE_SURGERY_CODE = "Surgery Code already exists";
 
 
 //surgery pricing 

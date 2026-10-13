@@ -9,6 +9,7 @@ import {
   MAS_DEPARTMENT_GET_ALL,
   MAS_WARD_GET_ALL_ACTIVE,
   MAS_CROSS_MATCH_TYPE,
+  MAS_BLOODGROUP,
   SAVE_CROSSMATCH,
 } from "../../../config/apiConfig"
 import {
@@ -83,7 +84,8 @@ const PendingForCrossMatch = () => {
   const [sampleCollected, setSampleCollected] = useState(false);
   const [sampleCollectedDateTime, setSampleCollectedDateTime] = useState("");
   const [sampleReceivedBy, setSampleReceivedBy] = useState("");
-  const [crossMatchTypes, setCrossMatchTypes] = useState();
+  const [crossMatchTypes, setCrossMatchTypes] = useState([]);
+  const [bloodGroupList, setBloodGroupList] = useState([]);
   const [selectedCrossMatchTypeId, setSelectedCrossMatchTypeId] = useState("");
   const [overallRemarks, setOverallRemarks] = useState("");
 
@@ -115,6 +117,45 @@ const PendingForCrossMatch = () => {
     };
     loadCrossMatchTypes();
   }, []);
+
+  // Load master blood groups on mount to map bloodGroupName -> bloodGroupId
+  useEffect(() => {
+    const loadBloodGroups = async () => {
+      try {
+        const res = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
+        const list = res?.response || res?.data || (Array.isArray(res) ? res : []);
+        if (Array.isArray(list) && list.length > 0) {
+          setBloodGroupList(list);
+        } else {
+          const fallbackRes = await getRequest(`${MAS_BLOODGROUP}/getAll/0`);
+          const fallbackList = fallbackRes?.response || fallbackRes?.data || (Array.isArray(fallbackRes) ? fallbackRes : []);
+          if (Array.isArray(fallbackList)) {
+            setBloodGroupList(fallbackList);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load blood groups master:", err);
+      }
+    };
+    loadBloodGroups();
+  }, []);
+
+  const resolveBloodGroupId = (request) => {
+    if (request?.bloodGroupId != null && !isNaN(Number(request.bloodGroupId))) {
+      return Number(request.bloodGroupId);
+    }
+    const bgName = request?.bloodGroup || "";
+    if (!bgName || !Array.isArray(bloodGroupList) || bloodGroupList.length === 0) {
+      return null;
+    }
+    const clean = String(bgName).trim().toLowerCase();
+    const matched = bloodGroupList.find((bg) => {
+      const name = String(bg.bloodGroupName || bg.name || "").trim().toLowerCase();
+      const code = String(bg.bloodGroupCode || bg.code || "").trim().toLowerCase();
+      return name === clean || code === clean;
+    });
+    return matched ? Number(matched.bloodGroupId ?? matched.id) : null;
+  };
 
   // Load master wards and departments on mount
   useEffect(() => {
@@ -239,11 +280,13 @@ const PendingForCrossMatch = () => {
         content.forEach((item, idx) => {
           const key = item.requestDtId || `${item.requestHdId || ''}_${idx}`;
           const unitObj = (item.unitNumber || item.inventoryId) ? {
+            allocationId: item.allocationId ?? item.bloodAllocationId ?? null,
             inventoryId: item.inventoryId ?? item.bloodInventoryId ?? item.unitId ?? null,
-            unitNo: item.unitNumber || "",
+            unitNo: item.unitNumber || item.unitNo || "",
             bloodGroup: item.bloodGroup || "",
             volume: item.unitVolume ? (String(item.unitVolume).toLowerCase().includes('ml') ? item.unitVolume : `${item.unitVolume} ml`) : "",
             expiry: item.unitExpiryDate || "",
+            trackingStatusId: item.trackingStatusId ?? 15,
           } : null;
 
           if (!groupedMap.has(key)) {
@@ -267,12 +310,14 @@ const PendingForCrossMatch = () => {
             let initialUnits = [];
             if (Array.isArray(item.allocatedUnits) && item.allocatedUnits.length > 0) {
               initialUnits = item.allocatedUnits.map((u) => ({
+                allocationId: u.allocationId ?? item.allocationId ?? item.bloodAllocationId ?? null,
                 requestDtId: u.requestDtId ?? item.requestDtId ?? null,
                 inventoryId: u.inventoryId ?? u.bloodInventoryId ?? u.unitId ?? item.inventoryId ?? null,
                 unitNo: u.unitNumber || u.unitNo || "",
                 bloodGroup: u.bloodGroup || bloodGroup || "",
                 volume: u.unitVolume ? (String(u.unitVolume).toLowerCase().includes('ml') ? u.unitVolume : `${u.unitVolume} ml`) : (u.volume || ""),
                 expiry: u.unitExpiryDate || u.expiry || "",
+                trackingStatusId: u.trackingStatusId ?? item.trackingStatusId ?? 15,
               }));
             } else if (unitObj) {
               initialUnits = [{
@@ -286,6 +331,9 @@ const PendingForCrossMatch = () => {
               id: item.requestDtId || item.id || idx,
               requestHdId: item.requestHdId,
               requestDtId: item.requestDtId,
+              allocationId: item.allocationId ?? item.bloodAllocationId ?? null,
+              trackingStatusId: item.trackingStatusId ?? 15,
+              bloodGroupId: item.bloodGroupId ?? null,
               inventoryId: item.inventoryId ?? item.bloodInventoryId ?? item.unitId ?? null,
               requestNo: reqNo,
               inpatient: ipNo,
@@ -309,7 +357,6 @@ const PendingForCrossMatch = () => {
               urgency,
               requestedOn,
               requiredBy,
-              trackingStatusId: item.trackingStatusId,
               ageGender,
               headerInfo: {
                 requestNo: reqNo,
@@ -354,11 +401,13 @@ const PendingForCrossMatch = () => {
         mapped.forEach((record) => {
           if (record.allocatedUnits.length === 0 && Number(record.unitsAlloc) > 0) {
             record.allocatedUnits = Array.from({ length: Number(record.unitsAlloc) }, () => ({
+              allocationId: record.allocationId ?? null,
               inventoryId: record.inventoryId ?? null,
               unitNo: "",
               bloodGroup: record.bloodGroup || "",
               volume: "",
               expiry: "",
+              trackingStatusId: record.trackingStatusId ?? 15,
             }));
           }
         });
@@ -502,6 +551,7 @@ const PendingForCrossMatch = () => {
       ? request.allocatedUnits
       : (request.unitNumber || request.inventoryId)
         ? [{
+          allocationId: request.allocationId ?? null,
           inventoryId: request.inventoryId ?? request.bloodInventoryId ?? null,
           unitNo: request.unitNumber || "",
           bloodGroup: request.bloodGroup || "",
@@ -512,7 +562,7 @@ const PendingForCrossMatch = () => {
 
     setCrossMatchEntries(
       units.map((unit) => ({
-        requestDtId: unit.requestDtId ?? request.requestDtId ?? null,
+        allocationId: unit.allocationId ?? request.allocationId ?? null,
         inventoryId: unit.inventoryId ?? request.inventoryId ?? null,
         unitNo: unit.unitNo || unit.unitNumber || "",
         bloodGroup: unit.bloodGroup || request.bloodGroup || "",
@@ -559,7 +609,7 @@ const PendingForCrossMatch = () => {
 
       setSampleCollectedDateTime(formatted);
       if (!sampleReceivedBy) {
-        const loggedUser = sessionStorage.getItem("loggedInUserName") || localStorage.getItem("loggedInUserName") || "";
+        const loggedUser = sessionStorage.getItem("loggedInUserName") || "";
         if (loggedUser) setSampleReceivedBy(loggedUser);
       }
       if (!selectedCrossMatchTypeId && crossMatchTypes.length > 0) {
@@ -627,13 +677,35 @@ const PendingForCrossMatch = () => {
       return false;
     }
     for (let i = 0; i < crossMatchEntries.length; i++) {
-      if (!crossMatchEntries[i].crossMatchResult) {
+      const entry = crossMatchEntries[i];
+      if (!entry.crossMatchResult) {
         showPopup(`Cross-Match Result is required for row ${i + 1}`, "warning");
         return false;
       }
-      if (!crossMatchEntries[i].testDate) {
+      if (!entry.testDate) {
         showPopup(`Test Date is required for row ${i + 1}`, "warning");
         return false;
+      }
+      const isIncompatible =
+        String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+        String(entry.crossMatchResult || "").trim().toLowerCase() === CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase();
+
+      if (isIncompatible) {
+        const rowRemarks = entry.remarks?.trim();
+        if (!rowRemarks) {
+          showPopup(
+            `Remarks are mandatory for row ${i + 1} (${entry.unitNo || "Unit"}) because the cross-match result is Incompatible. Please enter the reason for incompatibility.`,
+            "warning"
+          );
+          setTimeout(() => {
+            const inputEl = document.getElementById(`remarks-input-${i}`);
+            if (inputEl) {
+              inputEl.focus();
+              inputEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 150);
+          return false;
+        }
       }
     }
     return true;
@@ -664,9 +736,9 @@ const PendingForCrossMatch = () => {
           }
 
           const overallResult =
-            crossMatchEntries.some((e) => e.crossMatchResult?.toLowerCase() === CROSS_MATCH_RESULTS.INCOMPATIBLE.toLowerCase())
+            crossMatchEntries.some((e) => String(e.crossMatchResult || "").toLowerCase() === CROSS_MATCH_RESULTS.INCOMPATIBLE.toLowerCase())
               ? CROSS_MATCH_RESULTS.INCOMPATIBLE
-              : crossMatchEntries.every((e) => e.crossMatchResult?.toLowerCase() === CROSS_MATCH_RESULTS.COMPATIBLE.toLowerCase())
+              : crossMatchEntries.every((e) => String(e.crossMatchResult || "").toLowerCase() === CROSS_MATCH_RESULTS.COMPATIBLE.toLowerCase())
                 ? CROSS_MATCH_RESULTS.COMPATIBLE
                 : CROSS_MATCH_RESULTS.PENDING;
 
@@ -677,12 +749,17 @@ const PendingForCrossMatch = () => {
             selectedRequest.dtId ??
             null;
 
+          const bloodGroupId = resolveBloodGroupId(selectedRequest);
+
           const payload = {
             requestHdId: selectedRequest.requestHdId ? Number(selectedRequest.requestHdId) : null,
             requestDtId: reqDtId ? Number(reqDtId) : null,
             inpatientId: selectedRequest.inpatientId ? Number(selectedRequest.inpatientId) : null,
             patientId: selectedRequest.patientId ? Number(selectedRequest.patientId) : null,
             crossmatchTypeId: selectedCrossMatchTypeId ? Number(selectedCrossMatchTypeId) : null,
+            allocationId: selectedRequest.allocationId != null ? Number(selectedRequest.allocationId) : null,
+            trackingStatusId: selectedRequest.trackingStatusId != null ? Number(selectedRequest.trackingStatusId) : 15,
+            bloodGroupId: bloodGroupId != null ? Number(bloodGroupId) : null,
             isEmergency: Boolean(
               selectedRequest.isEmergency ??
               (String(selectedRequest.urgency).toLowerCase() === "emergency")
@@ -690,24 +767,29 @@ const PendingForCrossMatch = () => {
             sampleReceivedDatetime: formattedSampleReceived,
             crossmatchDatetime: currentLocalDateTime,
             overallResult: overallResult,
-            remarks: overallRemarks || "",
+            remarks: overallRemarks?.trim() || crossMatchEntries.find((e) => e.remarks?.trim())?.remarks?.trim() || "",
             units: crossMatchEntries.map((entry) => ({
-              requestDtId: (entry.requestDtId ?? reqDtId) != null
-                ? Number(entry.requestDtId ?? reqDtId)
-                : null,
+              allocationId: entry.allocationId != null
+                ? Number(entry.allocationId)
+                : (selectedRequest.allocationId != null ? Number(selectedRequest.allocationId) : null),
               inventoryId: entry.inventoryId != null
                 ? Number(entry.inventoryId)
                 : (selectedRequest.inventoryId != null ? Number(selectedRequest.inventoryId) : null),
               unitNo: entry.unitNo || "",
               compatibilityResult: entry.crossMatchResult || "",
-              testDate: entry.testDate || todayDateStr,
-              remarks: entry.remarks || "",
+              testDate: entry.testDate && entry.testDate.length === 10 ? entry.testDate : todayDateStr,
+              remarks: entry.remarks?.trim() || "",
             })),
           };
 
           const response = await postRequest(SAVE_CROSSMATCH, payload);
 
-          if (response?.status === 200 || response?.status === 201 || response?.success) {
+          if (
+            response?.status === 200 ||
+            response?.status === 201 ||
+            response?.success ||
+            response?.status === "SUCCESS"
+          ) {
             showConfirmationPopup(
               response?.message || "Cross-match details saved successfully.",
               "success",
@@ -735,7 +817,7 @@ const PendingForCrossMatch = () => {
         } catch (error) {
           console.error("Save Cross Match Error:", error);
           showConfirmationPopup(
-            error?.message || "Something went wrong. Please try again.",
+            error?.response?.data?.message || error?.message || "Something went wrong. Please try again.",
             "error",
             () => { },
             null,
@@ -1104,7 +1186,15 @@ const PendingForCrossMatch = () => {
                             <th style={{ width: "120px" }}>
                               Test Date <span className="text-danger">*</span>
                             </th>
-                            <th style={{ width: "200px" }}>Remarks</th>
+                            <th style={{ width: "220px" }}>
+                              Remarks{" "}
+                              {crossMatchEntries.some(
+                                (e) =>
+                                  String(e.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                  String(e.crossMatchResult || "").trim().toLowerCase() ===
+                                    CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()
+                              ) && <span className="text-danger">*</span>}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1200,8 +1290,15 @@ const PendingForCrossMatch = () => {
                                 </td>
                                 <td>
                                   <input
+                                    id={`remarks-input-${index}`}
                                     type="text"
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${(String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                        String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                          CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                      !entry.remarks?.trim()
+                                        ? "border-danger"
+                                        : ""
+                                    }`}
                                     value={entry.remarks}
                                     onChange={(e) =>
                                       handleCrossMatchEntryChange(
@@ -1210,14 +1307,38 @@ const PendingForCrossMatch = () => {
                                         e.target.value
                                       )
                                     }
-                                    placeholder={sampleCollected ? "Optional" : "Sample collection required"}
+                                    placeholder={
+                                      !sampleCollected
+                                        ? "Sample collection required"
+                                        : String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                          String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                            CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()
+                                          ? "Mandatory: Reason for incompatibility *"
+                                          : "Optional"
+                                    }
                                     disabled={!sampleCollected || isSaving}
                                     style={
                                       !sampleCollected
                                         ? { backgroundColor: "#f8f9fa", cursor: "not-allowed" }
-                                        : {}
+                                        : (String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                            String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                              CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                          !entry.remarks?.trim()
+                                          ? { borderColor: "#dc3545", backgroundColor: "#fff5f5" }
+                                          : {}
                                     }
                                   />
+                                  {(String(entry.crossMatchResult || "").trim().toLowerCase() === "incompatible" ||
+                                    String(entry.crossMatchResult || "").trim().toLowerCase() ===
+                                      CROSS_MATCH_RESULTS.INCOMPATIBLE?.toLowerCase()) &&
+                                    !entry.remarks?.trim() && (
+                                      <small
+                                        className="text-danger fw-semibold"
+                                        style={{ fontSize: "11px", display: "block", marginTop: "3px" }}
+                                      >
+                                        Remarks is mandatory *
+                                      </small>
+                                    )}
                                 </td>
                               </tr>
                             ))

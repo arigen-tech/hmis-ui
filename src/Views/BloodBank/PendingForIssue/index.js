@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { getRequest, postRequest } from "../../../service/apiService";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import {
   GET_PENDING_BLOOD_ISSUE,
   MAS_WARD_GET_ALL_ACTIVE,
   MAS_DEPARTMENT_GET_ALL,
   SAVE_BLOOD_ISSUE,
+  UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
 } from "../../../config/apiConfig";
 
 const PendingForIssue = () => {
@@ -240,35 +241,65 @@ const PendingForIssue = () => {
 
     setIsIssuing(true);
     try {
-      const payload = {
-        requestHdId: selectedIssueItem.requestHdId ? Number(selectedIssueItem.requestHdId) : null,
-        requestDtId: selectedIssueItem.requestDtId ? Number(selectedIssueItem.requestDtId) : null,
-        requestNo: selectedIssueItem.requestNo || "",
-        inpatientId: selectedIssueItem.inpatientId ? Number(selectedIssueItem.inpatientId) : null,
-        patientId: selectedIssueItem.patientId ? Number(selectedIssueItem.patientId) : null,
-        unitsIssued: selectedIssueItem.unitsReserved ?? 1,
-        issueDatetime: issueForm.issueDateTime
-          ? (issueForm.issueDateTime.length === 16 ? `${issueForm.issueDateTime}:00` : issueForm.issueDateTime)
-          : getTodayDateTimeLocal(),
-        issuedBy: issueForm.issuedBy.trim(),
+      const allocationId =
+        selectedIssueItem.allocationId != null
+          ? Number(selectedIssueItem.allocationId)
+          : selectedIssueItem.bloodAllocationId != null
+          ? Number(selectedIssueItem.bloodAllocationId)
+          : null;
+
+      if (!allocationId) {
+        showPopup("Allocation ID is missing for this record.", "error");
+        setIsIssuing(false);
+        return;
+      }
+
+      // BloodIssueStatusRequest: allocationId, isIssued: true, isRejected: false, rejectedReason: null
+      const statusPayload = {
+        allocationId: allocationId,
+        isIssued: true,
+        isRejected: false,
+        rejectedReason: null,
       };
 
-      const response = await postRequest(SAVE_BLOOD_ISSUE, payload);
+      const response = await putRequest(
+        UPDATE_BLOOD_ISSUE_AND_TRACKING_STATUS,
+        statusPayload
+      );
 
-      if (response?.status === 200 || response?.status === 201 || response?.success) {
+      const isSuccess =
+        response?.status === 200 ||
+        response?.status === 201 ||
+        response?.data?.status === 200 ||
+        response?.success ||
+        response?.status === "SUCCESS";
+
+      if (isSuccess) {
         showPopup(
-          response?.message || `Blood units issued successfully for Request ${selectedIssueItem.requestNo}`,
+          response?.data?.message ||
+            response?.message ||
+            "Blood request issued successfully.",
           "success"
         );
         setShowIssueModal(false);
         setSelectedIssueItem(null);
         fetchPendingForIssueData(currentPage - 1, searchFiltersRef.current);
       } else {
-        showPopup(response?.message || "Failed to issue blood units.", "error");
+        showPopup(
+          response?.data?.message ||
+            response?.message ||
+            "Failed to issue blood units.",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error issuing blood:", error);
-      showPopup(error?.message || "Error occurred while issuing blood units.", "error");
+      showPopup(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error occurred while issuing blood units.",
+        "error"
+      );
     } finally {
       setIsIssuing(false);
     }
@@ -419,7 +450,7 @@ const PendingForIssue = () => {
                       </tr>
                     ) : pendingList.length > 0 ? (
                       pendingList.map((item, index) => (
-                        <tr key={item.requestDtId || item.requestHdId || index}>
+                        <tr key={item.allocationId || item.requestDtId || item.requestHdId || index}>
                           <td className="fw-bold">{item.requestNo || "-"}</td>
                           <td>{item.inpatientNo || "-"}</td>
                           <td>{item.patientName || "-"}</td>
@@ -562,6 +593,12 @@ const PendingForIssue = () => {
                                   <small className="text-muted d-block">Reserved On</small>
                                   <span>{selectedIssueItem.reservedOn || "-"}</span>
                                 </div>
+                                {selectedIssueItem.inventoryId && (
+                                  <div className="col-md-4">
+                                    <small className="text-muted d-block">Inventory ID</small>
+                                    <span className="fw-bold">#{selectedIssueItem.inventoryId}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

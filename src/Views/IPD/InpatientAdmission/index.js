@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
-import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
+import { getRequest, postRequestWithFormData } from "../../../service/apiService";
 import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, FILTER_OPD_DEPT, MAS_IPD_BILLING_TYPE, MAS_PAYMENT_MODE } from "../../../config/apiConfig";
 import { IPD_ADMISSION_LOAD_PATIENT_ERR, IPD_ADMISSION_CORRECT_ERRORS, IPD_ADMISSION_SAVE_SUCCESS, IPD_ADMISSION_SAVE_FAILURE } from "../../../config/constants";
 import LoadingScreen from "../../../Components/Loading";
@@ -946,6 +946,7 @@ const InpatientAdmission = () => {
     if (!formData.patientCondition) newErrors.patientCondition = "Patient Condition is required";
     if (!formData.admissionCareType) newErrors.admissionCareType = "Admission Care Type is required";
     if (!formData.admissionDate) newErrors.admissionDate = "Admission Date is required";
+    if (!formData.admissionTime) newErrors.admissionTime = "Admission Time is required";
     if (!formData.wardCategory) newErrors.wardCategory = "Ward Category is required";
     if (!formData.wardId) newErrors.wardId = "Ward selection is required";
     if (!formData.roomId) newErrors.roomId = "Room selection is required";
@@ -954,6 +955,9 @@ const InpatientAdmission = () => {
     if (!formData.admittingDoctorId) newErrors.admittingDoctorId = "Admitting Doctor is required";
     if (!formData.provisionalDiagnosis) newErrors.provisionalDiagnosis = "Provisional Diagnosis is required";
     if (!formData.nokFirstName) newErrors.nokFirstName = "NOK First Name is required";
+    if (!formData.nokRelation) newErrors.nokRelation = "NOK Relation is required";
+    // Diet Preference is mandatory (used with orElseThrow in service)
+    if (!formData.dietPreference) newErrors.dietPreference = "Diet Preference is required";
     
     // Validate new consent fields
     if (formData.admissionConsentTaken === "Yes" && !formData.consentTakenBy) {
@@ -986,7 +990,9 @@ const InpatientAdmission = () => {
     });
     
     // Mobile number validation
-    if (formData.nokMobile && !/^\d{10}$/.test(formData.nokMobile)) {
+    if (!formData.nokMobile) {
+      newErrors.nokMobile = "NOK Mobile Number is required";
+    } else if (!/^\d{10}$/.test(formData.nokMobile)) {
       newErrors.nokMobile = "Please enter a valid 10-digit mobile number";
     }
     
@@ -1003,6 +1009,18 @@ const InpatientAdmission = () => {
     if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
       newErrors.nokPinCode = "Please enter a valid 6-digit pin code";
     }
+
+    // Document validation: if any document row has data, both docType and file are required
+    formData.documents.forEach((doc, index) => {
+      if (doc.docType || doc.file) {
+        if (!doc.docType) {
+          newErrors[`doc_${index}_docType`] = "Document type is required";
+        }
+        if (!doc.file) {
+          newErrors[`doc_${index}_file`] = "Document file is required";
+        }
+      }
+    });
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -1233,9 +1251,9 @@ const InpatientAdmission = () => {
                         </select>
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Diet Preference</label>
+                        <label className="form-label fw-bold">Diet Preference <span className="text-danger">*</span></label>
                         <select
-                          className="form-select"
+                          className={`form-select ${errors.dietPreference ? "is-invalid" : ""}`}
                           name="dietPreference"
                           value={formData.dietPreference}
                           onChange={handleChange}
@@ -1245,6 +1263,7 @@ const InpatientAdmission = () => {
                             <option key={diet.dietPreferenceId} value={diet.dietPreferenceId}>{diet.preferenceName}</option>
                           ))}
                         </select>
+                        {errors.dietPreference && <div className="invalid-feedback">{errors.dietPreference}</div>}
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Allergies</label>
@@ -1476,7 +1495,7 @@ const InpatientAdmission = () => {
                     <div className="row g-3">
                       {/* Admission Date & Time Display */}
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">Admission Date & Time</label>
+                        <label className="form-label fw-bold">Admission Date & Time <span className="text-danger">*</span></label>
                         <div className="input-group">
                           <input
                             type="date"
@@ -1488,14 +1507,15 @@ const InpatientAdmission = () => {
                           />
                           <input
                             type="time"
-                            className="form-control"
+                            className={`form-control ${errors.admissionTime ? "is-invalid" : ""}`}
                             name="admissionTime"
                             value={formData.admissionTime}
                             onChange={handleChange}
+                            required
                           />
                         </div>
-                       
                         {errors.admissionDate && <div className="invalid-feedback d-block">{errors.admissionDate}</div>}
+                        {errors.admissionTime && <div className="invalid-feedback d-block">{errors.admissionTime}</div>}
                       </div>
                       
                       <div className="col-md-4">
@@ -1915,9 +1935,9 @@ const InpatientAdmission = () => {
                       <table className="table table-bordered">
                         <thead>
                           <tr>
-                            <th width="250">Document Type</th>
+                            <th width="250">Document Type <span className="text-danger">*</span></th>
                             <th>Remarks</th>
-                            <th width="200">File Upload</th>
+                            <th width="200">File Upload <span className="text-danger">*</span></th>
                             <th width="80">Action</th>
                           </tr>
                         </thead>
@@ -1926,7 +1946,7 @@ const InpatientAdmission = () => {
                             <tr key={doc.id}>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${errors[`doc_${index}_docType`] ? "is-invalid" : ""}`}
                                   value={doc.docType}
                                   onChange={(e) => handleDocumentChange(index, 'docType', e.target.value)}
                                 >
@@ -1937,6 +1957,9 @@ const InpatientAdmission = () => {
                                     </option>
                                   ))}
                                 </select>
+                                {errors[`doc_${index}_docType`] && (
+                                  <div className="invalid-feedback d-block">{errors[`doc_${index}_docType`]}</div>
+                                )}
                               </td>
                               <td>
                                 <input
@@ -1951,7 +1974,7 @@ const InpatientAdmission = () => {
                                 <div className="input-group input-group-sm">
                                   <input
                                     type="file"
-                                    className="form-control form-control-sm"
+                                    className={`form-control form-control-sm ${errors[`doc_${index}_file`] ? "is-invalid" : ""}`}
                                     onChange={(e) => handleFileUpload(index, e)}
                                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                                   />
@@ -1961,6 +1984,9 @@ const InpatientAdmission = () => {
                                     <i className="mdi mdi-file-document me-1"></i>
                                     {doc.fileName}
                                   </small>
+                                )}
+                                {errors[`doc_${index}_file`] && (
+                                  <div className="invalid-feedback d-block">{errors[`doc_${index}_file`]}</div>
                                 )}
                               </td>
                               <td className="text-center">
@@ -2145,12 +2171,13 @@ const InpatientAdmission = () => {
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label">Relation</label>
+                        <label className="form-label fw-bold">Relation <span className="text-danger">*</span></label>
                         <select
-                          className="form-select"
+                          className={`form-select ${errors.nokRelation ? "is-invalid" : ""}`}
                           name="nokRelation"
                           value={formData.nokRelation || ""}
                           onChange={handleChange}
+                          required
                         >
                           <option value="">Select Relation</option>
                           {relationData.map((relation) => (
@@ -2159,6 +2186,7 @@ const InpatientAdmission = () => {
                             </option>
                           ))}
                         </select>
+                        {errors.nokRelation && <div className="invalid-feedback">{errors.nokRelation}</div>}
                       </div>
                       <div className="col-md-4">
                         <label className="form-label">Email</label>
@@ -2172,7 +2200,7 @@ const InpatientAdmission = () => {
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label">Mobile No.</label>
+                        <label className="form-label fw-bold">Mobile No. <span className="text-danger">*</span></label>
                         <input
                           type="text"
                           className={`form-control ${errors.nokMobile ? "is-invalid" : ""}`}
@@ -2185,6 +2213,7 @@ const InpatientAdmission = () => {
                               handleChange(e);
                             }
                           }}
+                          required
                         />
                         {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
                       </div>

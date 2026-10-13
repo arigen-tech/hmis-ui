@@ -331,10 +331,54 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
 
   const handleVitalsSubmit = async () => {
     const lastRow = vitalsHistory[vitalsHistory.length - 1]
+    
+    // Check if completely empty
     if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic && !lastRow.respiration && !lastRow.o2Saturation && !lastRow.pain) {
       showPopup(VITALS_FILL_ONE_WARN, "warning")
       return
     }
+
+    // --- MEDICAL VALIDATION LOGIC ---
+    const validationErrors = []
+
+    if (lastRow.temperature && (isNaN(lastRow.temperature) || Number(lastRow.temperature) <= 0)) {
+      validationErrors.push("Temperature must be a valid positive number.")
+    }
+
+    if (lastRow.pulse && (isNaN(lastRow.pulse) || Number(lastRow.pulse) <= 0)) {
+      validationErrors.push("Pulse must be a valid positive number.")
+    }
+
+    if (lastRow.respiration && (isNaN(lastRow.respiration) || Number(lastRow.respiration) <= 0)) {
+      validationErrors.push("Respiration must be a valid positive number.")
+    }
+
+    if (lastRow.o2Saturation) {
+      const spo2Val = Number(String(lastRow.o2Saturation).replace("%", ""))
+      if (isNaN(spo2Val) || spo2Val < 0 || spo2Val > 100) {
+        validationErrors.push("O₂ Saturation must be between 0 and 100.")
+      }
+    }
+
+    if (lastRow.bpSystolic || lastRow.bpDiastolic) {
+      if (!lastRow.bpSystolic || !lastRow.bpDiastolic) {
+        validationErrors.push("Both Systolic and Diastolic BP are required if one is provided.")
+      } else {
+        const sys = Number(lastRow.bpSystolic)
+        const dia = Number(lastRow.bpDiastolic)
+        if (isNaN(sys) || isNaN(dia) || sys <= 0 || dia <= 0) {
+          validationErrors.push("BP values must be positive numbers.")
+        } else if (sys <= dia) {
+          validationErrors.push("Systolic BP must be greater than Diastolic BP.")
+        }
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      showPopup(validationErrors.join("\n"), "warning")
+      return
+    }
+    // --- END VALIDATION LOGIC ---
 
     const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26)
     const observationDatetime = parseDateToISO(lastRow.date, lastRow.time)
@@ -619,9 +663,14 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               <div className="input-group input-group-sm">
                                 <input
                                   type="text"
+                                  inputMode="decimal"
                                   className="form-control"
                                   value={vitals.temperature}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "temperature", e.target.value)}
+                                  onChange={(e) => {
+                                    let val = e.target.value.replace(/[^0-9.]/g, "");
+                                    if ((val.match(/\./g) || []).length > 1) return; // Prevent multiple dots
+                                    handleVitalsCellChange(vitals.id, "temperature", val);
+                                  }}
                                   placeholder="Temp"
                                 />
                                 <select
@@ -643,9 +692,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               <div className="input-group input-group-sm">
                                 <input
                                   type="text"
+                                  inputMode="numeric"
                                   className="form-control"
                                   value={vitals.pulse}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value)}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value.replace(/\D/g, ""))}
                                   placeholder="Pulse"
                                 />
                                 <select
@@ -666,9 +716,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                             {isEditable ? (
                               <input
                                 type="text"
+                                inputMode="numeric"
                                 className="form-control form-control-sm"
                                 value={vitals.respiration}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value)}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value.replace(/\D/g, ""))}
                                 placeholder="breaths/min"
                               />
                             ) : (
@@ -680,17 +731,19 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               <div className="input-group input-group-sm">
                                 <input
                                   type="text"
+                                  inputMode="numeric"
                                   className="form-control"
                                   value={vitals.bpSystolic}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value)}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value.replace(/\D/g, ""))}
                                   placeholder="Sys"
                                 />
                                 <span className="input-group-text">/</span>
                                 <input
                                   type="text"
+                                  inputMode="numeric"
                                   className="form-control"
                                   value={vitals.bpDiastolic}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value)}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value.replace(/\D/g, ""))}
                                   placeholder="Dia"
                                 />
                               </div>
@@ -702,10 +755,15 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                             {isEditable ? (
                               <input
                                 type="text"
+                                inputMode="numeric"
                                 className="form-control form-control-sm"
                                 value={vitals.o2Saturation}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "o2Saturation", e.target.value)}
-                                placeholder="e.g. 98%"
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, ""); // Only digits
+                                  if (val !== "" && Number(val) > 100) return; // Max 100
+                                  handleVitalsCellChange(vitals.id, "o2Saturation", val);
+                                }}
+                                placeholder="e.g. 98"
                               />
                             ) : (
                               <span>{vitals.o2Saturation}</span>

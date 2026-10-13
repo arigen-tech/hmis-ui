@@ -293,6 +293,7 @@ import OTBookingStatusMaster from './Views/Masters/OTBookingStatusMaster';
 // import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
 import NISRegister from './Views/Dispensary/NISRegister';
 import PACClearance from './Views/OperationTheatre/PACClearance';
+// import TemplateResultEditor from './Views/Laboratory/TemplateResultEditor';
 // import OTSurgeryExecution from './Views/OperationTheatre/OTSurgeryExecution';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -329,6 +330,8 @@ function App() {
             <Route path="ViewDownwload" element={<ViewDownwload />} />
             <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
             <Route path="ViewDownloadReportWithDynamicButton" element={<ViewDownloadWithUnlimitedButtons />} />
+            {/* <Route path="templateResultEditor" element={<TemplateResultEditor />} /> */}
+
 
             <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
 

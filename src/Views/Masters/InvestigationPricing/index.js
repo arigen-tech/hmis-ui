@@ -10,6 +10,14 @@ import {
 } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
+const EMPTY_FORM = {
+    investigationId: "",
+    fromDate: "",
+    toDate: "",
+    price: "",
+    ipdPrice: "",
+}
+
 const Investigationpricing = () => {
     const [investigationList, setInvestigationList] = useState([])
     const [investigationOptions, setInvestigationOptions] = useState([])
@@ -20,12 +28,7 @@ const Investigationpricing = () => {
         newStatus: "",
         name: "" 
     })
-    const [formData, setFormData] = useState({
-        investigationId: "",
-        fromDate: "",
-        toDate: "",
-        price: "",
-    })
+    const [formData, setFormData] = useState(EMPTY_FORM)
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
     const [editingInvestigation, setEditingInvestigation] = useState(null)
@@ -171,7 +174,8 @@ const Investigationpricing = () => {
             investigationId: item.investigationId?.toString() || "",
             fromDate: formatDateForInput(item.fromDt) || "",
             toDate: formatDateForInput(item.toDt) || "",
-            price: item.price,
+            price: item.price ?? "",
+            ipdPrice: item.ipdPrice ?? "",
         })
         setSearchText(item.investigationName || getInvestigationName(item.investigationId) || "")
         setIsFormValid(true)
@@ -204,10 +208,15 @@ const Investigationpricing = () => {
         }
     };
 
+    // Show "-" for null/undefined amounts (e.g. old rows without an IPD price)
+    const formatAmount = (value) => {
+        return value === null || value === undefined || value === "" ? "-" : `₹${value}`
+    }
+
     const resetForm = () => {
         setEditingInvestigation(null)
         setShowForm(false)
-        setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
+        setFormData(EMPTY_FORM)
         setSearchText("")
         setIsFormValid(false)
     }
@@ -215,7 +224,13 @@ const Investigationpricing = () => {
     const handleSave = async (e) => {
         e.preventDefault()
 
-        if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
+        if (
+            !formData.investigationId ||
+            !formData.fromDate ||
+            !formData.toDate ||
+            formData.price === "" ||
+            formData.ipdPrice === ""
+        ) {
             showPopup(FILL_ALL_REQUIRED_FIELDS, "error")
             return
         }
@@ -233,6 +248,7 @@ const Investigationpricing = () => {
                 fromDt: formData.fromDate,
                 toDt: formData.toDate,
                 price: parseFloat(formData.price),
+                ipdPrice: parseFloat(formData.ipdPrice),
             }
 
             if (editingInvestigation) {
@@ -337,7 +353,8 @@ const Investigationpricing = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target
 
-        if (id === "price") {
+        // Numeric-only (with optional decimal point) for both price fields
+        if (id === "price" || id === "ipdPrice") {
             if (value === "" || /^\d*\.?\d*$/.test(value)) {
                 setFormData((prevData) => ({ ...prevData, [id]: value }))
             }
@@ -382,7 +399,8 @@ const Investigationpricing = () => {
 
     useEffect(() => {
         const isValid = !!formData.investigationId &&
-            !!formData.price &&
+            formData.price !== "" &&
+            formData.ipdPrice !== "" &&
             !!formData.fromDate &&
             !!formData.toDate
         setIsFormValid(isValid)
@@ -480,7 +498,8 @@ const Investigationpricing = () => {
                                                     <th>Investigation Name</th>
                                                     <th>From Date</th>
                                                     <th>To Date</th>
-                                                    <th>Price</th>
+                                                    <th>OPD Price</th>
+                                                    <th>IPD Price</th>
                                                     <th>Status</th>
                                                     <th>Edit</th>
                                                 </tr>
@@ -492,7 +511,8 @@ const Investigationpricing = () => {
                                                             <td>{item.investigationName || getInvestigationName(item.investigationId)}</td>
                                                             <td>{formatDateForDisplay(item.fromDt)}</td>
                                                             <td>{formatDateForDisplay(item.toDt)}</td>
-                                                            <td>₹{item.price}</td>
+                                                            <td>{formatAmount(item.price)}</td>
+                                                            <td>{formatAmount(item.ipdPrice)}</td>
                                                             <td>
                                                                 <div className="form-check form-switch">
                                                                     <input
@@ -527,7 +547,7 @@ const Investigationpricing = () => {
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan="6" className="text-center py-4">
+                                                        <td colSpan="7" className="text-center py-4">
                                                             No Records Found
                                                         </td>
                                                     </tr>
@@ -633,7 +653,7 @@ const Investigationpricing = () => {
                                     </div>
                                     <div className="form-group col-md-4 mt-3">
                                         <label>
-                                            Price <span className="text-danger">*</span>
+                                            OPD Price <span className="text-danger">*</span>
                                         </label>
                                         <div className="input-group mt-1">
                                             <span className="input-group-text">₹</span>
@@ -641,9 +661,26 @@ const Investigationpricing = () => {
                                                 type="text"
                                                 className="form-control"
                                                 id="price"
-                                                placeholder="Price"
+                                                placeholder="OPD Price"
                                                 onChange={handleInputChange}
                                                 value={formData.price}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>
+                                            IPD Price <span className="text-danger">*</span>
+                                        </label>
+                                        <div className="input-group mt-1">
+                                            <span className="input-group-text">₹</span>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                id="ipdPrice"
+                                                placeholder="IPD Price"
+                                                onChange={handleInputChange}
+                                                value={formData.ipdPrice}
                                                 required
                                             />
                                         </div>

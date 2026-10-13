@@ -8302,18 +8302,18 @@ const GeneralMedicineWaitingList = () => {
                           </div>
 
                           {/* Follow Up Date (Read Only) */}
-                          <div className="d-flex align-items-center gap-2">
-                            <label className="form-label mb-0">
-                              Follow Up date
-                            </label>
-                            <input
-                              type="date"
-                              className="form-control"
-                              style={{ width: "170px" }}
-                              value={followUps.followUpDate}
-                              readOnly
-                            />
-                          </div>
+<div className="d-flex align-items-center gap-2">
+  <label className="form-label mb-0">
+    Follow Up date
+  </label>
+  <input
+    type="text"  // 👈 Changed to text so it accepts our custom format
+    className="form-control"
+    style={{ width: "170px" }}
+    value={formatDateForDisplay(followUps.followUpDate)} // 👈 Formats as dd/MM/yyyy
+    readOnly
+  />
+</div>
                         </div>
                       </div>
                     </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { getRequest, putRequest } from "../../../../service/apiService"
-import { MAS_INVESTIGATION, DG_UOM } from "../../../../config/apiConfig"
+import { MAS_INVESTIGATION, DG_UOM, DG_MAS_INVESTIGATION_METHODOLOGY } from "../../../../config/apiConfig"
 import Popup from "../../../../Components/popup"
 import LoadingScreen from "../../../../Components/Loading"
 import { UPDATE_SUB_INV_ERR_MSG, UPDATE_SUB_INV_SUCC_MSG, UPDATE_TWICE_SUB_INV_ERR_MSG } from "../../../../config/constants"
@@ -40,6 +40,7 @@ const InvestigationMasterResult = () => {
   const [normalValues, setNormalValues] = useState([])
   const [fixedValues, setFixedValues] = useState([])
   const [uomOptions, setUomOptions] = useState([])
+  const [methodologyOptions, setMethodologyOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
   const [hasUpdated, setHasUpdated] = useState(false) // Track if update has been performed in current session
@@ -71,13 +72,16 @@ const InvestigationMasterResult = () => {
     })
   }
 
-  // Fetch UOM options from API
+  // Fetch UOM and Methodology options from API
   useEffect(() => {
-    const fetchUomOptions = async () => {
+    const fetchDropdownOptions = async () => {
       try {
         setLoading(true)
-        const uomsRes = await getRequest(`${DG_UOM}/getAll/1`)
-        
+        const [uomsRes, methodologiesRes] = await Promise.all([
+          getRequest(`${DG_UOM}/getAll/1`),
+          getRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}/findAll`),
+        ])
+
         if (uomsRes && uomsRes.response) {
           setUomOptions(
             uomsRes.response.map((uom) => ({
@@ -88,15 +92,27 @@ const InvestigationMasterResult = () => {
         } else {
           setUomOptions([])
         }
+
+        if (methodologiesRes && methodologiesRes.response) {
+          setMethodologyOptions(
+            methodologiesRes.response.map((method) => ({
+              id: method.methodId,
+              name: method.methodName,
+            }))
+          )
+        } else {
+          setMethodologyOptions([])
+        }
       } catch (error) {
-        console.error("Error fetching UOM options:", error)
+        console.error("Error fetching dropdown options:", error)
         setUomOptions([])
+        setMethodologyOptions([])
       } finally {
         setLoading(false)
       }
     }
 
-    fetchUomOptions()
+    fetchDropdownOptions()
   }, [])
 
   // Initialize subTests from API data when component mounts
@@ -111,6 +127,7 @@ const InvestigationMasterResult = () => {
         unit: getUnitName(subInv.uomId) || '',
         resultType: mapResultType(subInv.resultType) || '',
         comparisonType: mapComparisonType(subInv.comparisonType) ||'',
+        methodologyId: subInv.methodologyId || "",
         fixedValueExpectedResult:subInv.fixedValueExpectedResult || '',
         originalData: subInv,
         fixedValues: subInv.fixedValueResponseList?.map(fv => ({
@@ -139,6 +156,7 @@ const InvestigationMasterResult = () => {
           unit: uomOptions[0]?.name || "mg/dl",
           resultType: "Single Parameter",
           comparisonType: "None",
+          methodologyId: "",
           fixedValueExpectedResult:'',
           fixedValues: [],
           normalValues: []
@@ -194,6 +212,7 @@ const InvestigationMasterResult = () => {
         unit: uomOptions[0]?.name || "mg/dl",
         resultType: "Single Parameter",
         comparisonType: "None",
+        methodologyId: "",
         fixedValueExpectedResult:'',
         fixedValues: [],
         normalValues: []
@@ -267,6 +286,7 @@ const InvestigationMasterResult = () => {
             mainChargeCodeId: mainChargeCodeId,
             subChargeCodeId: subChargeCodeId,
             uomId: getUomIdFromName(test.unit),
+            methodologyId: Number.parseInt(test.methodologyId) || 0,
             fixedValues: fixedValues,
             normalValues: normalValues,
             fixedValueIdsToDelete: test.fixedValueIdsToDelete || [],
@@ -467,6 +487,7 @@ const InvestigationMasterResult = () => {
                                 <th>Sub Test Name(Enterable)</th>
                                 <th>LOINC Code</th>
                                 <th>Unit</th>
+                                <th>Methodology</th>
                                 <th>Result Type</th>
                                 <th>Comparison Type</th>
                                 <th>Fixed Value Expected Result</th>
@@ -549,6 +570,26 @@ const InvestigationMasterResult = () => {
                                       ))}
                                     </select>
                                     {loading && <div className="text-muted small">Loading units...</div>}
+                                  </td>
+                                  <td style={{ width: "160px" }}>
+                                    <select
+                                      className="form-select"
+                                      value={test.methodologyId}
+                                      onChange={(e) => {
+                                        const updatedTests = subTests.map((t) =>
+                                          t.id === test.id ? { ...t, methodologyId: e.target.value } : t,
+                                        )
+                                        setSubTests(updatedTests)
+                                      }}
+                                      disabled={loading}
+                                    >
+                                      <option value="">Select Methodology</option>
+                                      {methodologyOptions.map((method) => (
+                                        <option key={method.id} value={method.id}>
+                                          {method.name}
+                                        </option>
+                                      ))}
+                                    </select>
                                   </td>
                                   <td>
                                     <select

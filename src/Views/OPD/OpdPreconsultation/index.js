@@ -52,20 +52,6 @@ const OpdPreconsultation = () => {
     }
   };
 
-  // Filter visits based on search criteria (mobile number and patient name)
-  // const filteredVisits = visits.filter((item) => {
-  //   const mobileMatch =
-  //     searchData.mobileNo === "" ||
-  //     (item.mobleNumber && item.mobleNumber.includes(searchData.mobileNo));
-  //   const nameMatch =
-  //     searchData.patientName === "" ||
-  //     (item.patientName &&
-  //       item.patientName
-  //         .toLowerCase()
-  //         .includes(searchData.patientName.toLowerCase()));
-  //   return mobileMatch && nameMatch;
-  // });
-
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [vitalFormData, setVitalFormData] = useState({
     height: "",
@@ -146,6 +132,12 @@ const OpdPreconsultation = () => {
 
   const handleVitalInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Allow only numbers and a single decimal point
+    if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
+
     setVitalFormData({
       ...vitalFormData,
       [name]: value,
@@ -177,25 +169,73 @@ const OpdPreconsultation = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (
-    !vitalFormData.height ||
-    !vitalFormData.weight ||
-    !vitalFormData.temperature ||
-    !vitalFormData.systolic ||
-    !vitalFormData.diastolic ||
-    !vitalFormData.pulse ||
-    !vitalFormData.rr ||
-    !vitalFormData.spo2
+    // 1. Check for empty fields
+    if (
+      !vitalFormData.height ||
+      !vitalFormData.weight ||
+      !vitalFormData.temperature ||
+      !vitalFormData.systolic ||
+      !vitalFormData.diastolic ||
+      !vitalFormData.pulse ||
+      !vitalFormData.rr ||
+      !vitalFormData.spo2
+    ) {
+      Swal.fire("Please fill all required fields", "", "warning");
+      return;
+    }
 
-  ) {
-    Swal.fire("Please fill all required fields", "", "warning");
-    return;
-  }
+    // 2. Medical Range Validations
+    const errors = [];
 
-  await submitvitals();
-};
+    const checkRange = (val, name, min, max, unit) => {
+      const num = parseFloat(val);
+      if (isNaN(num)) {
+        errors.push(`${name} must be a valid number.`);
+      } else if (num < min || num > max) {
+        errors.push(`${name} must be between ${min} and ${max} ${unit}.`);
+      }
+    };
+
+    checkRange(vitalFormData.height, "Height", 30, 250, "cm");
+    checkRange(vitalFormData.weight, "Weight", 1, 500, "kg");
+    checkRange(vitalFormData.temperature, "Temperature", 90, 110, "°F");
+    checkRange(vitalFormData.systolic, "Systolic BP", 50, 300, "mmHg");
+    checkRange(vitalFormData.diastolic, "Diastolic BP", 30, 200, "mmHg");
+    checkRange(vitalFormData.pulse, "Pulse", 20, 250, "/min");
+    checkRange(vitalFormData.rr, "Respiratory Rate", 5, 80, "/min");
+    checkRange(vitalFormData.spo2, "SpO2", 30, 100, "%");
+
+    // 3. Cross-field BP Validation & Pulse Pressure
+    const sys = parseFloat(vitalFormData.systolic);
+    const dia = parseFloat(vitalFormData.diastolic);
+
+    if (sys <= dia) {
+      errors.push("Systolic BP must be greater than Diastolic BP.");
+    } else {
+      const pulsePressure = sys - dia;
+      // Optional medical check for Pulse Pressure
+      if (pulsePressure < 20) {
+        errors.push("Pulse Pressure (Systolic - Diastolic) is too narrow (< 20 mmHg). Please verify BP.");
+      } else if (pulsePressure > 100) {
+        errors.push("Pulse Pressure (Systolic - Diastolic) is too wide (> 100 mmHg). Please verify BP.");
+      }
+    }
+
+    // 4. Show errors if any
+    if (errors.length > 0) {
+      Swal.fire({
+        title: "Validation Error",
+        html: errors.join("<br/>"),
+        icon: "warning",
+      });
+      return;
+    }
+
+    // 5. Proceed to submit
+    await submitvitals();
+  };
 
   const handleSaveVitals = (e) => {
     e.preventDefault();
@@ -251,6 +291,7 @@ const OpdPreconsultation = () => {
       console.error("Error:", error);
     }
   }
+
   if (loading) {
     return <LoadingScreen />;
   }

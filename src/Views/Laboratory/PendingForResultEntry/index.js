@@ -31,7 +31,7 @@ import {
   RESULT_SUBMIT_SUCC_MSG,
 } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
-
+import TemplateResultEditor from "../../Laboratory/TemplateResultEditor"
 const PendingForResultEntry = () => {
   const [resultList, setResultList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -51,6 +51,10 @@ const PendingForResultEntry = () => {
 
   // Result flag master dropdown
   const [resultFlagList, setResultFlagList] = useState([])
+
+  // Template (investigationType === "t") editor modal state
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false)
+  const [editingInvestigationId, setEditingInvestigationId] = useState(null)
 
   // Debounce timers per row (keyed by row id)
   const debounceTimersRef = useRef({})
@@ -112,6 +116,7 @@ const PendingForResultEntry = () => {
     if (!loading) {
       fetchPendingResultHeadersForPageChange()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage])
 
   // API call for headers with search filters and pagination
@@ -407,6 +412,31 @@ const PendingForResultEntry = () => {
               subTests: processedSubTests,
               resultFlagId: null,
             }
+          } else if (inv.investigationType === "t") {
+            // ---- Template-type investigation ----
+            return {
+              id: index + 1,
+              si_no: index + 1,
+              investigationId: inv.investigationId,
+              investigation: inv.investigationName,
+              sample: inv.sampleName,
+              result: "",
+              units: inv.unitName || "",
+              normal_range: inv.normalValue || "",
+              remarks: "",
+              reject: false,
+              resultType: "t",
+              investigationType: "t",
+              sampleId: inv.sampleId,
+              sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+              generatedSampleId: inv.generatedSampleId || "",
+              subTests: [],
+              resultFlagId: null,
+              // template-specific fields
+              templateResult: "",
+              templateCode: "",
+              templateName: "",
+            }
           } else {
             return {
               id: index + 1,
@@ -444,45 +474,72 @@ const PendingForResultEntry = () => {
     Object.values(debounceTimersRef.current).forEach(clearTimeout)
     debounceTimersRef.current = {}
 
+    // Close template editor if open
+    setShowTemplateEditor(false)
+    setEditingInvestigationId(null)
+
     setShowDetailView(false)
     setSelectedResult(null)
   }
 
   const handleInvestigationChange = (investigationId, field, value) => {
-  setSelectedResult((prevResult) => {
-    if (!prevResult) return prevResult
-    const updatedInvestigations = prevResult.investigations.map((inv) =>
-      inv.id === investigationId ? { ...inv, [field]: value } : inv
-    )
-    return { ...prevResult, investigations: updatedInvestigations }
-  })
-}
-  const handleSubTestChange = (investigationId, subTestId, field, value) => {
-  setSelectedResult((prevResult) => {
-    if (!prevResult) return prevResult
-    const updatedInvestigations = prevResult.investigations.map((inv) => {
-      if (inv.id === investigationId) {
-        const updatedSubTests = inv.subTests.map((subTest) =>
-          subTest.id === subTestId ? { ...subTest, [field]: value } : subTest
-        )
-        return { ...inv, subTests: updatedSubTests }
-      }
-      return inv
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) =>
+        inv.id === investigationId ? { ...inv, [field]: value } : inv
+      )
+      return { ...prevResult, investigations: updatedInvestigations }
     })
-    return { ...prevResult, investigations: updatedInvestigations }
-  })
-}
+  }
+
+  const handleSubTestChange = (investigationId, subTestId, field, value) => {
+    setSelectedResult((prevResult) => {
+      if (!prevResult) return prevResult
+      const updatedInvestigations = prevResult.investigations.map((inv) => {
+        if (inv.id === investigationId) {
+          const updatedSubTests = inv.subTests.map((subTest) =>
+            subTest.id === subTestId ? { ...subTest, [field]: value } : subTest
+          )
+          return { ...inv, subTests: updatedSubTests }
+        }
+        return inv
+      })
+      return { ...prevResult, investigations: updatedInvestigations }
+    })
+  }
+
+  // ---------------- Template editor handlers ----------------
+  const handleOpenTemplateEditor = (investigation) => {
+    setEditingInvestigationId(investigation.id)
+    setShowTemplateEditor(true)
+  }
+
+  const handleTemplateEditorSave = ({ templateResult, templateCode, templateName }) => {
+    if (editingInvestigationId == null) return
+    setSelectedResult((prev) => {
+      if (!prev) return prev
+      const updatedInvestigations = prev.investigations.map((inv) =>
+        inv.id === editingInvestigationId
+          ? { ...inv, templateResult, templateCode, templateName }
+          : inv
+      )
+      return { ...prev, investigations: updatedInvestigations }
+    })
+  }
+
+  const handleCloseTemplateEditor = () => {
+    setShowTemplateEditor(false)
+    setEditingInvestigationId(null)
+  }
 
   // Debounced flag detection (used only for text inputs)
   const scheduleFlagDetection = (item, value, isSubTest, investigationId) => {
     const key = isSubTest ? `${investigationId}-${item.id}` : `${item.id}`
 
-    // Clear previous timer for this row
     if (debounceTimersRef.current[key]) {
       clearTimeout(debounceTimersRef.current[key])
     }
 
-    // Empty value → clear flag immediately, no API call
     if (!value || value.trim() === "") {
       if (isSubTest) {
         handleSubTestChange(investigationId, item.id, "resultFlagId", null)
@@ -492,7 +549,6 @@ const PendingForResultEntry = () => {
       return
     }
 
-    // Schedule new detection
     debounceTimersRef.current[key] = setTimeout(async () => {
       const detected = await detectResultFlag(value, item.normal_range)
       const flagId = detected?.resultFlagId || null
@@ -527,11 +583,14 @@ const PendingForResultEntry = () => {
 
   // Result Flag dropdown renderer
   const renderResultFlagDropdown = (item, isSubTest = false, investigationId = null) => {
+    const isTemplateType = !isSubTest && item.investigationType === "t"
+
     return (
       <select
         className="form-select"
         style={{ minWidth: "120px" }}
         value={item.resultFlagId || ""}
+        disabled={isTemplateType}
         onChange={(e) => {
           const val = e.target.value ? Number(e.target.value) : null
           if (isSubTest && investigationId) {
@@ -553,6 +612,21 @@ const PendingForResultEntry = () => {
 
   // Render result input based on type
   const renderResultInput = (item, isSubTest = false, investigationId = null) => {
+    // Template-type investigation → clickable box that opens the editor modal
+    if (!isSubTest && item.investigationType === "t") {
+      return (
+        <input
+          type="text"
+          className="form-control"
+          readOnly
+          style={{ cursor: "pointer", minWidth: "180px", background: "#f8f9fa" }}
+          value={item.templateName || "Click to enter result"}
+          onClick={() => handleOpenTemplateEditor(item)}
+          title="Click to open template result editor"
+        />
+      )
+    }
+
     // Fixed values dropdown
     if (isSubTest && item.comparisonType === "f" && item.fixedValues && item.fixedValues.length > 0) {
       return (
@@ -598,14 +672,12 @@ const PendingForResultEntry = () => {
           onChange={(e) => {
             const value = e.target.value
 
-            // 1. Update value immediately so typing stays responsive
             if (isSubTest && investigationId) {
               handleSubTestChange(investigationId, item.id, "result", value)
             } else {
               handleInvestigationChange(item.id, "result", value)
             }
 
-            // 2. Schedule debounced flag detection
             scheduleFlagDetection(item, value, isSubTest, investigationId)
           }}
         />
@@ -732,6 +804,43 @@ const PendingForResultEntry = () => {
                 }
               }
             }
+          } else if (inv.investigationType === "t") {
+            // ---- Template-type investigation ----
+            if (!inv.reject && inv.templateResult && inv.templateResult.trim() !== "") {
+              resultEntryDetails.push({
+                result: inv.templateResult,
+                remarks: inv.remarks || "",
+                sampleId: inv.sampleId,
+                investigationId: inv.investigationId,
+                subInvestigationId: null,
+                resultType: "t",
+                comparisonType: "n",
+                fixedId: 0,
+                normalId: 0,
+                normalRange: inv.normal_range || "",
+                fixedValue: null,
+                resultFlagId: null,
+                templateCode: inv.templateCode || "",
+                templateName: inv.templateName || "",
+              })
+            } else if (inv.reject) {
+              resultEntryDetails.push({
+                result: null,
+                remarks: inv.remarks || "Rejected",
+                sampleId: inv.sampleId,
+                investigationId: inv.investigationId,
+                subInvestigationId: null,
+                resultType: "t",
+                comparisonType: "n",
+                fixedId: 0,
+                normalId: 0,
+                normalRange: inv.normal_range || "",
+                fixedValue: null,
+                resultFlagId: null,
+                templateCode: inv.templateCode || "",
+                templateName: inv.templateName || "",
+              })
+            }
           }
 
           if (resultEntryDetails.length > 0) {
@@ -804,6 +913,31 @@ const PendingForResultEntry = () => {
           />
         )}
         {loading && <LoadingScreen />}
+
+        {/* Template Result Editor Modal */}
+        {showTemplateEditor &&
+          editingInvestigationId != null &&
+          (() => {
+            const inv = selectedResult.investigations.find(
+              (i) => i.id === editingInvestigationId
+            )
+            if (!inv) return null
+            return (
+              <TemplateResultEditor
+                show={showTemplateEditor}
+                onClose={handleCloseTemplateEditor}
+                onSave={handleTemplateEditorSave}
+                modalityId={selectedResult.subChargeCodeId}
+                modalityType={selectedResult.modality}
+                initialData={{
+                  templateResult: inv.templateResult,
+                  templateCode: inv.templateCode,
+                  templateName: inv.templateName,
+                }}
+              />
+            )
+          })()}
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">

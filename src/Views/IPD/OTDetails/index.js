@@ -1,5 +1,6 @@
 import { useState } from "react"
 import Swal from "sweetalert2"
+import { formatDateForDisplay } from "../../../utils/dateUtils"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Scheduled → Sent to OT → Received in OT → In Recovery / PACU → Sent to Ward/ICU → Reported to Ward
@@ -220,7 +221,7 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
               </div>
               <div className="col-md-4">
                 <label className="form-label small text-muted mb-1">Surgery Date</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.surgeryDate}</div>
+                <div className="fw-semibold">{formatDateForDisplay(DUMMY_BOOKING.surgeryDate)}</div>
               </div>
               <div className="col-md-4">
                 <label className="form-label small text-muted mb-1">Scheduled Time</label>

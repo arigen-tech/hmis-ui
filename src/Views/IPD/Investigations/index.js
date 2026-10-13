@@ -199,7 +199,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     sample: "",
     container: "",
     resultUnit: "",
-    remarks: "",
     dropdownOpen: false,
     searchText: "",
   });
@@ -210,7 +209,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     id: getUniqueInvestigationRowId(),
     investigationName: "",
     date: getTodayDateString(),
-    remarks: "",
     dropdownOpen: false,
     searchText: "",
   });
@@ -330,7 +328,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     }
   };
 
-  // ---------- Fetch tracking data from API (only for lab) ----------
   // ---------- Fetch tracking data from API ----------
   const fetchTrackingData = async (page = 1) => {
     setTrackingLoading(true);
@@ -808,7 +805,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           appointmentDate:
             type === "radiology" ? row.date || getTodayDateString() : null,
           checkStatus: true,
-          remarks: row.remarks || "",
           type,
           sample: row.sample || "",
           container: row.container || "",
@@ -868,26 +864,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     return true;
   };
 
-  const validateInvestigationRemarks = (rows, type) => {
-    const missingRemarksRowIndex = rows.findIndex(
-      (row) => row.searchText?.trim() && !row.remarks?.trim()
-    );
-
-    if (missingRemarksRowIndex !== -1) {
-      const rowLabel = missingRemarksRowIndex + 1;
-      const tabLabel = type === "lab" ? "Lab" : "Radiology";
-
-      Swal.fire({
-        icon: "warning",
-        title: "Remarks required",
-        text: `${tabLabel} investigation remarks are mandatory. Please enter remarks for row ${rowLabel} before saving.`,
-      });
-      return false;
-    }
-
-    return true;
-  };
-
   const handleSaveInvestigations = async (type) => {
     if (!selectedPatient?.patientId || !selectedPatient?.inpatientId) {
       Swal.fire({
@@ -899,10 +875,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     }
 
     const rows = type === "lab" ? labRows : radiologyRows;
-
-    if (!validateInvestigationRemarks(rows, type)) {
-      return;
-    }
 
     if (!validateUniqueInvestigations(rows, type)) {
       return;
@@ -1026,11 +998,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 <thead className="table-light">
                   <tr>
                     <th style={{ width: "5%" }}>S.No</th>
-                    <th style={{ width: "20%" }}>Test Name</th>
-                    <th style={{ width: "12%" }}>Sample</th>
-                    <th style={{ width: "12%" }}>Container</th>
-                    <th style={{ width: "20%" }}>Remarks</th>
-                    <th style={{ width: "10%" }}>Action</th>
+                    <th style={{ width: "40%" }}>Test Name</th>
+                    <th style={{ width: "20%" }}>Sample</th>
+                    <th style={{ width: "20%" }}>Container</th>
+                    <th style={{ width: "15%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1129,18 +1100,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             placeholder="Container"
                           />
                         </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={row.remarks}
-                            onChange={(e) =>
-                              updateLabRow(row.id, "remarks", e.target.value)
-                            }
-                            placeholder="Remarks *"
-                            aria-required="true"
-                          />
-                        </td>
                         <td className="text-center">
                           <button
                             type="button"
@@ -1191,9 +1150,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 <thead className="table-light">
                   <tr>
                     <th style={{ width: "5%" }}>S.No</th>
-                    <th style={{ width: "35%" }}>Investigation</th>
-                    <th style={{ width: "35%" }}>Remarks</th>
-                    <th style={{ width: "10%" }}>Action</th>
+                    <th style={{ width: "80%" }}>Investigation</th>
+                    <th style={{ width: "15%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1279,22 +1237,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                               })}
                             </ul>
                           </PortalDropdown>
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={row.remarks}
-                            onChange={(e) =>
-                              updateRadiologyRow(
-                                row.id,
-                                "remarks",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Remarks *"
-                            aria-required="true"
-                          />
                         </td>
                         <td className="text-center">
                           <button
