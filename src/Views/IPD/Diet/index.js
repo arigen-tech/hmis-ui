@@ -15,9 +15,7 @@ const getCurrentTime = () => {
 
 const formatTimeToString = (timeStr) => {
   if (!timeStr) return "00:00:00";
-  // If time already contains seconds, return as is
   if (timeStr.split(':').length === 3) return timeStr;
-  // Otherwise append seconds
   return `${timeStr}:00`;
 };
 
@@ -95,7 +93,6 @@ const DietOrderHistory = ({ selectedPatient }) => {
           userNameRef.current = docName;
           setCurrentUserName(docName);
           
-          // Update the empty row's givenBy if it's the last row
           setMealEntries(prev => {
             const lastRow = prev[prev.length - 1];
             if (lastRow && lastRow.id === NEW_RECORD_ID) {
@@ -134,8 +131,8 @@ const DietOrderHistory = ({ selectedPatient }) => {
     }
   };
 
-  // Get the active diet order (the one with status 'A')
-  const activeDietOrder = dietHistory.find(order => order.status === 'A') || dietHistory[0] || {};
+  // Get ONLY the active diet order (status 'A'). If none exists → null
+  const activeDietOrder = dietHistory.find(order => order.status === 'A') || null;
 
   // State for meal entries
   const [mealEntries, setMealEntries] = useState([emptyMealEntry()]);
@@ -177,10 +174,8 @@ const DietOrderHistory = ({ selectedPatient }) => {
     }
   };
 
-  // Helper to check if a row is the last (input) row
   const isLastRow = (index, array) => index === array.length - 1;
 
-  // Handle cell change for meal entries
   const handleMealCellChange = (id, field, value) => {
     setMealEntries(prev => prev.map(entry => {
       if (entry.id === id) {
@@ -194,7 +189,6 @@ const DietOrderHistory = ({ selectedPatient }) => {
     }));
   };
 
-  // Save the current input row (last row)
   const handleSaveMealEntry = async () => {
     const lastRow = mealEntries[mealEntries.length - 1];
     if (!lastRow.mealType) {
@@ -236,7 +230,6 @@ const DietOrderHistory = ({ selectedPatient }) => {
           title: "Success",
           text: "Diet schedule entry saved successfully!",
         });
-        // Refresh the schedule list
         fetchActiveDietSchedule(selectedPatient.inpatientId, activeDietOrder.dietOrderId);
       } else {
         Swal.fire({
@@ -258,6 +251,7 @@ const DietOrderHistory = ({ selectedPatient }) => {
   return (
     <>
       <div>
+        {/* ─── CURRENT ACTIVE DIET ORDER CARD ─── */}
         <div className="card mb-3">
           <div className="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center">
             <strong>Current Active Diet Order</strong>
@@ -268,60 +262,76 @@ const DietOrderHistory = ({ selectedPatient }) => {
               View past diet order history
             </button>
           </div>
-          <div className="card-body py-1">
-            <div className="row">
-              <div className="col-12 col-md-6 d-flex justify-content-start align-items-center">
-                <h6 className="mb-0 text-success fw-bold">Active Diet: {activeDietOrder.dietTypeName || '-'}</h6>
+
+          <div className={`card-body ${activeDietOrder ? 'py-2' : 'py-4'}`}>
+            {activeDietOrder ? (
+              /* ── Active diet present → show symmetric 4-column row ── */
+              <div className="row g-3 align-items-center">
+                <div className="col-md-3">
+                  <div className="text-success fw-bold">
+                    Active Diet: {activeDietOrder.dietTypeName || '-'}
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <strong>Special Instruction:</strong> {activeDietOrder.specialInstruction || '-'}
+                </div>
+                <div className="col-md-3">
+                  <strong>Effective From:</strong> {activeDietOrder.fromDate || '-'}
+                </div>
+                <div className="col-md-3">
+                  <strong>Ordered By:</strong> {activeDietOrder.orderedBy || '-'}
+                </div>
               </div>
-              <div className="col-md-4">
-                <strong>Special Instruction:</strong> {activeDietOrder.specialInstruction || '-'}
+            ) : (
+              /* ── No active diet → centered message with vertical breathing room ── */
+              <div className="text-center text-muted">
+                <div className="py-3">
+                  <i className="bi bi-info-circle me-2"></i>
+                  No active diet order for this patient.
+                </div>
               </div>
-              <div className="col-md-3">
-                <strong>Effective From:</strong> {activeDietOrder.fromDate || '-'}
-              </div>
-              <div className="col-md-2">
-                <strong>Ordered By:</strong> {activeDietOrder.orderedBy}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Diet History and New Entry Table - No big heading, just the table */}
-        <div className="card shadow-sm">
-          <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: '0.8rem' }}>
-                <thead className="table-light">
-                  <tr>
-                    <th>Date</th>
-                    <th>Meal</th>
-                    <th>Planned Time</th>
-                    <th>Actual Time</th>
-                    <th>Status</th>
-                    <th>Consumed %</th>
-                    <th>Remarks</th>
-                    <th>Given By</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mealEntries.map((entry, index) => {
-                    const editable = isLastRow(index, mealEntries);
-                    return (
-                      <tr key={entry.id} className={editable ? '' : 'table-secondary'}>
-                        {/* Date */}
-                        <td>
-                          {editable ? (
-                            <input
-                              type="date"
-                              className="form-control form-control-sm"
-                              value={entry.date}
-                              onChange={(e) => handleMealCellChange(entry.id, 'date', e.target.value)}
-                            />
-                          ) : (
-                            <span>{entry.date}</span>
-                          )}
-                        </td>
-                        <td>
+        {/* ─── MEAL SCHEDULE TABLE (only when there is an active diet) ─── */}
+        {activeDietOrder && (
+          <div className="card shadow-sm">
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: '0.8rem' }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th>Date</th>
+                      <th>Meal</th>
+                      <th>Planned Time</th>
+                      <th>Actual Time</th>
+                      <th>Status</th>
+                      <th>Consumed %</th>
+                      <th>Remarks</th>
+                      <th>Given By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mealEntries.map((entry, index) => {
+                      const editable = isLastRow(index, mealEntries);
+                      return (
+                        <tr key={entry.id} className={editable ? '' : 'table-secondary'}>
+                          {/* Date */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                value={entry.date}
+                                onChange={(e) => handleMealCellChange(entry.id, 'date', e.target.value)}
+                              />
+                            ) : (
+                              <span>{entry.date}</span>
+                            )}
+                          </td>
+                          {/* Meal */}
+                          <td>
                             {editable ? (
                               <select
                                 className="form-select form-select-sm"
@@ -334,34 +344,37 @@ const DietOrderHistory = ({ selectedPatient }) => {
                                 ))}
                               </select>
                             ) : (
-                            <span>{entry.mealType}</span>
-                          )}
-                        </td>
-                        <td>
-                          {editable ? (
-                            <input
-                              type="time"
-                              className="form-control form-control-sm"
-                              value={entry.plannedTime}
-                              onChange={(e) => handleMealCellChange(entry.id, 'plannedTime', e.target.value)}
-                            />
-                          ) : (
-                            <span>{entry.plannedTime}</span>
-                          )}
-                        </td>
-                        <td>
-                          {editable ? (
-                            <input
-                              type="time"
-                              className="form-control form-control-sm"
-                              value={entry.actualTime}
-                              onChange={(e) => handleMealCellChange(entry.id, 'actualTime', e.target.value)}
-                            />
-                          ) : (
-                            <span>{entry.actualTime}</span>
-                          )}
-                        </td>
-                        <td>
+                              <span>{entry.mealType}</span>
+                            )}
+                          </td>
+                          {/* Planned Time */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="time"
+                                className="form-control form-control-sm"
+                                value={entry.plannedTime}
+                                onChange={(e) => handleMealCellChange(entry.id, 'plannedTime', e.target.value)}
+                              />
+                            ) : (
+                              <span>{entry.plannedTime}</span>
+                            )}
+                          </td>
+                          {/* Actual Time */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="time"
+                                className="form-control form-control-sm"
+                                value={entry.actualTime}
+                                onChange={(e) => handleMealCellChange(entry.id, 'actualTime', e.target.value)}
+                              />
+                            ) : (
+                              <span>{entry.actualTime}</span>
+                            )}
+                          </td>
+                          {/* Status */}
+                          <td>
                             {editable ? (
                               <select
                                 className="form-select form-select-sm"
@@ -374,71 +387,70 @@ const DietOrderHistory = ({ selectedPatient }) => {
                                 ))}
                               </select>
                             ) : (
-                            <span>{entry.status}</span>
-                          )}
-                        </td>
-                        <td>
-                          {editable ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.consumedPercent}
-                              onChange={(e) => handleMealCellChange(entry.id, 'consumedPercent', e.target.value)}
-                              placeholder="e.g., 75%"
-                            />
-                          ) : (
-                            <span>{entry.consumedPercent}</span>
-                          )}
-                        </td>
-                        {/* Remarks */}
-                        <td>
-                          {editable ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.remarks}
-                              onChange={(e) => handleMealCellChange(entry.id, 'remarks', e.target.value)}
-                              placeholder="Optional"
-                            />
-                          ) : (
-                            <span>{entry.remarks || '—'}</span>
-                          )}
-                        </td>
-                        {/* Given By (Auto) */}
-                        <td>
-                          {editable ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.givenBy}
-                              readOnly
-                              style={{ backgroundColor: '#e9ecef' }}
-                            />
-                          ) : (
-                            <span>{entry.givenBy}</span>
-                          )}
-                        </td>
-                        {/* Delete button (only for non-last rows) */}
-                        
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                              <span>{entry.status}</span>
+                            )}
+                          </td>
+                          {/* Consumed % */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.consumedPercent}
+                                onChange={(e) => handleMealCellChange(entry.id, 'consumedPercent', e.target.value)}
+                                placeholder="e.g., 75%"
+                              />
+                            ) : (
+                              <span>{entry.consumedPercent}</span>
+                            )}
+                          </td>
+                          {/* Remarks */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.remarks}
+                                onChange={(e) => handleMealCellChange(entry.id, 'remarks', e.target.value)}
+                                placeholder="Optional"
+                              />
+                            ) : (
+                              <span>{entry.remarks || '—'}</span>
+                            )}
+                          </td>
+                          {/* Given By (readonly) */}
+                          <td>
+                            {editable ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.givenBy}
+                                readOnly
+                                style={{ backgroundColor: '#e9ecef' }}
+                              />
+                            ) : (
+                              <span>{entry.givenBy}</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="d-flex gap-2 justify-content-end py-2 px-2">
+              <button className="btn btn-success btn-sm" onClick={handleSaveMealEntry}>
+                Save
+              </button>
             </div>
           </div>
-          <div className="d-flex gap-2 justify-content-end py-2 px-2">
-            <button className="btn btn-success btn-sm" onClick={handleSaveMealEntry}>
-              Save
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Modal with Backdrop – only Past Diet Orders History */}
+      {/* ─── MODAL: Past Diet Orders History ─── */}
       {showModal && (
         <>
-          {/* Backdrop overlay */}
           <div
             style={{
               position: 'fixed',
@@ -452,7 +464,6 @@ const DietOrderHistory = ({ selectedPatient }) => {
             onClick={() => setShowModal(false)}
           />
           
-          {/* Modal container */}
           <div
             className="modal show d-block"
             tabIndex={-1}
@@ -480,7 +491,6 @@ const DietOrderHistory = ({ selectedPatient }) => {
                   />
                 </div>
                 <div className="modal-body">
-                  {/* Past Diet Orders Table only */}
                   <div className="card shadow-sm">
                     <div className="card-header bg-secondary text-white py-2">
                       <strong>Past Diet Orders</strong>
