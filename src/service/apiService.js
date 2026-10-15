@@ -257,6 +257,65 @@ export const getRequest = async (endpoint, headers = {}) => {
 };
 
 /**
+ * GET request with AbortController support.
+ *
+ * Behaves exactly like `getRequest` but forwards `signal` to fetch so
+ * the caller can cancel an in-flight request (e.g. on component unmount
+ * during background polling).
+ *
+ * Throws `AbortError` (DOMException with name === "AbortError") when the
+ * signal fires — callers should handle that case and NOT treat it as a
+ * failed request.
+ *
+ * @param {string} endpoint - API path, e.g. "/doctor/summary?..."
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]  - Cancels the request when aborted
+ * @param {object}     [options.headers] - Extra headers (same shape as getRequest)
+ * @returns {Promise<any>}
+ */
+export const getRequestWithSignal = async (endpoint, options = {}) => {
+  const { signal, headers = {} } = options;
+
+  try {
+    const response = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      signal, // 👈 forwarded to native fetch → request is cancelled on abort
+    });
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const data = isJsonResponse ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (data && typeof data === "object" && data.message) ||
+        (typeof data === "string" && data) ||
+        response.statusText ||
+        "Request failed";
+
+      throw createRequestError(response.status, message, data);
+    }
+
+    return data;
+  } catch (error) {
+    // AbortError is expected behaviour, not a real failure.
+    // Log it separately so real errors are still visible.
+    if (error?.name === "AbortError") {
+      // Silently propagate — callers check `err.name === "AbortError"`
+      throw error;
+    }
+
+    console.error("GET Error:", error);
+    throw error;
+  }
+};
+
+/**
  * Function to call GET API for images/blobs/json
  */
 export const getImageRequest = async (

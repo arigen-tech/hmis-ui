@@ -907,3 +907,6 @@ export const REQUEST_PARAM_RESULT = "result"
 export const REQUEST_PARAM_NORMAL_RANGE = "normalRange"
 export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600
 
+export const DOCTOR_SUMMARY = "/doctor/summary";
+
+

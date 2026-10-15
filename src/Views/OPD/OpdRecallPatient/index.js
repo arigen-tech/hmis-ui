@@ -8078,14 +8078,14 @@ const OpdRRecallPatient = () => {
                           <th className="text-center" style={{ minWidth: 70 }}>
                             Total
                           </th>
-                          <th className="text-center" style={{ minWidth: 70 }}>
+                          {/* <th className="text-center" style={{ minWidth: 70 }}>
                             Stock
-                          </th>
-                          <th style={{ minWidth: 130 }}>Prescribed By</th>
+                          </th> */}
+                          {/* <th style={{ minWidth: 130 }}>Prescribed By</th> */}
                           <th style={{ minWidth: 130 }}>Department</th>
-                          <th className="text-center" style={{ minWidth: 110 }}>
+                          {/* <th className="text-center" style={{ minWidth: 110 }}>
                             Prescribed Date
-                          </th>
+                          </th> */}
                           <th className="text-center" style={{ minWidth: 50 }}>
                             Stop
                           </th>
@@ -8110,16 +8110,16 @@ const OpdRRecallPatient = () => {
                               <td className="text-center">
                                 {medication.total}
                               </td>
-                              <td className="text-center">
+                              {/* <td className="text-center">
                                 {medication.stock || 0}
-                              </td>
-                              <td>{medication.prescribedBy}</td>
+                              </td> */}
+                              {/* <td>{medication.prescribedBy}</td> */}
                               <td>{medication.department}</td>
-                              <td className="text-center">
+                              {/* <td className="text-center">
                                 {formatDateForDisplay(
                                   medication.prescribedDate,
                                 )}
-                              </td>
+                              </td> */}
                               <td className="text-center">
                                 <input
                                   type="checkbox"

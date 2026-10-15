@@ -111,7 +111,7 @@ const Login = () => {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
           sessionStorage.setItem("username", username);
-          localStorage.setItem("userId", userId);
+          sessionStorage.setItem("userId", userId);
           sessionStorage.setItem("roleId", roleId);
           sessionStorage.setItem("activeRoleId", roleId);
           sessionStorage.setItem("assignedRoleIds", roleId);
