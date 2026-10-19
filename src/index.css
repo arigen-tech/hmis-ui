@@ -25775,3 +25775,10 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
     display: block;
   }
 }
+
+/* ******************* */
+table td .status{
+  padding: 3px 10px;
+  border-radius: 30px;
+  display: inline-block;
+}
