@@ -263,7 +263,7 @@ const GeneralMedicineWaitingList = () => {
 
   const obgDetailsRef = useRef();
 
-  // 👈 NEW: track which row's Start Consultation is currently in progress
+  // 👈 track which row's Start Consultation is currently in progress
   const [startingVisitId, setStartingVisitId] = useState(null);
 
   const fetchDistanceVisionData = async () => {
@@ -1707,10 +1707,10 @@ const GeneralMedicineWaitingList = () => {
     bmi: "",
     rr: "",
     spo2: "",
-    patientSymptoms: "",
-    clinicalExamination: "",
-    pastHistory: "",
-    familyHistory: "",
+    patientSymptoms: "", // Chief Complaints
+    presentHistory: "", // Present History of Illness
+    pastMedicalHistory: "", // Past Medical History
+    clinicalExamination: "", // Clinical Reports / Old Reports
     treatmentAdvice: "",
     mlcCase: false,
   });
@@ -1838,14 +1838,14 @@ const GeneralMedicineWaitingList = () => {
     if (popupType === "past") {
       setFormData({
         ...formData,
-        pastHistory: mergeValues(formData.pastHistory, newNames),
+        pastMedicalHistory: mergeValues(formData.pastMedicalHistory, newNames),
       });
     }
 
     if (popupType === "family") {
       setFormData({
         ...formData,
-        familyHistory: mergeValues(formData.familyHistory, newNames),
+        presentHistory: mergeValues(formData.presentHistory, newNames),
       });
     }
 
@@ -2935,7 +2935,7 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // 👈 NEW: Start Consultation handler — hits the visit status API first,
+  // 👈 Start Consultation handler — hits the visit status API first,
   // then behaves like a row click on success.
   const handleStartConsultation = async (patient, e) => {
     if (e) {
@@ -3122,9 +3122,8 @@ const GeneralMedicineWaitingList = () => {
       patientSymptoms: "",
       clinicalExamination: "",
       mlcCase: false,
+      presentHistory: "",
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
     });
 
     resetSurgeryFields();
@@ -3332,7 +3331,7 @@ const GeneralMedicineWaitingList = () => {
     ];
 
     if (!hasValue(formData.patientSymptoms)) {
-      addError("patientSymptoms", "Patient signs & symptoms is required.");
+      addError("patientSymptoms", "Chief Complaints is required.");
     }
 
     requiredVitals.forEach(([key, label]) => {
@@ -3536,7 +3535,9 @@ const GeneralMedicineWaitingList = () => {
             "spo2",
           ].some((key) => nextErrors[key]),
         clinicalHistory:
-          prev.clinicalHistory || Boolean(nextErrors.patientSymptoms),
+          prev.clinicalHistory ||
+          Boolean(nextErrors.patientSymptoms) ||
+          Boolean(nextErrors.diagnosis || nextErrors.workingDiagnosis),
         diagnosis:
           prev.diagnosis ||
           Boolean(nextErrors.diagnosis || nextErrors.workingDiagnosis),
@@ -3794,8 +3795,8 @@ const GeneralMedicineWaitingList = () => {
 
         patientSignsSymptoms: formData.patientSymptoms ?? null,
         clinicalExamination: formData.clinicalExamination ?? null,
-        pastMedicalHistory: formData.pastHistory ?? null,
-        familyHistory: formData.familyHistory ?? null,
+        presentHistory: formData.presentHistory ?? null,
+        pastMedicalHistory: formData.pastMedicalHistory ?? null,
 
         ...(shouldShowVisionExamination && {
           ophthalmologyExaminationDetails,
@@ -4024,10 +4025,8 @@ const GeneralMedicineWaitingList = () => {
       patientSymptoms: "",
       clinicalExamination: "",
       mlcCase: false,
+      presentHistory: "",
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-      pastHistory: "",
     });
 
     if (pregnancyRef.current) {
@@ -5285,10 +5284,11 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         </div>
                         <div className="col-md-9">
+                          {/* Chief Complaints */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Patient signs & symptoms
+                                Chief Complaints
                               </label>
                             </div>
                             <input
@@ -5297,7 +5297,7 @@ const GeneralMedicineWaitingList = () => {
                               name="patientSymptoms"
                               value={formData.patientSymptoms}
                               onChange={handleChange}
-                              placeholder="Enter symptoms"
+                              placeholder="Enter chief complaints"
                             />
                             {errors.patientSymptoms && (
                               <div className="invalid-feedback d-block">
@@ -5306,49 +5306,11 @@ const GeneralMedicineWaitingList = () => {
                             )}
                           </div>
 
-                          <div className="mb-3">
-                            <label className="form-label fw-bold">
-                              Clinical Examination
-                            </label>
-                            <textarea
-                              className="form-control"
-                              rows={3}
-                              name="clinicalExamination"
-                              value={formData.clinicalExamination}
-                              onChange={handleChange}
-                              placeholder="Enter details"
-                            ></textarea>
-                          </div>
-
+                          {/* Present History of Illness */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Past History
-                              </label>
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("past");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <textarea
-                              className="form-control mt-3"
-                              rows={3}
-                              name="pastHistory"
-                              value={formData.pastHistory}
-                              onChange={handleChange}
-                              placeholder="Enter Past History"
-                            ></textarea>
-                          </div>
-
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Family History
+                                Present History of Illness
                               </label>
                               <button
                                 className="btn btn-sm btn-outline-success p-1 px-2"
@@ -5363,10 +5325,51 @@ const GeneralMedicineWaitingList = () => {
                             <textarea
                               className="form-control mt-3"
                               rows={3}
-                              name="familyHistory"
-                              value={formData.familyHistory}
+                              name="presentHistory"
+                              value={formData.presentHistory}
                               onChange={handleChange}
-                              placeholder="Enter Family History"
+                              placeholder="Enter Present History of Illness"
+                            ></textarea>
+                          </div>
+
+                          {/* Past Medical History */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past Medical History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastMedicalHistory"
+                              value={formData.pastMedicalHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past Medical History"
+                            ></textarea>
+                          </div>
+
+                          {/* Clinical Reports / Old Reports */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">
+                              Clinical Reports / Old Reports
+                            </label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter clinical reports / old reports"
                             ></textarea>
                           </div>
 
@@ -5448,11 +5451,226 @@ const GeneralMedicineWaitingList = () => {
                               </div>
                             </div>
                           )}
+
+                          {/* Diagnosis Section (merged, no header, no border) */}
+                          <div className="mb-3 p-3">
+                            <h6 className="fw-bold mb-3">Diagnosis</h6>
+                            <div className="mb-3">
+                              <label className="form-label fw-bold">
+                                Working Diagnosis
+                              </label>
+                              <input
+                                type="text"
+                                className={`form-control ${
+                                  errors.workingDiagnosis || errors.diagnosis
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
+                                style={{ width: "400px" }}
+                                value={workingDiagnosis}
+                                onChange={(e) => {
+                                  setWorkingDiagnosis(e.target.value);
+                                  if (
+                                    errors.workingDiagnosis ||
+                                    errors.diagnosis
+                                  ) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      workingDiagnosis: "",
+                                      diagnosis: "",
+                                    }));
+                                  }
+                                }}
+                                placeholder="Enter working diagnosis"
+                                maxLength={40}
+                              />
+                              {(errors.workingDiagnosis ||
+                                errors.diagnosis) && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.workingDiagnosis ||
+                                    errors.diagnosis}
+                                </div>
+                              )}
+                            </div>
+
+                            <div
+                              className="table-responsive"
+                              style={{ overflow: "visible" }}
+                            >
+                              <table className="table table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th className="col-md-6">ICD Diagnosis</th>
+                                    <th className="col-md-2 text-center">
+                                      Communicable
+                                    </th>
+                                    <th className="col-md-2 text-center">
+                                      Infectious
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Add
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Delete
+                                    </th>
+                                  </tr>
+                                </thead>
+
+                                <tbody>
+                                  {diagnosisItems.map((item, index) => (
+                                    <tr key={index}>
+                                      <td>
+                                        <div
+                                          className="position-relative"
+                                          style={{ width: "100%", zIndex: 20 }}
+                                          ref={dropdownRef}
+                                        >
+                                          <input
+                                            type="text"
+                                            className={`form-control ${errors.diagnosis ? "is-invalid" : ""}`}
+                                            placeholder="Search ICD..."
+                                            value={
+                                              diagnosisItems[index]
+                                                .icdDiagnosis ||
+                                              search[index] ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              handleIcdSearch(
+                                                e.target.value,
+                                                index,
+                                              )
+                                            }
+                                            onClick={() => {
+                                              loadFirstPage(index);
+                                              setOpenDropdown(index);
+                                            }}
+                                            onBlur={() => {
+                                              setTimeout(() => {
+                                                setOpenDropdown(null);
+                                              }, 200);
+                                            }}
+                                          />
+
+                                          {openDropdown === index && (
+                                            <div
+                                              className="border rounded mt-1 bg-white position-absolute w-100"
+                                              style={{
+                                                maxHeight: "220px",
+                                                zIndex: 9999,
+                                                overflowY: "auto",
+                                              }}
+                                              onScroll={(e) => {
+                                                if (
+                                                  e.target.scrollHeight -
+                                                    e.target.scrollTop ===
+                                                  e.target.clientHeight
+                                                ) {
+                                                  loadMore();
+                                                }
+                                              }}
+                                            >
+                                              {icdDropdown.length > 0 ? (
+                                                icdDropdown.map((icd) => (
+                                                  <div
+                                                    key={icd.icdId}
+                                                    className="p-2 cursor-pointer hover: "
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      updateICD(icd, index);
+                                                      setOpenDropdown(null);
+                                                    }}
+                                                  >
+                                                    {icd.icdCode} -{" "}
+                                                    {icd.icdName}
+                                                  </div>
+                                                ))
+                                              ) : (
+                                                <div className="p-2 text-muted">
+                                                  No results found
+                                                </div>
+                                              )}
+
+                                              {!lastPage && (
+                                                <div className="text-center p-2 text-primary small">
+                                                  Loading...
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.communicableDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "communicableDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.infectiousDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "infectiousDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-success"
+                                          onClick={handleAddDiagnosisItem}
+                                        >
+                                          +
+                                        </button>
+                                      </td>
+
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-danger"
+                                          onClick={() =>
+                                            handleRemoveDiagnosisItem(index)
+                                          }
+                                          disabled={
+                                            diagnosisItems.length === 1 &&
+                                            !diagnosisItems[0].icdDiagId &&
+                                            !diagnosisItems[0].icdDiagnosis &&
+                                            !diagnosisItems[0]
+                                              .communicableDisease &&
+                                            !diagnosisItems[0]
+                                              .infectiousDisease
+                                          }
+                                        >
+                                          −
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
                 <MasFamilyModel
                   show={showModelPopup}
                   popupType={popupType}
@@ -5461,6 +5679,7 @@ const GeneralMedicineWaitingList = () => {
                   onOk={handleOk}
                   selectedItems={selectedItems}
                 />
+
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
                   <div
@@ -5663,6 +5882,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Vision Examination Section */}
                 {shouldShowVisionExamination && (
                   <div className="card mb-3">
@@ -5697,6 +5917,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
                 )}
+
                 {/* OBG Details Section */}
                 {isObgynDepartment && (
                   <div className="card mb-3">
@@ -5727,6 +5948,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
                 )}
+
                 {/* Ear Examination Section */}
                 {isEntDepartment && (
                   <div className="card mb-3">
@@ -5753,6 +5975,7 @@ const GeneralMedicineWaitingList = () => {
                     )}
                   </div>
                 )}
+
                 {/* Dental Section */}
                 {shouldShowDentalExamination && (
                   <div className="card mb-3">
@@ -5781,213 +6004,7 @@ const GeneralMedicineWaitingList = () => {
                     )}
                   </div>
                 )}
-                {/* Diagnosis Section */}
-                <div className="card mb-3" style={{ overflow: "visible" }}>
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("diagnosis")}
-                  >
-                    <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.diagnosis ? "−" : "+"}
-                    </span>
-                  </div>
 
-                  {expandedSections.diagnosis && (
-                    <div className="card-body" style={{ overflow: "visible" }}>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold">
-                          Working Diagnosis
-                        </label>
-                        <input
-                          type="text"
-                          className={`form-control ${errors.workingDiagnosis || errors.diagnosis ? "is-invalid" : ""}`}
-                          style={{ width: "400px" }}
-                          value={workingDiagnosis}
-                          onChange={(e) => {
-                            setWorkingDiagnosis(e.target.value);
-                            if (errors.workingDiagnosis || errors.diagnosis) {
-                              setErrors((prev) => ({
-                                ...prev,
-                                workingDiagnosis: "",
-                                diagnosis: "",
-                              }));
-                            }
-                          }}
-                          placeholder="Enter working diagnosis"
-                          maxLength={40}
-                        />
-                        {(errors.workingDiagnosis || errors.diagnosis) && (
-                          <div className="invalid-feedback d-block">
-                            {errors.workingDiagnosis || errors.diagnosis}
-                          </div>
-                        )}
-                      </div>
-
-                      <div
-                        className="table-responsive"
-                        style={{ overflow: "visible" }}
-                      >
-                        <table className="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th className="col-md-6">ICD Diagnosis</th>
-                              <th className="col-md-2 text-center">
-                                Communicable
-                              </th>
-                              <th className="col-md-2 text-center">
-                                Infectious
-                              </th>
-                              <th className="col-md-1 text-center">Add</th>
-                              <th className="col-md-1 text-center">Delete</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {diagnosisItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%", zIndex: 20 }}
-                                    ref={dropdownRef}
-                                  >
-                                    <input
-                                      type="text"
-                                      className={`form-control ${errors.diagnosis ? "is-invalid" : ""}`}
-                                      placeholder="Search ICD..."
-                                      value={
-                                        diagnosisItems[index].icdDiagnosis ||
-                                        search[index] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleIcdSearch(e.target.value, index)
-                                      }
-                                      onClick={() => {
-                                        loadFirstPage(index);
-                                        setOpenDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setOpenDropdown(null);
-                                        }, 200);
-                                      }}
-                                    />
-
-                                    {openDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMore();
-                                          }
-                                        }}
-                                      >
-                                        {icdDropdown.length > 0 ? (
-                                          icdDropdown.map((icd) => (
-                                            <div
-                                              key={icd.icdId}
-                                              className="p-2 cursor-pointer hover: "
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateICD(icd, index);
-                                                setOpenDropdown(null);
-                                              }}
-                                            >
-                                              {icd.icdCode} - {icd.icdName}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-
-                                        {!lastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.communicableDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "communicableDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.infectiousDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "infectiousDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddDiagnosisItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveDiagnosisItem(index)
-                                    }
-                                    disabled={
-                                      diagnosisItems.length === 1 &&
-                                      !diagnosisItems[0].icdDiagId &&
-                                      !diagnosisItems[0].icdDiagnosis &&
-                                      !diagnosisItems[0].communicableDisease &&
-                                      !diagnosisItems[0].infectiousDisease
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
                 {/* Investigation Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -6313,6 +6330,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Treatment Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -6809,6 +6827,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -7251,6 +7270,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -7571,6 +7591,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -7806,6 +7827,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -8115,6 +8137,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -8198,6 +8221,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
@@ -8240,6 +8264,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="text-center mt-4">
                   <button
                     className="btn btn-primary me-3"
@@ -8872,7 +8897,6 @@ const GeneralMedicineWaitingList = () => {
               </div>
 
               <div className="table-responsive">
-                {/* 👈 NEW column added: Start Consultation */}
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
@@ -8905,11 +8929,7 @@ const GeneralMedicineWaitingList = () => {
                       </tr>
                     ) : currentItems.length > 0 ? (
                       currentItems.map((item) => (
-                        <tr
-                          key={item.id}
-                          onClick={() => handleRowClick(item)}
-                          style={{ cursor: "pointer" }}
-                        >
+                        <tr key={item.id}>
                           <td className="text-center">
                             <span className="badge btn btn-primary fs-6 px-2 py-1 rounded-pill shadow-sm">
                               {item.tokenNo}
@@ -8922,7 +8942,7 @@ const GeneralMedicineWaitingList = () => {
                           <td>{item.gender}</td>
                           <td>{item.visitType}</td>
 
-                          {/* 👈 NEW: Start Consultation button */}
+                          {/* 👈 Start Consultation button */}
                           <td>
                             <button
                               className="btn btn-success btn-sm"

@@ -140,7 +140,7 @@ const MasFamilyModel = ({
       : popupType === "past"
         ? "Select Past History"
         : popupType === "family"
-          ? "Select Family History"
+          ? "Select Present History"
           : popupType === "treatmentAdvice"
             ? "Select Treatment Advice"
             : popupType === "doctorRemark"

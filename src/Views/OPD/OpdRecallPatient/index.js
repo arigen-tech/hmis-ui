@@ -1570,14 +1570,14 @@ const OpdRRecallPatient = () => {
     if (popupType === "past") {
       setFormData((prev) => ({
         ...prev,
-        pastHistory: mergeValues(prev.pastHistory, newNames),
+        pastMedicalHistory: mergeValues(prev.pastMedicalHistory, newNames),
       }));
     }
 
     if (popupType === "family") {
       setFormData((prev) => ({
         ...prev,
-        familyHistory: mergeValues(prev.familyHistory, newNames),
+        presentHistory: mergeValues(prev.presentHistory, newNames),
       }));
     }
 
@@ -1825,7 +1825,7 @@ const OpdRRecallPatient = () => {
     const errors = {};
 
     if (!formData.patientSymptoms) {
-      errors.patientSymptoms = "Patient signs & symptoms is required";
+      errors.patientSymptoms = "Chief Complaints is required";
     }
 
     const requiredVitals = [
@@ -2096,8 +2096,8 @@ const OpdRRecallPatient = () => {
 
         patientSignsSymptoms: formData.patientSymptoms || null,
         clinicalExamination: formData.clinicalExamination || null,
-        pastMedicalHistory: formData.pastHistory || null,
-        familyHistory: formData.familyHistory || null,
+        pastMedicalHistory: formData.pastMedicalHistory || null,
+        presentHistory: formData.presentHistory || null,
 
         height: formData.height || null,
         weight: formData.weight || null,
@@ -2318,8 +2318,8 @@ const OpdRRecallPatient = () => {
     patientSymptoms: "",
     clinicalExamination: "",
     treatmentAdvice: "",
-    pastHistory: "",
-    familyHistory: "",
+    pastMedicalHistory: "",
+    presentHistory: "",
     mlcCase: false,
   });
 
@@ -3376,8 +3376,8 @@ const OpdRRecallPatient = () => {
           spo2: patientData.spo2 || "",
           patientSymptoms: patientData.patientSignsSymptoms || "",
           clinicalExamination: patientData.clinicalExamination || "",
-          pastHistory: patientData.pastMedicalHistory || "",
-          familyHistory: patientData.familyHistory || "",
+          pastMedicalHistory: patientData.pastMedicalHistory || "",
+          presentHistory: patientData.presentHistory || patientData.familyHistory || "",
           mlcCase: patientData.mlcFlag === "y",
         });
 
@@ -3385,6 +3385,7 @@ const OpdRRecallPatient = () => {
           patientData.patientSignsSymptoms ||
           patientData.clinicalExamination ||
           patientData.pastMedicalHistory ||
+          patientData.presentHistory ||
           patientData.familyHistory;
         if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
         setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
@@ -3779,8 +3780,8 @@ const OpdRRecallPatient = () => {
       spo2: "",
       patientSymptoms: "",
       clinicalExamination: "",
-      pastHistory: "",
-      familyHistory: "",
+      pastMedicalHistory: "",
+      presentHistory: "",
       mlcCase: false,
     });
     setDiagnosisItems([
@@ -4139,9 +4140,7 @@ const OpdRRecallPatient = () => {
       clinicalExamination: "",
       mlcCase: false,
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-      pastHistory: "",
+      presentHistory: "",
     });
 
     setDiagnosisItems([
@@ -4922,7 +4921,7 @@ const OpdRRecallPatient = () => {
               </div>
 
               <div className="card-body pt-1">
-                {/* Clinical History Section */}
+                {/* Clinical History Section (with merged Diagnosis) */}
                 <div className="card mb-3 shadow-sm">
                   <div
                     className="card-header py-3   d-flex justify-content-between align-items-center"
@@ -5006,10 +5005,11 @@ const OpdRRecallPatient = () => {
                         </div>
 
                         <div className="col-md-9">
+                          {/* Chief Complaints */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Patient signs & symptoms
+                                Chief Complaints
                               </label>
                             </div>
                             <input
@@ -5018,53 +5018,15 @@ const OpdRRecallPatient = () => {
                               name="patientSymptoms"
                               value={formData.patientSymptoms}
                               onChange={handleChange}
-                              placeholder="Enter symptoms"
+                              placeholder="Enter chief complaints"
                             />
                           </div>
 
-                          <div className="mb-3">
-                            <label className="form-label fw-bold">
-                              Clinical Examination
-                            </label>
-                            <textarea
-                              className="form-control"
-                              rows={3}
-                              name="clinicalExamination"
-                              value={formData.clinicalExamination}
-                              onChange={handleChange}
-                              placeholder="Enter details"
-                            ></textarea>
-                          </div>
-
+                          {/* Present History of Illness */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Past History
-                              </label>
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("past");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <textarea
-                              className="form-control mt-3"
-                              rows={3}
-                              name="pastHistory"
-                              value={formData.pastHistory}
-                              onChange={handleChange}
-                              placeholder="Enter Past History"
-                            ></textarea>
-                          </div>
-
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Family History
+                                Present History of Illness
                               </label>
                               <button
                                 className="btn btn-sm btn-outline-success p-1 px-2"
@@ -5079,35 +5041,55 @@ const OpdRRecallPatient = () => {
                             <textarea
                               className="form-control mt-3"
                               rows={3}
-                              name="familyHistory"
-                              value={formData.familyHistory}
+                              name="presentHistory"
+                              value={formData.presentHistory}
                               onChange={handleChange}
-                              placeholder="Enter Family History"
+                              placeholder="Enter Present History of Illness"
                             ></textarea>
                           </div>
 
-                          {String(
-                            selectedPatient?.gender || "",
-                          ).toLowerCase() === "female" && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <label className="form-label fw-bold m-0">
-                                  Pregnancy Details
-                                </label>
-                              </div>
-                              <div className="mt-2">
-                                <PregnancySection
-                                  ref={pregnancyRef}
-                                  readOnly={false}
-                                  emitWhenNotPregnant
-                                  opdPatientDetailsId={
-                                    selectedPatient?.opdPatientId ?? null
-                                  }
-                                />
-                              </div>
+                          {/* Past Medical History */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past Medical History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
                             </div>
-                          )}
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastMedicalHistory"
+                              value={formData.pastMedicalHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past Medical History"
+                            ></textarea>
+                          </div>
 
+                          {/* Clinical Reports / Old Reports */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">
+                              Clinical Reports / Old Reports
+                            </label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter clinical reports / old reports"
+                            ></textarea>
+                          </div>
+
+                          {/* Psychiatrist Assessment display */}
                           {psychiatristAssessment?.rows?.length > 0 && (
                             <div className="mb-3 border rounded p-3 bg-light">
                               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -5162,11 +5144,222 @@ const OpdRRecallPatient = () => {
                               ))}
                             </div>
                           )}
+
+                          {/* Pregnancy Details */}
+                          {String(
+                            selectedPatient?.gender || "",
+                          ).toLowerCase() === "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
+                              </div>
+                              <div className="mt-2">
+                                <PregnancySection
+                                  ref={pregnancyRef}
+                                  readOnly={false}
+                                  emitWhenNotPregnant
+                                  opdPatientDetailsId={
+                                    selectedPatient?.opdPatientId ?? null
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Diagnosis Section (merged, no header, no border) */}
+                          <div className="mb-3 p-3">
+                            <h6 className="fw-bold mb-3">Diagnosis</h6>
+                            <div className="mb-3">
+                              <label className="form-label fw-bold">
+                                Working Diagnosis
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ width: "400px" }}
+                                value={workingDiagnosis}
+                                onChange={(e) =>
+                                  setWorkingDiagnosis(e.target.value)
+                                }
+                                placeholder="Enter working diagnosis"
+                                maxLength={40}
+                              />
+                            </div>
+
+                            <div
+                              className="table-responsive"
+                              style={{ overflow: "visible" }}
+                            >
+                              <table className="table table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th className="col-md-6">ICD Diagnosis</th>
+                                    <th className="col-md-2 text-center">
+                                      Communicable
+                                    </th>
+                                    <th className="col-md-2 text-center">
+                                      Infectious
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Add
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Delete
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {diagnosisItems.map((item, index) => (
+                                    <tr key={index}>
+                                      <td>
+                                        <div
+                                          className="position-relative"
+                                          style={{ width: "100%", zIndex: 20 }}
+                                          ref={dropdownRef}
+                                        >
+                                          <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Search ICD..."
+                                            value={
+                                              diagnosisItems[index]
+                                                .icdDiagnosis ||
+                                              search[index] ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              handleIcdSearch(
+                                                e.target.value,
+                                                index,
+                                              )
+                                            }
+                                            onClick={() => {
+                                              loadFirstPage(index);
+                                              setOpenDropdown(index);
+                                            }}
+                                            onBlur={() => {
+                                              setTimeout(() => {
+                                                setOpenDropdown(null);
+                                              }, 200);
+                                            }}
+                                          />
+
+                                          {openDropdown === index && (
+                                            <div
+                                              className="border rounded mt-1 bg-white position-absolute w-100"
+                                              style={{
+                                                maxHeight: "220px",
+                                                zIndex: 9999,
+                                                overflowY: "auto",
+                                              }}
+                                              onScroll={(e) => {
+                                                if (
+                                                  e.target.scrollHeight -
+                                                    e.target.scrollTop ===
+                                                  e.target.clientHeight
+                                                ) {
+                                                  loadMore();
+                                                }
+                                              }}
+                                            >
+                                              {icdDropdown.length > 0 ? (
+                                                icdDropdown.map((icd) => (
+                                                  <div
+                                                    key={icd.icdId}
+                                                    className="p-2 cursor-pointer hover: "
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      updateICD(icd, index);
+                                                      setOpenDropdown(null);
+                                                    }}
+                                                  >
+                                                    {icd.icdCode} -{" "}
+                                                    {icd.icdName}
+                                                  </div>
+                                                ))
+                                              ) : (
+                                                <div className="p-2 text-muted">
+                                                  No results found
+                                                </div>
+                                              )}
+                                              {!lastPage && (
+                                                <div className="text-center p-2 text-primary small">
+                                                  Loading...
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.communicableDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "communicableDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.infectiousDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "infectiousDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-success"
+                                          onClick={handleAddDiagnosisItem}
+                                        >
+                                          +
+                                        </button>
+                                      </td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-danger"
+                                          onClick={() =>
+                                            handleRemoveDiagnosisItem(index)
+                                          }
+                                          disabled={
+                                            diagnosisItems.length === 1 &&
+                                            !diagnosisItems[0].icdDiagId &&
+                                            !diagnosisItems[0].icdDiagnosis &&
+                                            !diagnosisItems[0]
+                                              .communicableDisease &&
+                                            !diagnosisItems[0]
+                                              .infectiousDisease
+                                          }
+                                        >
+                                          −
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
                 {/* Vision Examination Section */}
                 {shouldShowVisionExamination && (
                   <div className="card mb-3">
@@ -5490,193 +5683,6 @@ const OpdRRecallPatient = () => {
                     )}
                   </div>
                 )}
-
-                {/* Diagnosis Section */}
-                <div className="card mb-3" style={{ overflow: "visible" }}>
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("diagnosis")}
-                  >
-                    <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.diagnosis ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.diagnosis && (
-                    <div className="card-body" style={{ overflow: "visible" }}>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold">
-                          Working Diagnosis
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          style={{ width: "400px" }}
-                          value={workingDiagnosis}
-                          onChange={(e) => setWorkingDiagnosis(e.target.value)}
-                          placeholder="Enter working diagnosis"
-                          maxLength={40}
-                        />
-                      </div>
-
-                      <div
-                        className="table-responsive"
-                        style={{ overflow: "visible" }}
-                      >
-                        <table className="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th className="col-md-6">ICD Diagnosis</th>
-                              <th className="col-md-2 text-center">
-                                Communicable
-                              </th>
-                              <th className="col-md-2 text-center">
-                                Infectious
-                              </th>
-                              <th className="col-md-1 text-center">Add</th>
-                              <th className="col-md-1 text-center">Delete</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {diagnosisItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%", zIndex: 20 }}
-                                    ref={dropdownRef}
-                                  >
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Search ICD..."
-                                      value={
-                                        diagnosisItems[index].icdDiagnosis ||
-                                        search[index] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleIcdSearch(e.target.value, index)
-                                      }
-                                      onClick={() => {
-                                        loadFirstPage(index);
-                                        setOpenDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setOpenDropdown(null);
-                                        }, 200);
-                                      }}
-                                    />
-
-                                    {openDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMore();
-                                          }
-                                        }}
-                                      >
-                                        {icdDropdown.length > 0 ? (
-                                          icdDropdown.map((icd) => (
-                                            <div
-                                              key={icd.icdId}
-                                              className="p-2 cursor-pointer hover: "
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateICD(icd, index);
-                                                setOpenDropdown(null);
-                                              }}
-                                            >
-                                              {icd.icdCode} - {icd.icdName}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-                                        {!lastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.communicableDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "communicableDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.infectiousDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "infectiousDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddDiagnosisItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveDiagnosisItem(index)
-                                    }
-                                    disabled={
-                                      diagnosisItems.length === 1 &&
-                                      !diagnosisItems[0].icdDiagId &&
-                                      !diagnosisItems[0].icdDiagnosis &&
-                                      !diagnosisItems[0].communicableDisease &&
-                                      !diagnosisItems[0].infectiousDisease
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Investigation Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
