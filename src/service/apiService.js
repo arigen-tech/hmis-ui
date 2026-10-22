@@ -251,7 +251,7 @@ export const getRequest = async (endpoint, headers = {}) => {
 
     return data;
   } catch (error) {
-    console.error("GET Error:", error);
+    console.error("GET (public) Error:", error);
     throw error;
   }
 };
