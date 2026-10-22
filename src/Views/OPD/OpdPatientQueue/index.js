@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { getRequest } from "../../../service/apiService"; 
+import { getRequest } from "../../../service/apiService";
 import VisitSummaryStats from "../../../Components/VisitSummaryStats";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { PATIENT_VISIT_QUEUE } from "../../../config/apiConfig";
+import OpdSummary from "../../../Components/OpdSummary/OpdSummary";
 
 const OpdPatientQueue = () => {
     const [queueData, setQueueData] = useState([]);
@@ -12,8 +13,8 @@ const OpdPatientQueue = () => {
 
     // Retrieve IDs from session/local storage
     const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
-    const doctorId = sessionStorage.getItem("userId") || localStorage.getItem("userId") ;
-    const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") ;
+    const doctorId = sessionStorage.getItem("userId") || localStorage.getItem("userId");
+    const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
     // Retrieve Doctor Name and Department Name
     const doctorName = sessionStorage.getItem("loggedInUserName") || localStorage.getItem("loggedInUserName") || "Doctor";
@@ -23,11 +24,11 @@ const OpdPatientQueue = () => {
         try {
             setLoading(true);
             // Note: API expects 0-based page index
-            const pageIndex = currentPage - 1; 
+            const pageIndex = currentPage - 1;
             const url = `${PATIENT_VISIT_QUEUE}/${hospitalId}/${doctorId}/${departmentId}?page=${pageIndex}&size=${DEFAULT_ITEMS_PER_PAGE}`;
-            
+
             const res = await getRequest(url);
-            
+
             if (res?.status === 200 && res?.response) {
                 setQueueData(res.response.content || []);
                 setTotalElements(res.response.totalElements || 0);
@@ -86,27 +87,33 @@ const OpdPatientQueue = () => {
                                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
                                     <h4 className="card-title p-2 mb-0 text-white">
                                         OPD Patient Queue
-                                    </h4>
+                                    </h4>  
+
                                     <VisitSummaryStats />
+
                                 </div>
                             </div>
 
                             <div className="card-body">
-                                {/* Doctor & Department Info Card */}
-                                <div 
-                                    className="card mb-4 border-0 shadow-sm"
-                                    style={{ backgroundColor: "#143b5a", color: "#ffffff" }}
-                                >
-                                    <div className="card-body py-3 px-4">
-                                        <h5 className="mb-1 fw-bold" style={{ color: "#ffffff" }}>
-                                            Dr. {doctorName}
-                                        </h5>
-                                        <div style={{ color: "#a0b3c6", fontSize: "14px" }}>
-                                            Speciality: {departmentName}
-                                        </div>
+
+                            {/* Doctor & Department Info Card */}
+                                <div className="card mb-4 border-0 shadow-sm" style={{ backgroundColor: "#143b5a", color: "#ffffff" }} >
+                                    <div className="card-body specDetails">
+                                        <h5>Dr. {doctorName}</h5>
+                                        <span>Speciality: {departmentName}</span>
                                     </div>
                                 </div>
 
+
+
+                                {/* OPD Summary Component */}
+                                <OpdSummary />
+
+
+                                <div className="">
+                                    <h4><strong>Patient Queue</strong></h4>
+                                </div>
+                                
                                 <div className="table-responsive">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
