@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { getRequest } from "../../../service/apiService"; // Adjust path if necessary
-import VisitSummaryStats from "../../../Components/VisitSummaryStats"; // Adjust path if necessary
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"; // Adjust path if necessary
+import { getRequest } from "../../../service/apiService"; 
+import VisitSummaryStats from "../../../Components/VisitSummaryStats";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { PATIENT_VISIT_QUEUE } from "../../../config/apiConfig";
 
 const OpdPatientQueue = () => {
@@ -14,6 +14,10 @@ const OpdPatientQueue = () => {
     const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
     const doctorId = sessionStorage.getItem("userId") || localStorage.getItem("userId") ;
     const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") ;
+
+    // Retrieve Doctor Name and Department Name
+    const doctorName = sessionStorage.getItem("loggedInUserName") || localStorage.getItem("loggedInUserName") || "Doctor";
+    const departmentName = sessionStorage.getItem("departmentName") || localStorage.getItem("departmentName") || "Department";
 
     const fetchQueueData = async () => {
         try {
@@ -88,6 +92,21 @@ const OpdPatientQueue = () => {
                             </div>
 
                             <div className="card-body">
+                                {/* Doctor & Department Info Card */}
+                                <div 
+                                    className="card mb-4 border-0 shadow-sm"
+                                    style={{ backgroundColor: "#143b5a", color: "#ffffff" }}
+                                >
+                                    <div className="card-body py-3 px-4">
+                                        <h5 className="mb-1 fw-bold" style={{ color: "#ffffff" }}>
+                                            Dr. {doctorName}
+                                        </h5>
+                                        <div style={{ color: "#a0b3c6", fontSize: "14px" }}>
+                                            Speciality: {departmentName}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="table-responsive">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
