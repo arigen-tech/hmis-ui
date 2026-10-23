@@ -25833,13 +25833,13 @@ table td .status{
   gap: 10px;
 }
 
-.stat-label {
-  color: var(--text-secondary);
-  font-weight: 500;
-  font-size: 12px;
+.stat-top .stat-label {
+  font-size: 14px;
+  color: var(--black-color-80);
+  font-weight: 600;
 }
 
-.stat-icon {
+.stat-top .stat-icon {
   width: 43px;
   height: 43px;
   display: grid;
@@ -25941,11 +25941,7 @@ table td .status{
   margin-bottom: 0;
 }
 
-.stat-label {
-  font-size: 14px;
-  color: var(--black-color-80);
-  font-weight: 600;
-}
+
 
 
 
