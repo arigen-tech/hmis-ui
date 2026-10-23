@@ -60,12 +60,12 @@ const OpdPatientQueue = () => {
     const renderStatusBadge = (status) => {
         switch (status) {
             case "y":
-                return <span className="badge bg-success text-white px-3 py-2">Completed</span>;
+                return <span className="status badge bg-success text-white px-3 py-2">Completed</span>;
             case "i":
-                return <span className="badge bg-primary text-white px-3 py-2">In Consultation</span>;
+                return <span className="status badge bg-primary text-white px-3 py-2">In Consultation</span>;
             case "w":
             default:
-                return <span className="badge bg-warning text-dark px-3 py-2">Waiting</span>;
+                return <span className="status badge bg-warning text-dark px-3 py-2">Waiting</span>;
         }
     };
 
@@ -119,7 +119,7 @@ const OpdPatientQueue = () => {
                                         <thead className="table-light">
                                             <tr>
                                                 <th>Time</th>
-                                                <th>Status</th>
+                                                <th className="text-center">Status</th>
                                                 <th>Patient Name</th>
                                                 <th>Gender</th>
                                                 <th>Mobile No.</th>
@@ -139,7 +139,7 @@ const OpdPatientQueue = () => {
                                                 queueData.map((item) => (
                                                     <tr key={item.visitId}>
                                                         <td>{formatTime(item.appointmentStartTime)}</td>
-                                                        <td>{renderStatusBadge(item.visitStatus)}</td>
+                                                        <td className="text-center">{renderStatusBadge(item.visitStatus)}</td>
                                                         <td>{item.patientName}</td>
                                                         <td>{item.gender}</td>
                                                         <td>{item.mobileNumber}</td>
