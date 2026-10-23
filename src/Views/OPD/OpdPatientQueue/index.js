@@ -89,7 +89,7 @@ const OpdPatientQueue = () => {
                                         OPD Patient Queue
                                     </h4>  
 
-                                    <VisitSummaryStats />
+                                    {/* <VisitSummaryStats /> */}
 
                                 </div>
                             </div>

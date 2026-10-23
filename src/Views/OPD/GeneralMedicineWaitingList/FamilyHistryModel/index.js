@@ -39,7 +39,7 @@ const MasFamilyModel = ({
     if (type === "treatmentAdvice") {
       return {
         id: item.treatmentAdviseId,
-        name: item.treatmentAdvice || item.treatmentAdviseName, // FIXED: Added fallback
+        name: item.treatmentAdvice || item.treatmentAdviseName,
       };
     }
 
@@ -70,16 +70,16 @@ const MasFamilyModel = ({
           url = MAS_MEDICAL_HISTORY_GET_ALL;
           break;
 
-        case "symptoms": // FIXED: Added symptoms case
+        case "symptoms":
           url = MAS_SYMPTOMS_GET_ALL;
           break;
 
         case "treatmentAdvice":
-          url = MAS_TREATMENT_ADVISE_GET_ALL+"/1";
+          url = MAS_TREATMENT_ADVISE_GET_ALL + "/1";
           break;
 
         case "doctorRemark":
-          url = MAS_OPD_MEDICAL_ADVISE_GET_ALL+"/1";
+          url = MAS_OPD_MEDICAL_ADVISE_GET_ALL + "/1";
           break;
 
         default:
@@ -164,49 +164,72 @@ const MasFamilyModel = ({
 
             <div className="modal-body" style={{ 
               opacity: loading ? 0.3 : 1, 
-              pointerEvents: loading ? 'none' : 'auto' // FIXED: Disable interactions while loading
+              pointerEvents: loading ? 'none' : 'auto'
             }}>
               {!loading && (
                 <div
                   style={{
                     maxHeight: "60vh",
                     overflowY: "auto",
-                    border: "1px solid #ddd",
-                    borderRadius: "5px",
+                    padding: "15px",
+                    borderRadius: "8px",
+                    backgroundColor: "#f4f5f7" 
                   }}
                 >
-                  <table className="table table-hover table-bordered m-0">
-                    <thead className="table-secondary">
-                      <tr>
-                        <th style={{ width: "50px", textAlign: "center" }}>
-                          ✔
-                        </th>
-                        <th>Name</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {data.map((item) => (
-                        <tr
-                          key={item.id}
-                          style={{ cursor: "pointer" }}
-                          onClick={() => onSelect(item)}
-                        >
-                          <td className="text-center">
+                  {data.length === 0 ? (
+                    <div className="text-center text-muted py-4">No records found</div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "grid",
+                        // Forces exactly 4 items per row
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: "12px",
+                      }}
+                    >
+                      {data.map((item) => {
+                        const checked = isChecked(item.id);
+                        return (
+                          <label
+                            key={item.id}
+                            className={`d-flex align-items-center p-2 rounded ${
+                              checked ? "bg-primary text-white" : "bg-white text-dark"
+                            }`}
+                            style={{ 
+                              cursor: "pointer", 
+                              margin: 0, 
+                              transition: "all 0.2s ease-in-out",
+                              userSelect: "none",
+                              border: "none",
+                              boxShadow: checked 
+                                ? "0 4px 8px rgba(13, 110, 253, 0.3)" 
+                                : "0 2px 4px rgba(0, 0, 0, 0.08)"    
+                            }}
+                          >
                             <input
                               type="checkbox"
-                              checked={isChecked(item.id)}
-                              onChange={() => onSelect(item)} // FIXED: Added onChange
-                              onClick={(e) => e.stopPropagation()} // FIXED: Prevent double trigger
-                              readOnly // Keep readOnly to prevent double events
+                              className="form-check-input me-2 m-0"
+                              checked={checked}
+                              onChange={() => onSelect(item)}
+                              style={{ 
+                                cursor: "pointer",
+                                flexShrink: 0, // Prevents checkbox from squishing on long text
+                                transition: "box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out",
+                                borderColor: !checked ? "#0d6efd" : "",
+                                // Increased opacity, blur, and spread to make it a stronger glow/emission
+                                boxShadow: !checked 
+                                  ? "0 0 6px 3px rgba(13, 110, 253, 0.5)" 
+                                  : "none" 
+                              }}
                             />
-                          </td>
-
-                          <td>{item.name}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <span className="text-truncate" title={item.name} style={{ fontSize: "14px" }}>
+                              {item.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

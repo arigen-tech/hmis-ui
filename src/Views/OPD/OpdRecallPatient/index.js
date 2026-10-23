@@ -5077,7 +5077,7 @@ const OpdRRecallPatient = () => {
                           {/* Clinical Reports / Old Reports */}
                           <div className="mb-3">
                             <label className="form-label fw-bold">
-                              Clinical Reports / Old Reports
+                              Clinical Notes / Old Reports
                             </label>
                             <textarea
                               className="form-control"
@@ -5142,29 +5142,6 @@ const OpdRRecallPatient = () => {
                                   </ul>
                                 </div>
                               ))}
-                            </div>
-                          )}
-
-                          {/* Pregnancy Details */}
-                          {String(
-                            selectedPatient?.gender || "",
-                          ).toLowerCase() === "female" && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <label className="form-label fw-bold m-0">
-                                  Pregnancy Details
-                                </label>
-                              </div>
-                              <div className="mt-2">
-                                <PregnancySection
-                                  ref={pregnancyRef}
-                                  readOnly={false}
-                                  emitWhenNotPregnant
-                                  opdPatientDetailsId={
-                                    selectedPatient?.opdPatientId ?? null
-                                  }
-                                />
-                              </div>
                             </div>
                           )}
 
@@ -5354,6 +5331,29 @@ const OpdRRecallPatient = () => {
                               </table>
                             </div>
                           </div>
+
+                          {/* Pregnancy Details */}
+                          {String(
+                            selectedPatient?.gender || "",
+                          ).toLowerCase() === "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
+                              </div>
+                              <div className="mt-2">
+                                <PregnancySection
+                                  ref={pregnancyRef}
+                                  readOnly={false}
+                                  emitWhenNotPregnant
+                                  opdPatientDetailsId={
+                                    selectedPatient?.opdPatientId ?? null
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

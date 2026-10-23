@@ -1710,7 +1710,7 @@ const GeneralMedicineWaitingList = () => {
     patientSymptoms: "", // Chief Complaints
     presentHistory: "", // Present History of Illness
     pastMedicalHistory: "", // Past Medical History
-    clinicalExamination: "", // Clinical Reports / Old Reports
+    clinicalExamination: "", // Clinical Notes / Old Reports
     treatmentAdvice: "",
     mlcCase: false,
   });
@@ -2936,7 +2936,8 @@ const GeneralMedicineWaitingList = () => {
   };
 
   // 👈 Start Consultation handler — hits the visit status API first,
-  // then behaves like a row click on success.
+  // then fetches previous visit past-history & notes to auto-fill the
+  // Past Medical History and Clinical Notes / Old Reports fields.
   const handleStartConsultation = async (patient, e) => {
     if (e) {
       e.stopPropagation();
@@ -2952,6 +2953,51 @@ const GeneralMedicineWaitingList = () => {
       );
 
       if (response?.status === 200) {
+        // 👇 Fetch previous visit past-history and notes
+        try {
+          const historyResponse = await getRequest(
+            `/visit/${patient.visitId}/past-history-and-notes`,
+          );
+
+          if (historyResponse?.status === 200) {
+            const historyData = historyResponse?.response || {};
+
+            if (historyData.isPreviouslyVisited) {
+              setFormData((prev) => ({
+                ...prev,
+                pastMedicalHistory:
+                  historyData.previousVisitPastHistory ?? "",
+                clinicalExamination:
+                  historyData.previousVisitClinicalNotes ?? "",
+              }));
+            }
+          } else {
+            await Swal.fire({
+              icon: "error",
+              title: "Error",
+              text:
+                historyResponse?.message ||
+                "Failed to fetch previous visit history. Please try again.",
+            });
+            return;
+          }
+        } catch (historyError) {
+          console.error(
+            "Error fetching past history and notes:",
+            historyError,
+          );
+          await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text:
+              historyError?.response?.data?.message ||
+              historyError?.response?.message ||
+              historyError?.message ||
+              "Failed to fetch previous visit history. Please try again.",
+          });
+          return;
+        }
+
         await handleRowClick(patient);
       } else {
         Swal.fire({
@@ -5361,7 +5407,7 @@ const GeneralMedicineWaitingList = () => {
                           {/* Clinical Reports / Old Reports */}
                           <div className="mb-3">
                             <label className="form-label fw-bold">
-                              Clinical Reports / Old Reports
+                              Clinical Notes / Old Reports
                             </label>
                             <textarea
                               className="form-control"
@@ -5369,88 +5415,9 @@ const GeneralMedicineWaitingList = () => {
                               name="clinicalExamination"
                               value={formData.clinicalExamination}
                               onChange={handleChange}
-                              placeholder="Enter clinical reports / old reports"
+                              placeholder="Enter clinical notes / old reports"
                             ></textarea>
                           </div>
-
-                          {psychiatristAssessment?.rows?.length > 0 && (
-                            <div className="mb-3 border rounded p-3 bg-light">
-                              <div className="d-flex justify-content-between align-items-center mb-2">
-                                <label className="form-label fw-bold m-0">
-                                  Psychiatric Assessment
-                                </label>
-                                <button
-                                  className="btn btn-sm btn-outline-primary p-1 px-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setClinicalPopupType("psychiatrist");
-                                    setShowPopup(true);
-                                    handleHistoryTypeClick("psychiatrist");
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                              </div>
-
-                              <div className="small text-muted mb-2">
-                                Saved assessment data will be submitted with the
-                                patient record.
-                              </div>
-
-                              {psychiatristAssessment.rows.map((row) => (
-                                <div
-                                  key={`${row.headingId}-${row.headingCode}`}
-                                  className="mb-3"
-                                >
-                                  <div className="fw-bold">
-                                    {row.headingName ||
-                                      `Category ${row.headingId}`}
-                                    {row.headingCode
-                                      ? ` (${row.headingCode})`
-                                      : ""}
-                                  </div>
-                                  <ul className="mb-0 ps-3">
-                                    {row.questions.map((qa) => (
-                                      <li
-                                        key={`${row.headingId}-${qa.questionId}`}
-                                      >
-                                        <strong>
-                                          {qa.questionText ||
-                                            `Question ${qa.questionId}`}
-                                        </strong>
-                                        :{" "}
-                                        {qa.answerValue ||
-                                          `Option ${qa.answerOptionId}`}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {selectedPatient?.gender?.toLowerCase() ===
-                            "female" && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <label className="form-label fw-bold m-0">
-                                  Pregnancy Details
-                                </label>
-                              </div>
-                              <div className="mt-2">
-                                <PregnancySection
-                                  ref={pregnancyRef}
-                                  patientId={selectedPatient?.patientId}
-                                  visitId={selectedPatient?.visitId}
-                                  opdPatientDetailsId={
-                                    vitalsAvailable
-                                      ? opdVitalsData?.opdPatientDetailsId
-                                      : null
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
 
                           {/* Diagnosis Section (merged, no header, no border) */}
                           <div className="mb-3 p-3">
@@ -5665,12 +5632,92 @@ const GeneralMedicineWaitingList = () => {
                               </table>
                             </div>
                           </div>
+
+                          {/* Pregnancy Details */}
+                          {selectedPatient?.gender?.toLowerCase() ===
+                            "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
+                              </div>
+                              <div className="mt-2">
+                                <PregnancySection
+                                  ref={pregnancyRef}
+                                  patientId={selectedPatient?.patientId}
+                                  visitId={selectedPatient?.visitId}
+                                  opdPatientDetailsId={
+                                    vitalsAvailable
+                                      ? opdVitalsData?.opdPatientDetailsId
+                                      : null
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Psychiatrist Assessment display */}
+                          {psychiatristAssessment?.rows?.length > 0 && (
+                            <div className="mb-3 border rounded p-3 bg-light">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label fw-bold m-0">
+                                  Psychiatric Assessment
+                                </label>
+                                <button
+                                  className="btn btn-sm btn-outline-primary p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowPopup(true);
+                                    handleHistoryTypeClick("psychiatrist");
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+
+                              <div className="small text-muted mb-2">
+                                Saved assessment data will be submitted with the
+                                patient record.
+                              </div>
+
+                              {psychiatristAssessment.rows.map((row) => (
+                                <div
+                                  key={`${row.headingId}-${row.headingCode}`}
+                                  className="mb-3"
+                                >
+                                  <div className="fw-bold">
+                                    {row.headingName ||
+                                      `Category ${row.headingId}`}
+                                    {row.headingCode
+                                      ? ` (${row.headingCode})`
+                                      : ""}
+                                  </div>
+                                  <ul className="mb-0 ps-3">
+                                    {row.questions.map((qa) => (
+                                      <li
+                                        key={`${row.headingId}-${qa.questionId}`}
+                                      >
+                                        <strong>
+                                          {qa.questionText ||
+                                            `Question ${qa.questionId}`}
+                                        </strong>
+                                        :{" "}
+                                        {qa.answerValue ||
+                                          `Option ${qa.answerOptionId}`}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-
                 <MasFamilyModel
                   show={showModelPopup}
                   popupType={popupType}
@@ -5679,7 +5726,6 @@ const GeneralMedicineWaitingList = () => {
                   onOk={handleOk}
                   selectedItems={selectedItems}
                 />
-
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
                   <div
