@@ -278,7 +278,7 @@ const Dashboard = () => {
       {/* Dashboard Top Header Block */}
       <div className="dashboard-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div className="dashboard-title-area">
-          <h2>Clinical & Operational Dashboard</h2>
+          <h1>Clinical & Operational Dashboard</h1>
           <p>Real-time updates & hospital status insights • Auto-refreshes every 15 min</p>
         </div>
         <div className="dashboard-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>

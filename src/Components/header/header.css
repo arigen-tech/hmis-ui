@@ -11,11 +11,14 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: all 0.3s ease;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin-bottom: 20px;
+}
+.header .container-fluid{
+  padding: 0;
 }
 
 .header nav.navbar {
-  padding-top: 0.75rem !important;
-  padding-bottom: 0.75rem !important;
+  padding: 10px 20px;
 }
 
 /* Modern search bar container */
@@ -88,13 +91,13 @@
 }
 
 /* Pulse badge ring on notifications */
-.pulse-ring {
+.pulse .pulse-ring {
   border: 2px solid #ef4444 !important;
   background-color: #ef4444 !important;
-  top: 4px !important;
-  right: 4px !important;
-  width: 8px !important;
-  height: 8px !important;
+  top: 0px !important;
+  right: 0px !important;
+  width: 10px !important;
+  height: 10px !important;
   box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
 }
 
@@ -129,8 +132,6 @@
   padding: 2px !important;
   transition: all 0.2s ease !important;
   background-color: #ffffff !important;
-  width: 3.3rem !important;
-  height: 3.3rem !important;
   object-fit: cover;
 }
 
@@ -213,7 +214,7 @@
 .sidebar-toggle-btn {
   width: 2.25rem !important;
   height: 2.25rem !important;
-  border-radius: 0.5rem !important;
+  border-radius: 30px !important;
   background: #f1f5f9 !important;
   border: 1px solid #e2e8f0 !important;
   color: #475569 !important;
@@ -227,19 +228,33 @@
 .sidebar-toggle-btn:hover {
   background: #e2e8f0 !important;
   color: #1e293b !important;
-  transform: translateY(-1px);
+  /* transform: translateY(-1px); */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-.sidebar-toggle-btn:active {
+/* .sidebar-toggle-btn:active {
   transform: scale(0.95);
-}
+} */
 
 .sidebar-toggle-btn .hamburger-icon {
   stroke: currentColor;
   transition: transform 0.2s ease;
 }
 
-.sidebar-toggle-btn:hover .hamburger-icon {
+/* .sidebar-toggle-btn:hover .hamburger-icon {
   transform: rotate(-90deg);
+} */
+
+.dropdown-toggle::after {
+  display: inline-block;
+  margin-left: .5em;
+  vertical-align: 0;
+  content: "";
+  border-top: .6em solid;
+  border-right: .6em solid transparent;
+  border-bottom: 0;
+  border-left: .6em solid transparent;
+}
+.dropdown-toggle:hover::after{
+  color: #6366f1 !important;
 }
