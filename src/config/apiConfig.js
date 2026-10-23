@@ -3,7 +3,7 @@ export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
 // export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
-//  export const API_HOST = 'http://192.168.31.188:8080';
+// export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
@@ -906,4 +906,9 @@ export const DETECT_RESULT_FLAG_END_URL = "/lab/detect-flag"
 export const REQUEST_PARAM_RESULT = "result"
 export const REQUEST_PARAM_NORMAL_RANGE = "normalRange"
 export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600
+
+export const DOCTOR_SUMMARY = "/doctor/summary";
+export const PATIENT_VISIT_QUEUE = "/visit/queue";
+
+
 

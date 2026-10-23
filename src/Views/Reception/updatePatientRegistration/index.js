@@ -2230,81 +2230,107 @@ const UpdatePatientRegistration = () => {
       Swal.close();
 
       if (response.status === 200) {
-        const message = appointmentFlag
-          ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
-          : PATIENT_UPDATE_SUCCESS;
+  const message = appointmentFlag
+    ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
+    : PATIENT_UPDATE_SUCCESS;
 
-        const resp = response.response?.opdBillingPatientResponse;
-        const patientResp = response.response?.patient || response.response;
-        const visits = response.response?.visits || [];
-        const hasBillingStatusY =
-          visits.length > 0 && visits[0]?.billingStatus === "y";
-        const details = resp?.details;
-        const hasVisits = Array.isArray(visits) && visits.length > 0;
-        const isDetailsBlank =
-          details === null ||
-          details === undefined ||
-          (Array.isArray(details) && details.length === 0) ||
-          (typeof details === "object" &&
-            !Array.isArray(details) &&
-            Object.keys(details).length === 0);
+  const resp = response.response?.opdBillingPatientResponse;
+  const patientResp = response.response?.patient || response.response;
+  const visits = response.response?.visits || [];
 
-        if (hasVisits && isDetailsBlank) {
-          const visit = visits;
+  // ✅ NORMALIZED billingStatus check (handles "Y", "y", true, etc.)
+  const billingStatusNorm = String(visits[0]?.billingStatus ?? "").toLowerCase();
+  const hasBillingStatusY = visits.length > 0 && billingStatusNorm === "y";
 
-          Swal.fire({
-            title: "Success",
-            html: `
-      <p>Patient updated and appointment booked successfully.</p>
-      <p>Proceed to the token slip page?</p>
-    `,
-            icon: "success",
-            showCancelButton: true,
-            confirmButtonText: "Proceed",
-            cancelButtonText: "Close",
-            allowOutsideClick: false,
-          }).then((result) => {
-            if (result.isConfirmed) {
-              navigate("/opd_payment_success", {
-                replace: true,
-                state: {
-                  source: "followup-update",
-                  billingType: "Consultation Services",
-                  hasBillingData: false,
-                  amount: 0,
-                  patientId: patientResp?.id || patientDetailForm.id,
-                  patientName:
-                    patientResp?.patientName ||
-                    `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
-                  visits: visits.map((visit) => ({
-                    visitId: visit.id,
-                    tokenNo: visit.tokenNo,
-                    doctorName: visit.doctorName,
-                    patientName:
-                      visit.patientName ||
-                      patientResp?.patientName ||
-                      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
-                    patientId: visit.patientId,
-                  })),
-                },
-              });
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-              handleReset();
-            }
-          });
-        } else if (hasBillingStatusY && !isDetailsBlank) {
-          Swal.fire({
-            title: PATIENT_UPDATED_SUCCESS_TITLE,
-            html: `<p>Patient has been updated successfully.</p>
-                 <p>Redirecting to pending billing...</p>`,
-            icon: "success",
-            showConfirmButton: false,
-            timer: 1000,
-            allowOutsideClick: false,
-          }).then(() => {
-            navigate("/OPDBillingDetails", { replace: true });
-          });
-        } else if (resp) {
+  const details = resp?.details;
+  const hasVisits = Array.isArray(visits) && visits.length > 0;
+
+  // ✅ Cleaner blank check
+  const isDetailsBlank =
+    details == null ||
+    (Array.isArray(details) && details.length === 0) ||
+    (typeof details === "object" && Object.keys(details).length === 0);
+
+  // 🐞 DEBUG BLOCK — remove once verified
+  console.log("=== RESPONSE DEBUG ===");
+  console.log("raw response.response:", response.response);
+  console.log("resp (opdBillingPatientResponse):", resp);
+  console.log("visits:", visits);
+  console.log("visits[0]:", visits[0]);
+  console.log(
+    "visits[0].billingStatus:",
+    visits[0]?.billingStatus,
+    "| typeof:",
+    typeof visits[0]?.billingStatus,
+  );
+  console.log("details:", details);
+  console.log("--- FLAGS ---");
+  console.log("hasVisits:", hasVisits);
+  console.log("hasBillingStatusY:", hasBillingStatusY);
+  console.log("isDetailsBlank:", isDetailsBlank);
+  console.log(
+    "BRANCH 2 CONDITION (hasBillingStatusY && !isDetailsBlank):",
+    hasBillingStatusY && !isDetailsBlank,
+  );
+  console.log("=== END DEBUG ===");
+  debugger;
+
+  if (hasVisits && isDetailsBlank) {
+    const visit = visits;
+
+    Swal.fire({
+      title: "Success",
+      html: `
+        <p>Patient updated and appointment booked successfully.</p>
+        <p>Proceed to the token slip page?</p>
+      `,
+      icon: "success",
+      showCancelButton: true,
+      confirmButtonText: "Proceed",
+      cancelButtonText: "Close",
+      allowOutsideClick: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate("/opd_payment_success", {
+          replace: true,
+          state: {
+            source: "followup-update",
+            billingType: "Consultation Services",
+            hasBillingData: false,
+            amount: 0,
+            patientId: patientResp?.id || patientDetailForm.id,
+            patientName:
+              patientResp?.patientName ||
+              `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+            visits: visits.map((visit) => ({
+              visitId: visit.id,
+              tokenNo: visit.tokenNo,
+              doctorName: visit.doctorName,
+              patientName:
+                visit.patientName ||
+                patientResp?.patientName ||
+                `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+              patientId: visit.patientId,
+            })),
+          },
+        });
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        handleReset();
+      }
+    });
+  } else if (hasBillingStatusY && !isDetailsBlank) {
+    Swal.fire({
+      title: PATIENT_UPDATED_SUCCESS_TITLE,
+      html: `<p>Patient has been updated successfully.</p>
+             <p>Redirecting to pending billing...</p>`,
+      icon: "success",
+      showConfirmButton: false,
+      timer: 1000,
+      allowOutsideClick: false,
+    }).then(() => {
+      navigate("/OPDBillingDetails", { replace: true });
+    });
+  } else if (resp) {
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>

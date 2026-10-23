@@ -252,10 +252,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       try {
         const [labRes, radiologyRes] = await Promise.all([
           getRequest(
-            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&ipd=true`
           ),
           getRequest(
-            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true`
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true&ipd=true`
           ),
         ]);
 

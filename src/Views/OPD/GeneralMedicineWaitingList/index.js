@@ -12,6 +12,7 @@ import EarExamination from "../EarExamination";
 import GynaMaster from "../GynaMaster";
 import Dental from "../Dental";
 import Psychiatrist from "../Psychiatrist";
+import VisitSummaryStats from "../../../Components/VisitSummaryStats";
 
 import {
   OPD_TEMPLATE,
@@ -21,8 +22,6 @@ import {
   OPD_PATIENT,
   MAS_DRUG_MAS,
   DRUG_TYPE,
-  MAS_OPD_SESSION,
-  MAS_OPD_SESSION_GET_ALL,
   DOCTOR,
   DOCTOR_BY_DEPARTMENT,
   MASTERS,
@@ -54,9 +53,6 @@ import {
   REQUEST_PARAM_SIZE,
   DISPENSARY_DEPARTMENT_ID,
   SECTION_CODE_FOR_DRUGS,
-  // OBG_DEPARTMENT_ID,
-  // ENT_DEPARTMENT_ID,
-  // DENTAL_DEPARTMENT_ID,
   MAS_WARD_GET_BY_ID,
   MAS_WARDS_GET_BY_ID,
   OPHTHALMOLOGY_DEPARTMENT_CODE,
@@ -92,10 +88,11 @@ import PregnancySection from "../Pregnancy";
 const INDENT_SAVE_TITLE = "OPD Case Sheet";
 const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 
+const START_CONSULTATION_VISIT_STATUS = "i";
+
 const GeneralMedicineWaitingList = () => {
   const [searchFilters, setSearchFilters] = useState({
     doctorList: "",
-    session: "",
     mobileNo: "",
     patientName: "",
   });
@@ -113,7 +110,6 @@ const GeneralMedicineWaitingList = () => {
 
   const [loading, setLoading] = useState(false);
   const [doctorData, setDoctorData] = useState([]);
-  const [sessionData, setSessionData] = useState([]);
   const [opdVitalsData, setOpdVitalsData] = useState([]);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
@@ -188,8 +184,6 @@ const GeneralMedicineWaitingList = () => {
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
-  // Add state variables for Admission
-
   const [wardCategory, setWardCategory] = useState("");
   const [wardCategories, setWardCategories] = useState([]);
 
@@ -225,8 +219,6 @@ const GeneralMedicineWaitingList = () => {
   ]);
 
   const navigate = useNavigate();
-  // const [showPreviousVisitsModal, setShowPreviousVisitsModal] = useState(false);
-  // const [showPreviousVitalsModal, setShowPreviousVitalsModal] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [clinicalPopupType, setClinicalPopupType] = useState("visits");
 
@@ -270,6 +262,9 @@ const GeneralMedicineWaitingList = () => {
   const [nearVisionData, setNearVisionData] = useState([]);
 
   const obgDetailsRef = useRef();
+
+  // 👈 track which row's Start Consultation is currently in progress
+  const [startingVisitId, setStartingVisitId] = useState(null);
 
   const fetchDistanceVisionData = async () => {
     if (distanceVisionLoadedRef.current) return;
@@ -361,7 +356,6 @@ const GeneralMedicineWaitingList = () => {
         let vitalsData = response.response;
         let paginationInfo = response.response;
 
-        // Handle paginated response
         if (vitalsData.content) {
           vitalsData = vitalsData.content;
           paginationInfo = response.response;
@@ -895,7 +889,6 @@ const GeneralMedicineWaitingList = () => {
   const handleSurgeryEndTimeChange = async (timeValue) => {
     setSurgeryEndTime(timeValue);
 
-    // Validate that end time is after start time
     if (surgeryStartTime && timeValue) {
       const isValid = validateSurgeryTimes(surgeryStartTime, timeValue);
       if (!isValid) {
@@ -916,7 +909,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Add these state declarations inside the GeneralMedicineWaitingList component
   const [visionFormData, setVisionFormData] = useState({
     fundusGlow: {
       re: { uncorrected: "", pinhole: "", bestCorrected: "" },
@@ -1006,12 +998,9 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Handlers
   const handleSaveVision = (e) => {
     e.preventDefault();
-    // Implement API call or local save logic here
     console.log("Vision data saved:", visionFormData);
-    // You can add a success popup here if needed
     showPopupMessage("Vision examination saved successfully!", "success");
   };
 
@@ -1157,8 +1146,6 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
-    // Keep the row itself in edit mode sync with the typed text.
-    // This prevents the input from snapping back to the previously selected drug name.
     setTreatmentItems((prev) => {
       const updated = [...prev];
       updated[index] = {
@@ -1276,12 +1263,10 @@ const GeneralMedicineWaitingList = () => {
     if (frequencyLoadedRef.current) return;
     try {
       const response = await getRequest(MAS_FREQUENCY_GET_ALL);
-      // //console.log("Frequency API Response:", response);
 
       if (response && response.response) {
         setAllFrequencies(response.response);
         frequencyLoadedRef.current = true;
-        // //console.log("Frequencies loaded:", response.response);
       } else {
         console.warn("No frequencies found in response");
         setAllFrequencies([]);
@@ -1338,7 +1323,6 @@ const GeneralMedicineWaitingList = () => {
   const updateProcedure = (selected, index) => {
     if (!selected) return;
 
-    // prevent duplicate selection
     const exists = procedureCareItems.some(
       (item, idx) =>
         String(item.id) === String(selected.procedureId) && idx !== index,
@@ -1360,7 +1344,6 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
-    // clear search after selecting
     setProcedureSearch((prev) => {
       const updated = [...prev];
       updated[index] = "";
@@ -1405,7 +1388,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // FIRST PAGE LOAD
   const loadFirstPage = async (index) => {
     const searchText = search[index] || "";
     const result = await fetchMasICDData(0, searchText);
@@ -1460,7 +1442,6 @@ const GeneralMedicineWaitingList = () => {
     setPage(nextPage);
   };
 
-  // UPDATE SELECTED ICD
   const updateICD = (selectedICD, index) => {
     if (!selectedICD) return;
 
@@ -1502,7 +1483,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // CLOSE DROPDOWN ON OUTSIDE CLICK
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -1516,7 +1496,6 @@ const GeneralMedicineWaitingList = () => {
   const fetchWaitingList = async (filters = {}) => {
     try {
       setLoading(true);
-      // Initial fetch without filters (just first page)
       const queryParams = new URLSearchParams();
       queryParams.append("page", "0");
       queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
@@ -1601,7 +1580,6 @@ const GeneralMedicineWaitingList = () => {
         if (loggedDoctor) {
           const initialFilters = {
             doctorList: String(loggedDoctor.userId),
-            session: searchFilters.session,
             mobileNo: searchFilters.mobileNo,
             patientName: searchFilters.patientName,
           };
@@ -1619,30 +1597,12 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const fetchSessionData = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest(MAS_OPD_SESSION_GET_ALL);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setSessionData(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
-        setSessionData([]);
-      }
-    } catch (error) {
-      console.error("Error fetching Session data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (initialDataLoadedRef.current) return;
 
     initialDataLoadedRef.current = true;
 
     fetchDoctorData();
-    fetchSessionData();
     fetchOpdTemplateData();
     fetchAllFrequencies();
     fetchInvestigationTypes();
@@ -1691,7 +1651,6 @@ const GeneralMedicineWaitingList = () => {
     useState(false);
   const [currentMedicationActions, setCurrentMedicationActions] = useState({});
 
-  // Modal states - UPDATED
   const [showInvestigationModal, setShowInvestigationModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [investigationModalType, setInvestigationModalType] =
@@ -1748,10 +1707,10 @@ const GeneralMedicineWaitingList = () => {
     bmi: "",
     rr: "",
     spo2: "",
-    patientSymptoms: "",
-    clinicalExamination: "",
-    pastHistory: "",
-    familyHistory: "",
+    patientSymptoms: "", // Chief Complaints
+    presentHistory: "", // Present History of Illness
+    pastMedicalHistory: "", // Past Medical History
+    clinicalExamination: "", // Clinical Notes / Old Reports
     treatmentAdvice: "",
     mlcCase: false,
   });
@@ -1836,8 +1795,6 @@ const GeneralMedicineWaitingList = () => {
     followUpDate: getToday(),
   });
 
-  // console.log("followUps", followUps);
-
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
       icdDiagId: "",
@@ -1881,14 +1838,14 @@ const GeneralMedicineWaitingList = () => {
     if (popupType === "past") {
       setFormData({
         ...formData,
-        pastHistory: mergeValues(formData.pastHistory, newNames),
+        pastMedicalHistory: mergeValues(formData.pastMedicalHistory, newNames),
       });
     }
 
     if (popupType === "family") {
       setFormData({
         ...formData,
-        familyHistory: mergeValues(formData.familyHistory, newNames),
+        presentHistory: mergeValues(formData.presentHistory, newNames),
       });
     }
 
@@ -1976,8 +1933,6 @@ const GeneralMedicineWaitingList = () => {
   ]);
   const [procedureCareErrors, setProcedureCareErrors] = useState([]);
 
-  // console.log("procedureCareItems", procedureCareItems);
-
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
       name: "",
@@ -2002,7 +1957,6 @@ const GeneralMedicineWaitingList = () => {
     referredHospitalName: "",
   };
 
-  // Referral state - UPDATED
   const [referralData, setReferralData] = useState(defaultReferralData);
 
   const [departmentData, setDepartmentData] = useState([
@@ -2060,7 +2014,6 @@ const GeneralMedicineWaitingList = () => {
 
     await fetchSurgeryMasterData();
 
-    // Load OT Master
     if (!otMasterLoadedRef.current) {
       await fetchOperationTheatres();
       otMasterLoadedRef.current = true;
@@ -2320,8 +2273,6 @@ const GeneralMedicineWaitingList = () => {
   }, []);
 
   const filterInvestigationsByMainChargeCode = () => {
-    //console.log("Filtering investigations by type:", investigationType)
-
     if (!investigationType || allInvestigations.length === 0) {
       setFilteredInvestigationsByType([]);
       return;
@@ -2330,13 +2281,11 @@ const GeneralMedicineWaitingList = () => {
     const selectedType = investigationTypes.find(
       (type) => type.value === investigationType,
     );
-    //console.log("Selected type for filtering:", selectedType)
 
     if (selectedType) {
       const filtered = allInvestigations.filter(
         (inv) => inv.mainChargeCodeId === selectedType.id,
       );
-      //console.log(`Filtered ${filtered.length} investigations for type:`, selectedType.name)
       setFilteredInvestigationsByType(filtered);
     } else {
       setFilteredInvestigationsByType([]);
@@ -2386,11 +2335,9 @@ const GeneralMedicineWaitingList = () => {
     }
   }, [activeDrugNameDropdown]);
 
-  // UPDATED: Handle template selection to accumulate items
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId;
 
-    // Prevent duplicate template selection
     if (selectedTemplateIds.has(templateId)) {
       alert("This template is already selected");
       setSelectedInvestigationTemplate("Select..");
@@ -2513,7 +2460,6 @@ const GeneralMedicineWaitingList = () => {
     );
   };
 
-  // Handle visits page change
   const handleVisitsPageChange = (newPage) => {
     if (selectedPatient) {
       const hospitalId =
@@ -2529,7 +2475,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Handle vitals page change
   const handleVitalsPageChange = (newPage) => {
     if (selectedPatient) {
       const hospitalId =
@@ -2560,7 +2505,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Handle visits page size change
   const handleVisitsPageSizeChange = (newSize) => {
     setVisitsPageSize(newSize);
     if (selectedPatient) {
@@ -2572,7 +2516,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Handle vitals page size change
   const handleVitalsPageSizeChange = (newSize) => {
     setVitalsPageSize(newSize);
     if (selectedPatient) {
@@ -2630,7 +2573,6 @@ const GeneralMedicineWaitingList = () => {
       }
     };
 
-    // ---- NO DUPLICATE → UPDATE ROW ----
     const newItems = [...investigationItems];
     newItems[index] = {
       ...newItems[index],
@@ -2814,12 +2756,6 @@ const GeneralMedicineWaitingList = () => {
     }
   }, [userId]);
 
-  // useEffect(() => {
-  //   if (searchFilters.doctorList) {
-  //     handleSearch();
-  //   }
-  // }, [searchFilters.doctorList]);
-
   const handleSearch = async () => {
     const userId =
       localStorage.getItem("userId") || sessionStorage.getItem("userId");
@@ -2839,9 +2775,6 @@ const GeneralMedicineWaitingList = () => {
 
       if (searchFilters.doctorList) {
         queryParams.append("doctorId", searchFilters.doctorList);
-      }
-      if (searchFilters.session) {
-        queryParams.append("sessionId", searchFilters.session);
       }
       if (searchFilters.mobileNo?.trim()) {
         queryParams.append("mobileNumber", searchFilters.mobileNo.trim());
@@ -2876,30 +2809,15 @@ const GeneralMedicineWaitingList = () => {
   const handleReset = () => {
     setSearchFilters({
       doctorList: "",
-      session: "",
       employeeNo: "",
       patientName: "",
     });
   };
 
-  // const updateVisitStatus = async (visitId, visitDate, doctorId) => {
-  //   try {
-  //     const response = await putRequest(
-  //       `${PATIENT_UPDATE_STATUS}?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`,
-  //     );
-
-  //     //console.log("Status Updated:", response);
-  //     return response;
-  //   } catch (error) {
-  //     console.error("Error updating status:", error);
-  //   }
-  // };
-
   const fetchSurgeryMasterData = async () => {
     if (surgeryMasterLoadedRef.current) return;
 
     try {
-      // Use the selected surgeryType (MAJOR or MINOR)
       const level = surgeryType.toUpperCase();
       const response = await getRequest(
         `${MAS_SURGERY_GET_BY_LEVEL}/${level}/${1}`,
@@ -2984,7 +2902,6 @@ const GeneralMedicineWaitingList = () => {
         sessionStorage.getItem("hospitalId") ||
         localStorage.getItem("hospitalId");
 
-      // Reset to first page when opening new patient
       await fetchPreviousVisits(
         patient.patientId,
         hospitalId,
@@ -3018,6 +2935,95 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
+  // 👈 Start Consultation handler — hits the visit status API first,
+  // then fetches previous visit past-history & notes to auto-fill the
+  // Past Medical History and Clinical Notes / Old Reports fields.
+  const handleStartConsultation = async (patient, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    if (!patient?.visitId) return;
+
+    try {
+      setStartingVisitId(patient.visitId);
+
+      const response = await putRequest(
+        `/visit/status/${patient.visitId}?visitStatus=${START_CONSULTATION_VISIT_STATUS}`,
+      );
+
+      if (response?.status === 200) {
+        // 👇 Fetch previous visit past-history and notes
+        try {
+          const historyResponse = await getRequest(
+            `/visit/${patient.visitId}/past-history-and-notes`,
+          );
+
+          if (historyResponse?.status === 200) {
+            const historyData = historyResponse?.response || {};
+
+            if (historyData.isPreviouslyVisited) {
+              setFormData((prev) => ({
+                ...prev,
+                pastMedicalHistory:
+                  historyData.previousVisitPastHistory ?? "",
+                clinicalExamination:
+                  historyData.previousVisitClinicalNotes ?? "",
+              }));
+            }
+          } else {
+            await Swal.fire({
+              icon: "error",
+              title: "Error",
+              text:
+                historyResponse?.message ||
+                "Failed to fetch previous visit history. Please try again.",
+            });
+            return;
+          }
+        } catch (historyError) {
+          console.error(
+            "Error fetching past history and notes:",
+            historyError,
+          );
+          await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text:
+              historyError?.response?.data?.message ||
+              historyError?.response?.message ||
+              historyError?.message ||
+              "Failed to fetch previous visit history. Please try again.",
+          });
+          return;
+        }
+
+        await handleRowClick(patient);
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text:
+            response?.message ||
+            "Failed to start consultation. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error starting consultation:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error?.response?.data?.message ||
+          error?.response?.message ||
+          error?.message ||
+          "Failed to start consultation. Please try again.",
+      });
+    } finally {
+      setStartingVisitId(null);
+    }
+  };
+
   const showConfirmationPopup = (
     message,
     type = "success",
@@ -3037,7 +3043,6 @@ const GeneralMedicineWaitingList = () => {
     });
   };
 
-  // Add this function
   const handleConfirmPopupClose = (confirmed) => {
     const { onConfirm, onCancel } = confirmationPopup;
 
@@ -3089,7 +3094,6 @@ const GeneralMedicineWaitingList = () => {
       gynaMaster: false,
     });
 
-    // Reset Doctor's Remarks
     setDoctorRemarksText("");
     setGeneralTreatmentAdvice("");
     setReferralNotes("");
@@ -3100,7 +3104,6 @@ const GeneralMedicineWaitingList = () => {
       followUpDate: getToday(),
     });
 
-    // Reset Admission fields
     setAdmissionAdvised(false);
     setAdmissionDate("");
     setAdmissionRemarks("");
@@ -3113,11 +3116,9 @@ const GeneralMedicineWaitingList = () => {
 
     setSelectedHistoryType("");
 
-    // Reset template selections
     setSelectedTemplateIds(new Set());
     setSelectedTreatmentTemplateIds(new Set());
 
-    // Reset diagnosis
     setDiagnosisItems([
       {
         icdDiagId: "",
@@ -3129,7 +3130,6 @@ const GeneralMedicineWaitingList = () => {
 
     setWorkingDiagnosis("");
 
-    // Reset investigations / treatments with default one row each
     setInvestigationItems([
       {
         investigationId: "",
@@ -3155,7 +3155,6 @@ const GeneralMedicineWaitingList = () => {
       },
     ]);
 
-    // Reset form
     setFormData({
       height: "",
       weight: "",
@@ -3169,15 +3168,13 @@ const GeneralMedicineWaitingList = () => {
       patientSymptoms: "",
       clinicalExamination: "",
       mlcCase: false,
+      presentHistory: "",
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
     });
 
     resetSurgeryFields();
     setErrors({});
 
-    // Reset pagination states
     setVisitsCurrentPage(0);
     setVisitsTotalPages(0);
     setVisitsTotalElements(0);
@@ -3283,7 +3280,6 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
-    // Clear field error
     if (
       errors[name] ||
       ((name === "weight" || name === "height") && errors.bmi)
@@ -3381,7 +3377,7 @@ const GeneralMedicineWaitingList = () => {
     ];
 
     if (!hasValue(formData.patientSymptoms)) {
-      addError("patientSymptoms", "Patient signs & symptoms is required.");
+      addError("patientSymptoms", "Chief Complaints is required.");
     }
 
     requiredVitals.forEach(([key, label]) => {
@@ -3514,17 +3510,20 @@ const GeneralMedicineWaitingList = () => {
       }
     }
 
-  if (surgeryStartTime || surgeryEndTime) {
-    if (!surgeryStartTime || !surgeryEndTime) {
-      showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
-      return;
+    if (surgeryStartTime || surgeryEndTime) {
+      if (!surgeryStartTime || !surgeryEndTime) {
+        showPopup(
+          "Both Start Time and End Time are required when scheduling surgery",
+          "error",
+        );
+        return;
+      }
+
+      if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+        showPopup("Surgery end time must be after start time", "error");
+        return;
+      }
     }
-    
-    if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
-      showPopup("Surgery end time must be after start time", "error");
-      return;
-    }
-  }
 
     if (referralData.isReferred === "Yes") {
       if (!hasValue(referralData.referralDate)) {
@@ -3582,7 +3581,9 @@ const GeneralMedicineWaitingList = () => {
             "spo2",
           ].some((key) => nextErrors[key]),
         clinicalHistory:
-          prev.clinicalHistory || Boolean(nextErrors.patientSymptoms),
+          prev.clinicalHistory ||
+          Boolean(nextErrors.patientSymptoms) ||
+          Boolean(nextErrors.diagnosis || nextErrors.workingDiagnosis),
         diagnosis:
           prev.diagnosis ||
           Boolean(nextErrors.diagnosis || nextErrors.workingDiagnosis),
@@ -3619,7 +3620,7 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const validateSurgeryTimes = (startTime, endTime) => {
-    if (!startTime || !endTime) return true; 
+    if (!startTime || !endTime) return true;
 
     const [startHours, startMinutes] = startTime.split(":").map(Number);
     const [endHours, endMinutes] = endTime.split(":").map(Number);
@@ -3695,7 +3696,6 @@ const GeneralMedicineWaitingList = () => {
         obgDetailsData = obgDetailsRef.current.getData();
       }
 
-      // ICD Diagnoses
       const icdDiagList = diagnosisItems
         .filter((item) => hasValue(item.icdDiagId))
         .map((item) => ({
@@ -3703,7 +3703,6 @@ const GeneralMedicineWaitingList = () => {
           icdDiagnosisName: item.icdDiagnosis || "",
         }));
 
-      // Investigations mapping → backend format
       const invalidInvestigation = investigationItems.some(
         (item) => item.displayValue?.trim() && !item.investigationId,
       );
@@ -3831,7 +3830,6 @@ const GeneralMedicineWaitingList = () => {
           : null;
 
       const payload = {
-        // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvailable
           ? opdVitalsData.opdPatientDetailsId
           : null,
@@ -3841,12 +3839,10 @@ const GeneralMedicineWaitingList = () => {
         hospitalId: mappedHospitalId,
         doctorId: mappedDoctorId,
 
-        // ===== Clinical History =====
         patientSignsSymptoms: formData.patientSymptoms ?? null,
         clinicalExamination: formData.clinicalExamination ?? null,
-        pastMedicalHistory: formData.pastHistory ?? null,
-        familyHistory: formData.familyHistory ?? null,
-        // presentComplaints: formData.patientSymptoms ?? null,
+        presentHistory: formData.presentHistory ?? null,
+        pastMedicalHistory: formData.pastMedicalHistory ?? null,
 
         ...(shouldShowVisionExamination && {
           ophthalmologyExaminationDetails,
@@ -3877,7 +3873,6 @@ const GeneralMedicineWaitingList = () => {
           details: psychiatristAssessment.details || [],
         }),
 
-        // ===== Vital =====
         height: formData.height,
         weight: formData.weight,
         pulse: formData.pulse,
@@ -3889,21 +3884,17 @@ const GeneralMedicineWaitingList = () => {
         bpDiastolic: formData.diastolicBP,
         mlcFlag: formData.mlcCase ? FLAG.FLAG_Y : FLAG.FLAG_N,
 
-        // ===== Diagnosis =====
         workingDiagnosis: workingDiagnosis,
         icdDiagnosis: icdDiagList,
 
-        // ===== Investigation =====
         labFlag: labFlag,
         radioFlag: radioFlag,
         investigation: investigationList,
 
-        // ===== Treatment =====
         treatment: treatmentList,
         treatmentAdvice: generalTreatmentAdvice,
         surgeryAdvice: hasSurgeryData ? surgeryAdvicePayload : null,
 
-        // ======== procedureCare =======
         procedureCare: procedureCareItems
           .filter(
             (item) =>
@@ -3931,10 +3922,8 @@ const GeneralMedicineWaitingList = () => {
             diagnosis: workingDiagnosis,
           })),
 
-        // ===== Doctor's Remarks =====
         doctorRemarks: doctorRemarksText,
 
-        // ======== follow up =====
         followUpFlag: followUps.followUpFlag ? FLAG.FLAG_Y : FLAG.FLAG_N,
         followUpDate:
           followUps.followUpFlag && followUps.followUpDate
@@ -3943,8 +3932,6 @@ const GeneralMedicineWaitingList = () => {
         followUpDays: followUps.followUpFlag
           ? Number(followUps.noOfFollowDays)
           : 0,
-
-        // ===== Admission Details =====
 
         admissionFlag: admissionAdvised ? FLAG.FLAG_Y : FLAG.FLAG_N,
         admissionAdvisedDate:
@@ -3964,7 +3951,7 @@ const GeneralMedicineWaitingList = () => {
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
         surgeryAdvice: hasSurgeryData ? surgeryAdvicePayload : null,
-        // ================= Referal ================
+
         referralFlag:
           referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
         referralRemarks: referralNotes,
@@ -3987,7 +3974,7 @@ const GeneralMedicineWaitingList = () => {
 
       if (response?.status === 200 || response?.success === true) {
         const indentMId = response.response?.indentMId;
-        const visitId = response.response?.visitId || selectedPatient.visitId; // Capture visit ID
+        const visitId = response.response?.visitId || selectedPatient.visitId;
 
         showConfirmationPopup(
           "Patient consultation submitted successfully!",
@@ -4039,7 +4026,6 @@ const GeneralMedicineWaitingList = () => {
   const checkOTAvailability = async (otId, date) => {
     if (!otId || !date) return true;
 
-
     try {
       const departmentId =
         sessionStorage.getItem("departmentId") ||
@@ -4072,7 +4058,6 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const handleResetForm = () => {
-    // Reset main form data
     setFormData({
       height: "",
       weight: "",
@@ -4086,17 +4071,14 @@ const GeneralMedicineWaitingList = () => {
       patientSymptoms: "",
       clinicalExamination: "",
       mlcCase: false,
+      presentHistory: "",
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-      pastHistory: "",
     });
 
     if (pregnancyRef.current) {
       pregnancyRef.current.resetForm();
     }
 
-    // Reset diagnosis
     setDiagnosisItems([
       {
         icdDiagId: "",
@@ -4106,7 +4088,6 @@ const GeneralMedicineWaitingList = () => {
       },
     ]);
 
-    // Reset followUps to default
     setGeneralTreatmentAdvice("");
     setReferralNotes("");
     setReferralData(defaultReferralData);
@@ -4116,14 +4097,11 @@ const GeneralMedicineWaitingList = () => {
       followUpDate: getToday(),
     });
 
-    // Important resets for templates
     setSelectedTreatmentTemplateIds(new Set());
     setSelectedTemplateIds(new Set());
 
-    // Reset doctor remarks
     setDoctorRemarksText("");
 
-    // Reset Admission fields
     setAdmissionAdvised(false);
     setAdmissionDate("");
     setAdmissionRemarks("");
@@ -4134,10 +4112,8 @@ const GeneralMedicineWaitingList = () => {
     setOccupiedBeds(0);
     setVacantBeds(0);
 
-    // Reset working diagnosis
     setWorkingDiagnosis("");
 
-    // Reset investigations with one default row
     setInvestigationItems([
       {
         investigationId: "",
@@ -4149,7 +4125,6 @@ const GeneralMedicineWaitingList = () => {
 
     resetSurgeryFields();
 
-    // Reset treatments with one default row
     setTreatmentItems([
       {
         treatmentId: null,
@@ -4175,7 +4150,6 @@ const GeneralMedicineWaitingList = () => {
 
     setPsychiatristAssessment(null);
 
-    // Reset form errors
     setErrors({});
   };
 
@@ -4190,7 +4164,7 @@ const GeneralMedicineWaitingList = () => {
 
       updatedList.splice(index, 1);
 
-      const targetIndex = Math.min(5, updatedList.length); // in case list has <5 items
+      const targetIndex = Math.min(5, updatedList.length);
 
       updatedList.splice(targetIndex, 0, itemToMove);
 
@@ -4205,7 +4179,6 @@ const GeneralMedicineWaitingList = () => {
     });
   };
 
-  // CLOSE BUTTON
   const handleClose = async (visitId) => {
     try {
       const response = await putRequest(
@@ -4420,13 +4393,9 @@ const GeneralMedicineWaitingList = () => {
       : 1;
 
     let total = 0;
-    // SOLID types: TABLET(1), CAPSULE(2)
     if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
-    }
-
-    // LIQUID types: EARDROPS(7), LIQUID(15), EYEEARDROPS(52), SYRUP(57)
-    else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+    } else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
       const qtyPerUnit = Number(item.aDispQty) || 1;
 
       total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
@@ -4626,7 +4595,6 @@ const GeneralMedicineWaitingList = () => {
     const updated = [...treatmentItems];
     updated[index] = { ...updated[index], [field]: value };
 
-    // fields that should trigger recalculation
     const recalcFields = [
       "dosage",
       "days",
@@ -4940,7 +4908,6 @@ const GeneralMedicineWaitingList = () => {
     setAdmissionAdvised(checked);
 
     if (!checked) {
-      // Reset all related fields
       setAdmissionDate("");
       setAdmissionRemarks("");
       setWardCategory("");
@@ -5028,7 +4995,6 @@ const GeneralMedicineWaitingList = () => {
 
   const handleRemoveSurgeryItem = (index) => {
     if (surgeryItems.length === 1) {
-      // Reset to empty state instead of removing
       const newItems = [...surgeryItems];
       newItems[index] = createEmptySurgeryItem();
       setSurgeryItems(newItems);
@@ -5105,11 +5071,9 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-
   const handleOTChange = async (otId) => {
     setSelectedOT(otId);
 
-    // Check availability if both date and time are present
     if (otId && surgeryDate) {
       const isAvailable = await checkOTAvailability(
         otId,
@@ -5140,7 +5104,6 @@ const GeneralMedicineWaitingList = () => {
     return date.toISOString().split("T")[0];
   };
 
-  // PRIORITY COLOR
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "Priority-1":
@@ -5302,7 +5265,6 @@ const GeneralMedicineWaitingList = () => {
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
                       <div className="row">
-                        {/* Sidebar Buttons */}
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
                             {[
@@ -5367,21 +5329,13 @@ const GeneralMedicineWaitingList = () => {
                             ))}
                           </div>
                         </div>
-                        {/* Input Area */}
                         <div className="col-md-9">
-                          {/* Symptoms */}
+                          {/* Chief Complaints */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Patient signs & symptoms
+                                Chief Complaints
                               </label>
-
-                              {/* <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={() => openPopup("symptoms")}
-                              >
-                                +
-                              </button> */}
                             </div>
                             <input
                               type="text"
@@ -5389,7 +5343,7 @@ const GeneralMedicineWaitingList = () => {
                               name="patientSymptoms"
                               value={formData.patientSymptoms}
                               onChange={handleChange}
-                              placeholder="Enter symptoms"
+                              placeholder="Enter chief complaints"
                             />
                             {errors.patientSymptoms && (
                               <div className="invalid-feedback d-block">
@@ -5398,52 +5352,11 @@ const GeneralMedicineWaitingList = () => {
                             )}
                           </div>
 
-                          {/* Clinical Examination */}
-                          <div className="mb-3">
-                            <label className="form-label fw-bold">
-                              Clinical Examination
-                            </label>
-                            <textarea
-                              className="form-control"
-                              rows={3}
-                              name="clinicalExamination"
-                              value={formData.clinicalExamination}
-                              onChange={handleChange}
-                              placeholder="Enter details"
-                            ></textarea>
-                          </div>
-
-                          {/* Past */}
+                          {/* Present History of Illness */}
                           <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                               <label className="form-label fw-bold m-0">
-                                Past History
-                              </label>
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("past");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <textarea
-                              className="form-control mt-3"
-                              rows={3}
-                              name="pastHistory"
-                              value={formData.pastHistory}
-                              onChange={handleChange}
-                              placeholder="Enter Past History"
-                            ></textarea>
-                          </div>
-
-                          {/* Family */}
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Family History
+                                Present History of Illness
                               </label>
                               <button
                                 className="btn btn-sm btn-outline-success p-1 px-2"
@@ -5458,13 +5371,293 @@ const GeneralMedicineWaitingList = () => {
                             <textarea
                               className="form-control mt-3"
                               rows={3}
-                              name="familyHistory"
-                              value={formData.familyHistory}
+                              name="presentHistory"
+                              value={formData.presentHistory}
                               onChange={handleChange}
-                              placeholder="Enter Family History"
+                              placeholder="Enter Present History of Illness"
                             ></textarea>
                           </div>
 
+                          {/* Past Medical History */}
+                          <div className="mb-3">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <label className="form-label fw-bold m-0">
+                                Past Medical History
+                              </label>
+                              <button
+                                className="btn btn-sm btn-outline-success p-1 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control mt-3"
+                              rows={3}
+                              name="pastMedicalHistory"
+                              value={formData.pastMedicalHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past Medical History"
+                            ></textarea>
+                          </div>
+
+                          {/* Clinical Reports / Old Reports */}
+                          <div className="mb-3">
+                            <label className="form-label fw-bold">
+                              Clinical Notes / Old Reports
+                            </label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              name="clinicalExamination"
+                              value={formData.clinicalExamination}
+                              onChange={handleChange}
+                              placeholder="Enter clinical notes / old reports"
+                            ></textarea>
+                          </div>
+
+                          {/* Diagnosis Section (merged, no header, no border) */}
+                          <div className="mb-3 p-3">
+                            <h6 className="fw-bold mb-3">Diagnosis</h6>
+                            <div className="mb-3">
+                              <label className="form-label fw-bold">
+                                Working Diagnosis
+                              </label>
+                              <input
+                                type="text"
+                                className={`form-control ${
+                                  errors.workingDiagnosis || errors.diagnosis
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
+                                style={{ width: "400px" }}
+                                value={workingDiagnosis}
+                                onChange={(e) => {
+                                  setWorkingDiagnosis(e.target.value);
+                                  if (
+                                    errors.workingDiagnosis ||
+                                    errors.diagnosis
+                                  ) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      workingDiagnosis: "",
+                                      diagnosis: "",
+                                    }));
+                                  }
+                                }}
+                                placeholder="Enter working diagnosis"
+                                maxLength={40}
+                              />
+                              {(errors.workingDiagnosis ||
+                                errors.diagnosis) && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.workingDiagnosis ||
+                                    errors.diagnosis}
+                                </div>
+                              )}
+                            </div>
+
+                            <div
+                              className="table-responsive"
+                              style={{ overflow: "visible" }}
+                            >
+                              <table className="table table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th className="col-md-6">ICD Diagnosis</th>
+                                    <th className="col-md-2 text-center">
+                                      Communicable
+                                    </th>
+                                    <th className="col-md-2 text-center">
+                                      Infectious
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Add
+                                    </th>
+                                    <th className="col-md-1 text-center">
+                                      Delete
+                                    </th>
+                                  </tr>
+                                </thead>
+
+                                <tbody>
+                                  {diagnosisItems.map((item, index) => (
+                                    <tr key={index}>
+                                      <td>
+                                        <div
+                                          className="position-relative"
+                                          style={{ width: "100%", zIndex: 20 }}
+                                          ref={dropdownRef}
+                                        >
+                                          <input
+                                            type="text"
+                                            className={`form-control ${errors.diagnosis ? "is-invalid" : ""}`}
+                                            placeholder="Search ICD..."
+                                            value={
+                                              diagnosisItems[index]
+                                                .icdDiagnosis ||
+                                              search[index] ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              handleIcdSearch(
+                                                e.target.value,
+                                                index,
+                                              )
+                                            }
+                                            onClick={() => {
+                                              loadFirstPage(index);
+                                              setOpenDropdown(index);
+                                            }}
+                                            onBlur={() => {
+                                              setTimeout(() => {
+                                                setOpenDropdown(null);
+                                              }, 200);
+                                            }}
+                                          />
+
+                                          {openDropdown === index && (
+                                            <div
+                                              className="border rounded mt-1 bg-white position-absolute w-100"
+                                              style={{
+                                                maxHeight: "220px",
+                                                zIndex: 9999,
+                                                overflowY: "auto",
+                                              }}
+                                              onScroll={(e) => {
+                                                if (
+                                                  e.target.scrollHeight -
+                                                    e.target.scrollTop ===
+                                                  e.target.clientHeight
+                                                ) {
+                                                  loadMore();
+                                                }
+                                              }}
+                                            >
+                                              {icdDropdown.length > 0 ? (
+                                                icdDropdown.map((icd) => (
+                                                  <div
+                                                    key={icd.icdId}
+                                                    className="p-2 cursor-pointer hover: "
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      updateICD(icd, index);
+                                                      setOpenDropdown(null);
+                                                    }}
+                                                  >
+                                                    {icd.icdCode} -{" "}
+                                                    {icd.icdName}
+                                                  </div>
+                                                ))
+                                              ) : (
+                                                <div className="p-2 text-muted">
+                                                  No results found
+                                                </div>
+                                              )}
+
+                                              {!lastPage && (
+                                                <div className="text-center p-2 text-primary small">
+                                                  Loading...
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.communicableDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "communicableDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input border-black"
+                                          checked={item.infectiousDisease}
+                                          onChange={(e) =>
+                                            handleDiagnosisChange(
+                                              index,
+                                              "infectiousDisease",
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </td>
+
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-success"
+                                          onClick={handleAddDiagnosisItem}
+                                        >
+                                          +
+                                        </button>
+                                      </td>
+
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-danger"
+                                          onClick={() =>
+                                            handleRemoveDiagnosisItem(index)
+                                          }
+                                          disabled={
+                                            diagnosisItems.length === 1 &&
+                                            !diagnosisItems[0].icdDiagId &&
+                                            !diagnosisItems[0].icdDiagnosis &&
+                                            !diagnosisItems[0]
+                                              .communicableDisease &&
+                                            !diagnosisItems[0]
+                                              .infectiousDisease
+                                          }
+                                        >
+                                          −
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Pregnancy Details */}
+                          {selectedPatient?.gender?.toLowerCase() ===
+                            "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
+                              </div>
+                              <div className="mt-2">
+                                <PregnancySection
+                                  ref={pregnancyRef}
+                                  patientId={selectedPatient?.patientId}
+                                  visitId={selectedPatient?.visitId}
+                                  opdPatientDetailsId={
+                                    vitalsAvailable
+                                      ? opdVitalsData?.opdPatientDetailsId
+                                      : null
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Psychiatrist Assessment display */}
                           {psychiatristAssessment?.rows?.length > 0 && (
                             <div className="mb-3 border rounded p-3 bg-light">
                               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -5518,30 +5711,6 @@ const GeneralMedicineWaitingList = () => {
                                   </ul>
                                 </div>
                               ))}
-                            </div>
-                          )}
-
-                          {/*Pregnancy*/}
-                          {selectedPatient?.gender?.toLowerCase() ===
-                            "female" && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <label className="form-label fw-bold m-0">
-                                  Pregnancy Details
-                                </label>
-                              </div>
-                              <div className="mt-2">
-                                <PregnancySection
-                                  ref={pregnancyRef} // ADD THIS REF
-                                  patientId={selectedPatient?.patientId}
-                                  visitId={selectedPatient?.visitId}
-                                  opdPatientDetailsId={
-                                    vitalsAvailable
-                                      ? opdVitalsData?.opdPatientDetailsId
-                                      : null
-                                  }
-                                />
-                              </div>
                             </div>
                           )}
                         </div>
@@ -5759,6 +5928,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Vision Examination Section */}
                 {shouldShowVisionExamination && (
                   <div className="card mb-3">
@@ -5793,6 +5963,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
                 )}
+
                 {/* OBG Details Section */}
                 {isObgynDepartment && (
                   <div className="card mb-3">
@@ -5823,6 +5994,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   </div>
                 )}
+
                 {/* Ear Examination Section */}
                 {isEntDepartment && (
                   <div className="card mb-3">
@@ -5849,6 +6021,7 @@ const GeneralMedicineWaitingList = () => {
                     )}
                   </div>
                 )}
+
                 {/* Dental Section */}
                 {shouldShowDentalExamination && (
                   <div className="card mb-3">
@@ -5877,217 +6050,8 @@ const GeneralMedicineWaitingList = () => {
                     )}
                   </div>
                 )}
-                {/* Diagnosis Section */}
-                <div className="card mb-3" style={{ overflow: "visible" }}>
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("diagnosis")}
-                  >
-                    <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.diagnosis ? "−" : "+"}
-                    </span>
-                  </div>
 
-                  {expandedSections.diagnosis && (
-                    <div className="card-body" style={{ overflow: "visible" }}>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold">
-                          Working Diagnosis
-                        </label>
-                        <input
-                          type="text"
-                          className={`form-control ${errors.workingDiagnosis || errors.diagnosis ? "is-invalid" : ""}`}
-                          style={{ width: "400px" }}
-                          value={workingDiagnosis}
-                          onChange={(e) => {
-                            setWorkingDiagnosis(e.target.value);
-                            if (errors.workingDiagnosis || errors.diagnosis) {
-                              setErrors((prev) => ({
-                                ...prev,
-                                workingDiagnosis: "",
-                                diagnosis: "",
-                              }));
-                            }
-                          }}
-                          placeholder="Enter working diagnosis"
-                          maxLength={40}
-                        />
-                        {(errors.workingDiagnosis || errors.diagnosis) && (
-                          <div className="invalid-feedback d-block">
-                            {errors.workingDiagnosis || errors.diagnosis}
-                          </div>
-                        )}
-                      </div>
-
-                      <div
-                        className="table-responsive"
-                        style={{ overflow: "visible" }}
-                      >
-                        <table className="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th className="col-md-6">ICD Diagnosis</th>
-                              <th className="col-md-2 text-center">
-                                Communicable
-                              </th>
-                              <th className="col-md-2 text-center">
-                                Infectious
-                              </th>
-                              <th className="col-md-1 text-center">Add</th>
-                              <th className="col-md-1 text-center">Delete</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {diagnosisItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%", zIndex: 20 }}
-                                    ref={dropdownRef}
-                                  >
-                                    {/* INPUT */}
-                                    <input
-                                      type="text"
-                                      className={`form-control ${errors.diagnosis ? "is-invalid" : ""}`}
-                                      placeholder="Search ICD..."
-                                      value={
-                                        diagnosisItems[index].icdDiagnosis ||
-                                        search[index] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleIcdSearch(e.target.value, index)
-                                      }
-                                      onClick={() => {
-                                        loadFirstPage(index);
-                                        setOpenDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setOpenDropdown(null);
-                                        }, 200);
-                                      }}
-                                    />
-
-                                    {/* DROPDOWN */}
-                                    {openDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMore();
-                                          }
-                                        }}
-                                      >
-                                        {/* ICD OPTIONS */}
-                                        {icdDropdown.length > 0 ? (
-                                          icdDropdown.map((icd) => (
-                                            <div
-                                              key={icd.icdId}
-                                              className="p-2 cursor-pointer hover: "
-                                              onMouseDown={(e) => {
-                                                e.preventDefault(); // 👈 prevents blur
-                                                updateICD(icd, index);
-                                                setOpenDropdown(null);
-                                              }}
-                                            >
-                                              {icd.icdCode} - {icd.icdName}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-
-                                        {!lastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.communicableDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "communicableDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.infectiousDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "infectiousDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddDiagnosisItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveDiagnosisItem(index)
-                                    }
-                                    disabled={
-                                      diagnosisItems.length === 1 &&
-                                      !diagnosisItems[0].icdDiagId &&
-                                      !diagnosisItems[0].icdDiagnosis &&
-                                      !diagnosisItems[0].communicableDisease &&
-                                      !diagnosisItems[0].infectiousDisease
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
+                {/* Investigation Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -6101,7 +6065,6 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body" style={{ overflow: "visible" }}>
-                      {/* Selected Templates Display */}
                       {selectedTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -6215,7 +6178,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       </div>
 
-                      {/* Radio Buttons */}
                       <div className="row mb-3">
                         <div className="col-12">
                           <div className="d-flex gap-4 flex-wrap">
@@ -6262,7 +6224,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       </div>
 
-                      {/* Investigation Table */}
                       <div
                         className="table-responsive"
                         style={{ overflow: "visible" }}
@@ -6287,7 +6248,6 @@ const GeneralMedicineWaitingList = () => {
                                         el;
                                     }}
                                   >
-                                    {/* INPUT */}
                                     <input
                                       type="text"
                                       className="form-control"
@@ -6315,7 +6275,6 @@ const GeneralMedicineWaitingList = () => {
                                       }}
                                     />
 
-                                    {/* DROPDOWN */}
                                     {openInvestigationDropdown === index && (
                                       <div
                                         className="border rounded mt-1 bg-white position-absolute w-100"
@@ -6340,7 +6299,7 @@ const GeneralMedicineWaitingList = () => {
                                               key={inv.investigationId}
                                               className="p-2 cursor-pointer hover:bg-light"
                                               onMouseDown={(e) => {
-                                                e.preventDefault(); // prevent blur
+                                                e.preventDefault();
                                                 updateInvestigation(inv, index);
                                               }}
                                             >
@@ -6417,6 +6376,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Treatment Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -6432,7 +6392,6 @@ const GeneralMedicineWaitingList = () => {
 
                   {expandedSections.treatment && (
                     <div className="card-body" style={{ overflow: "visible" }}>
-                      {/* Selected Templates Display */}
                       {selectedTreatmentTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -6488,7 +6447,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       )}
 
-                      {/* Template Dropdown + Create/Update Buttons */}
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Template</label>
@@ -6557,7 +6515,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       )}
 
-                      {/* Treatment Table */}
                       <div
                         className="table-responsive"
                         ref={tableContainerRef}
@@ -6695,7 +6652,7 @@ const GeneralMedicineWaitingList = () => {
                                                 className="p-2 cursor-pointer"
                                                 onMouseDown={(e) =>
                                                   e.preventDefault()
-                                                } // prevent blur
+                                                }
                                                 onClick={() => {
                                                   updateDrug(drug, index);
                                                   setActiveDrugDropdown(null);
@@ -6886,7 +6843,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
                       )}
 
-                      {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
                         <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
 
@@ -6917,6 +6873,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -7359,6 +7316,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -7374,7 +7332,6 @@ const GeneralMedicineWaitingList = () => {
                   {expandedSections.surgeryAdvice && (
                     <div className="card-body">
                       <div className="row mb-3 align-items-center">
-                        {/* Surgery Level */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold d-block">
                             Surgery Level
@@ -7419,7 +7376,6 @@ const GeneralMedicineWaitingList = () => {
                           </div>
                         </div>
 
-                        {/* OT */}
                         <div className="col-auto" style={{ minWidth: "180px" }}>
                           <label className="form-label small fw-bold mb-1">
                             OT <span className="text-danger">*</span>
@@ -7438,7 +7394,6 @@ const GeneralMedicineWaitingList = () => {
                           </select>
                         </div>
 
-                        {/* Surgery Date */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1">
                             Surgery Date <span className="text-danger">*</span>
@@ -7454,7 +7409,6 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
 
-                        {/* Start Time */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1">
                             Start Time <span className="text-danger">*</span>
@@ -7478,7 +7432,6 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
 
-                        {/* End Time */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1">
                             End Time <span className="text-danger">*</span>
@@ -7502,7 +7455,6 @@ const GeneralMedicineWaitingList = () => {
                           />
                         </div>
 
-                        {/* OTCalendar Button */}
                         <div className="col-auto">
                           <label className="form-label small fw-bold mb-1 d-block opacity-0">
                             OTCalendar
@@ -7585,7 +7537,6 @@ const GeneralMedicineWaitingList = () => {
                                       autoComplete="off"
                                     />
 
-                                    {/* DROPDOWN */}
                                     {isSurgeryDropdownVisible &&
                                       selectedSurgeryIndex === index && (
                                         <div
@@ -7686,6 +7637,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -7877,7 +7829,6 @@ const GeneralMedicineWaitingList = () => {
                                 </div>
                               </div>
 
-                              {/* {wardName && ( */}
                               <div className="row g-3 mt-3">
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">
@@ -7915,7 +7866,6 @@ const GeneralMedicineWaitingList = () => {
                                   />
                                 </div>
                               </div>
-                              {/* )} */}
                             </div>
                           )}
                         </div>
@@ -7923,6 +7873,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -8041,7 +7992,6 @@ const GeneralMedicineWaitingList = () => {
 
                       {referralData.isReferred === "Yes" && (
                         <>
-                          {/* INTERNAL REFERRAL */}
                           {referralData.referTo === "Internal" && (
                             <>
                               <div className="row mb-3">
@@ -8174,7 +8124,6 @@ const GeneralMedicineWaitingList = () => {
                             </>
                           )}
 
-                          {/* EXTERNAL REFERRAL */}
                           {referralData.referTo === "External" && (
                             <>
                               <div className="row mb-3">
@@ -8204,7 +8153,6 @@ const GeneralMedicineWaitingList = () => {
                             </>
                           )}
 
-                          {/* REFERRAL NOTES (COMMON FOR ALL TYPES) */}
                           <div className="row">
                             <div className="col-12">
                               <h6 className="fw-bold mb-3">Referral Notes</h6>
@@ -8235,6 +8183,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -8250,7 +8199,6 @@ const GeneralMedicineWaitingList = () => {
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between">
-                        {/* Checkbox */}
                         <div className="d-flex align-items-center gap-2">
                           <input
                             type="checkbox"
@@ -8263,7 +8211,6 @@ const GeneralMedicineWaitingList = () => {
                         </div>
 
                         <div className="d-flex align-items-center gap-4">
-                          {/* Number of Days */}
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">
                               Number of days
@@ -8301,24 +8248,26 @@ const GeneralMedicineWaitingList = () => {
                             )}
                           </div>
 
-                          {/* Follow Up Date (Read Only) */}
-<div className="d-flex align-items-center gap-2">
-  <label className="form-label mb-0">
-    Follow Up date
-  </label>
-  <input
-    type="text"  // 👈 Changed to text so it accepts our custom format
-    className="form-control"
-    style={{ width: "170px" }}
-    value={formatDateForDisplay(followUps.followUpDate)} // 👈 Formats as dd/MM/yyyy
-    readOnly
-  />
-</div>
+                          <div className="d-flex align-items-center gap-2">
+                            <label className="form-label mb-0">
+                              Follow Up date
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              style={{ width: "170px" }}
+                              value={formatDateForDisplay(
+                                followUps.followUpDate,
+                              )}
+                              readOnly
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
@@ -8332,7 +8281,6 @@ const GeneralMedicineWaitingList = () => {
                     </span>
                   </div>
 
-                  {/* BODY */}
                   {expandedSections.remarks && (
                     <div className="card-body">
                       <div className="row align-items-end">
@@ -8362,6 +8310,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="text-center mt-4">
                   <button
                     className="btn btn-primary me-3"
@@ -8399,7 +8348,6 @@ const GeneralMedicineWaitingList = () => {
           </div>
         </div>
 
-        {/* Modals - UPDATED */}
         <InvestigationModal
           show={showInvestigationModal}
           onClose={handleCloseInvestigationModal}
@@ -8421,7 +8369,6 @@ const GeneralMedicineWaitingList = () => {
           }}
         />
 
-        {/* OT Calendar Modal */}
         {showOtCalendarModal && (
           <div
             className="modal fade show"
@@ -8544,14 +8491,7 @@ const GeneralMedicineWaitingList = () => {
                           <th className="text-center" style={{ minWidth: 70 }}>
                             Total
                           </th>
-                          <th className="text-center" style={{ minWidth: 70 }}>
-                            Stock
-                          </th>
-                          <th style={{ minWidth: 130 }}>Prescribed By</th>
                           <th style={{ minWidth: 130 }}>Department</th>
-                          <th className="text-center" style={{ minWidth: 110 }}>
-                            Prescribed Date
-                          </th>
                           <th className="text-center" style={{ minWidth: 50 }}>
                             Stop
                           </th>
@@ -8576,16 +8516,7 @@ const GeneralMedicineWaitingList = () => {
                               <td className="text-center">
                                 {medication.total}
                               </td>
-                              <td className="text-center">
-                                {medication.stock || 0}
-                              </td>
-                              <td>{medication.prescribedBy}</td>
                               <td>{medication.department}</td>
-                              <td className="text-center">
-                                {formatDateForDisplay(
-                                  medication.prescribedDate,
-                                )}
-                              </td>
                               <td className="text-center">
                                 <input
                                   type="checkbox"
@@ -8906,15 +8837,25 @@ const GeneralMedicineWaitingList = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
-              <div className="d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">
+            <div
+              className="card-header"
+              style={{
+                background: "linear-gradient(90deg, #5b6bf7 0%, #6f7bf8 100%)",
+                color: "#fff",
+                padding: "0.75rem 1.25rem",
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h4 className="card-title p-2 mb-0 text-white">
                   {departmentName
                     ? `${departmentName} Waiting List`
                     : "Waiting List"}
                 </h4>
+
+                <VisitSummaryStats />
               </div>
             </div>
+
             <div className="card-body">
               <div className="card mb-3">
                 <div className="card-body">
@@ -8941,25 +8882,7 @@ const GeneralMedicineWaitingList = () => {
                       </select>
                     </div>
 
-                    <div className="col-md-2">
-                      <label className="form-label fw-bold">Session</label>
-                      <select
-                        className="form-select"
-                        value={searchFilters.session}
-                        onChange={(e) =>
-                          handleFilterChange("session", e.target.value)
-                        }
-                      >
-                        <option value="">Select</option>
-                        {sessionData.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.sessionName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-2">
+                    <div className="col-md-3">
                       <label className="form-label fw-bold">Mobile No.</label>
                       <input
                         type="text"
@@ -8972,7 +8895,7 @@ const GeneralMedicineWaitingList = () => {
                       />
                     </div>
 
-                    <div className="col-md-2">
+                    <div className="col-md-3">
                       <label className="form-label fw-bold">Patient Name</label>
                       <input
                         type="text"
@@ -9023,7 +8946,6 @@ const GeneralMedicineWaitingList = () => {
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>S.N.</th>
                       <th>Token No.</th>
                       <th>Patient No.</th>
                       <th>Patient Name</th>
@@ -9031,6 +8953,7 @@ const GeneralMedicineWaitingList = () => {
                       <th>Age</th>
                       <th>Gender</th>
                       <th>Visit Type</th>
+                      <th>Action</th>
                       <th>Action</th>
                       <th>Action</th>
                     </tr>
@@ -9051,16 +8974,8 @@ const GeneralMedicineWaitingList = () => {
                         </td>
                       </tr>
                     ) : currentItems.length > 0 ? (
-                      currentItems.map((item, index) => (
-                        <tr
-                          key={item.id}
-                          onClick={() => handleRowClick(item)}
-                          style={{ cursor: "pointer" }}
-                        >
-                          {/* SERIAL NUMBER */}
-                          <td>
-                            {(currentPage - 1) * itemsPerPage + index + 1}
-                          </td>
+                      currentItems.map((item) => (
+                        <tr key={item.id}>
                           <td className="text-center">
                             <span className="badge btn btn-primary fs-6 px-2 py-1 rounded-pill shadow-sm">
                               {item.tokenNo}
@@ -9073,7 +8988,28 @@ const GeneralMedicineWaitingList = () => {
                           <td>{item.gender}</td>
                           <td>{item.visitType}</td>
 
-                          {/* RELEASE BUTTON */}
+                          {/* 👈 Start Consultation button */}
+                          <td>
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={(e) => handleStartConsultation(item, e)}
+                              disabled={startingVisitId === item.visitId}
+                            >
+                              {startingVisitId === item.visitId ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-1"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Starting...
+                                </>
+                              ) : (
+                                "START CONSULTATION"
+                              )}
+                            </button>
+                          </td>
+
                           <td>
                             <button
                               className="btn btn-primary btn-sm"
@@ -9086,7 +9022,6 @@ const GeneralMedicineWaitingList = () => {
                             </button>
                           </td>
 
-                          {/* CLOSE BUTTON */}
                           <td>
                             <button
                               className="btn btn-danger btn-sm"
