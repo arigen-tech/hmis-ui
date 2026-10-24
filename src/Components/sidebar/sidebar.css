@@ -4,13 +4,15 @@
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  border-radius: 0 1.5rem 1.5rem 0;
+  border-radius: 0 1rem 1rem 0;
   color: #94a3b8 !important;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column; /* make sidebar a flex container */
+  margin: 0 !important;
+  padding: 12px;
 }
 
 /* Inner container – takes all height and allows children to shrink */
@@ -26,11 +28,12 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.25rem 1.5rem 0.25rem;
+  gap: 18px;
   text-decoration: none !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 1rem;
+  padding: 4px 12px 16px 12px;
+  margin-right: -12px;
+  margin-left: -12px;
 }
 
 .logo-icon {
@@ -61,22 +64,21 @@
 /* Sidebar Search – never shrink */
 .sidebar-search-wrapper {
   flex-shrink: 0;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
   background: inherit;
   position: sticky;
   top: 0;
   z-index: 1020;
+  padding: 15px 0px 12px 0px;
 }
 
 #sidebar-search {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.05) url("../../../public/images/icons/search-icon.svg") no-repeat right center !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem !important;
   color: #ffffff !important;
-  padding: 0.6rem 1rem !important;
   font-size: 0.85rem !important;
   transition: all 0.2s ease !important;
+  padding: 10px 35px 10px 12px !important;
 }
 
 #sidebar-search::placeholder {
@@ -84,7 +86,7 @@
 }
 
 #sidebar-search:focus {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.08) url("../../../public/images/icons/search-icon.svg") no-repeat right center !important;
   border-color: rgba(59, 130, 246, 0.5) !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
   outline: none !important;
@@ -116,15 +118,15 @@
   display: none; /* Chrome / Safari / new Edge */
 }
 
-.menu-list li {
+/* .menu-list li {
   margin-bottom: 0.35rem;
-}
+} */
 
 .custom-scrollbar-track {
   position: absolute;
   top: 0;
-  right: 2px;
-  width: 8px;
+  right: -6px;
+  width: 6px;
   height: 100%;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 10px;
@@ -167,22 +169,23 @@
 .m-link,
 .ms-link {
   display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem !important;
+  align-items: center;  
   color: #94a3b8 !important;
   text-decoration: none !important;
   font-weight: 500 !important;
-  font-size: 0.9rem !important;
+  font-size: 14px !important;
   border-radius: 0.75rem !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   border: 1px solid transparent !important;
+  padding: 10px 12px !important;
 }
 
 .m-link i,
 .ms-link i {
   color: #64748b !important;
   transition: color 0.2s ease;
-  margin-right: 0.75rem;
+  font-size: 16px !important;
+  margin-right: 12px;
 }
 
 /* Hover state */
@@ -190,12 +193,16 @@
 .ms-link:hover {
   color: #ffffff !important;
   background: rgba(255, 255, 255, 0.04) !important;
-  padding-left: 1.25rem !important;
+  padding-left: 14px !important;
 }
 
 .m-link:hover i,
 .ms-link:hover i {
   color: #3b82f6 !important;
+}
+
+.m-link:hover .collapse-arro {
+  color: #ffffff !important;
 }
 
 /* Active links highlight */
@@ -215,7 +222,7 @@
 
 /* Submenu collapse arrows */
 .collapse-arrow {
-  color: #64748b !important;
+  color: #f1f1f1 !important;  
   font-size: 1rem !important;
   transition: transform 0.3s ease !important;
 }
@@ -223,6 +230,14 @@
 .m-link[aria-expanded="true"] .collapse-arrow {
   transform: rotate(180deg) !important;
   color: #3b82f6 !important;
+}
+
+.sidebar-mini .brand-icon .logo-text{
+  display: none;
+}
+
+.sidebar-mini .menu-list .m-link i {
+  font-size: 24px !important;
 }
 
 /* Sub-menus styling */
@@ -251,6 +266,11 @@
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
   transition: all 0.2s ease;
   margin-top: auto;
+  padding: 2px 15px;
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .sidebar-mini-btn:hover {
