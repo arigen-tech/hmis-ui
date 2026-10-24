@@ -99,6 +99,7 @@ export const DASHBOARD_INPATIENT_SUMMARY_API = `/dashboard/inpatient-summary`;
 export const DEPARTMENT = `/department`;
 
 export const MAS_OPERATION_THEATRE = `${MASTERS}/operationTheatre`;
+export const MAS_OT_TYPE = `${MASTERS}/masOtType`;
 export const MAS_OT_DAY_ALLOCATION = `${MASTERS}/otDayAllocation`;
 export const MAS_ANAESTHESIA_TYPE = `${MASTERS}/masAnaesthesiaType`;
 export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction`;
