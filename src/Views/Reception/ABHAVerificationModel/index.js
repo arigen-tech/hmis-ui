@@ -118,15 +118,16 @@ const ABHAVerificationModal = ({
       return "Enter a valid 14-digit ABHA number.";
     }
 
+    // UPDATED REGEX HERE
     if (
       methodId === "1003" &&
-      !/^[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*$/.test(trimmedValue)
+      !/^[a-zA-Z0-9._]+@[a-zA-Z0-9]+$/.test(trimmedValue)
     ) {
-      return "Enter a valid ABHA ID / Address. Spaces are not allowed.";
+      return "Enter a valid ABHA ID / Address (e.g., username@abdm).";
     }
 
     return "";
-  };
+};
 
   const getMethodLabel = (methodId) => {
     const map = {
