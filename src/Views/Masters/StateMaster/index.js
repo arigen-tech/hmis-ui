@@ -34,7 +34,7 @@ const StateMaster = () => {
     const [loading, setLoading] = useState(true);
 
     const STATE_CODE_MAX_LENGTH = 8;
-    const STATE_NAME_MAX_LENGTH = 30;
+    const STATE_NAME_MAX_LENGTH = 100;
 
     useEffect(() => {
         fetchStates(0);
@@ -157,8 +157,7 @@ const handleSave = async (e) => {
         `${MAS_STATE}/updateById/${editingState.id}`,
         payload
       );
-
-      if (response.status === 200) {
+      if (response.data.status === 200) {
         setPopupMessage({
           message: UPDATE_STATE_SUCC_MSG,
           type: "success",
@@ -169,7 +168,7 @@ const handleSave = async (e) => {
           },
         });
       } else {
-        throw new Error(response.message || "Update failed");
+        throw new Error(response.data.message || "Update failed");
       }
 
     } else {
@@ -200,7 +199,7 @@ const handleSave = async (e) => {
     console.error("Error saving state:", error);
 
     showPopup(
-      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      error.message || FAIL_TO_SAVE_CHANGES,
       "error"
     );
 
