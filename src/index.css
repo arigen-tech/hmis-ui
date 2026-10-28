@@ -25476,19 +25476,21 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   background-color: var(--white-color);
   font-size: 14px;
   color: #4dca88;
-  border: solid 1px #4dca88;  
-  width: 38px ;
+  border: solid 1px #4dca88;
+  width: 38px;
   height: 38px;
   border-radius: 30px;
   padding: 0;
-  display: flex ;
+  display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.30s ease-in-out;
-  
+
 }
-.btn-view:hover{
-  background-color: #4DCA88;;
+
+.btn-view:hover {
+  background-color: #4DCA88;
+  ;
   color: var(--white-color);
   border-color: #1D8B58;
 }
@@ -25499,20 +25501,62 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   gap: 10px;
   margin-bottom: 8px;
 }
+
 .showPopupBtn .btn-view {
   width: 24px;
-  height: 24px;  
+  height: 24px;
   font-size: 12px;
   padding: 0;
   margin-top: -6px;
   margin-bottom: -6px;
 }
 
+.btn-back {
+  background-color: transparent;
+  width: 30px;
+  height: 30px;
+  border: solid 1px rgb(255 255 255/0.7);
+  border-radius: 30px;
+  color: rgb(255 255 255/0.7);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-/* Aanand */
+.btn-back:hover {
+  border: solid 1px var(--white-color);
+  border-radius: 30px;
+  color: var(--white-color);
+}
 
+
+/* Accordion added by Aanand  */
 .forHeader .card .card-header {
-  padding: 11px 16px;
+  background-color: #f5f5f5 !important;
+  color: rgb(0 0 0 / 0.80);
+  padding: 8px 16px;
+}
+
+.forHeader .card .card-header:hover {
+  background-color: #eee !important;
+}
+
+.forHeader .card .card-header h6 {
+  color: rgb(0 0 0 / 0.80);
+}
+
+.forHeader .card .card-header span {
+  font-size: 12px;
+  color: rgb(0 0 0 / 0.80);
+  width: 32px;
+  height: 32px;
+  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid rgb(177, 177, 177);
+  border-radius: 30px;
 }
 
 
@@ -26126,17 +26170,19 @@ table td .status {
   gap: 20px;
 }
 
-.radioLabel{
+.radioLabel {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.radioLabel, .radioLabel span{
+
+.radioLabel,
+.radioLabel span {
   font-size: 14px;
   font-weight: 600;
 }
 
-.checkLabel{
+.checkLabel {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -26193,19 +26239,19 @@ table td .status {
   box-shadow: 0 8px 24px rgba(23, 35, 61, 0.06);
 }
 
-.cardProcedure .row>div:last-child{
+.cardProcedure .row>div:last-child {
   text-align: center;
   padding-left: 0;
 }
 
-.cardProcedure .row>div:last-child > div{
+.cardProcedure .row>div:last-child>div {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
 }
 
-.btnAdd {  
+.btnAdd {
   border: 0 !important;
   width: 38px;
   height: 38px;
@@ -26216,11 +26262,12 @@ table td .status {
   align-items: center;
   justify-content: center;
 }
-.btnAdd i{
+
+.btnAdd i {
   font-size: 14px;
 }
 
-.btnDel {  
+.btnDel {
   background: #ffe0e2 !important;
   border: 0 !important;
   width: 38px;
@@ -26232,10 +26279,12 @@ table td .status {
   align-items: center;
   justify-content: center;
 }
-.btnDel:hover{
+
+.btnDel:hover {
   background-color: #fc5a69 !important;
 }
-.btnDel i{
+
+.btnDel i {
   font-size: 14px;
 }
 
@@ -26244,4 +26293,25 @@ table td .status {
   justify-content: center;
   align-items: center;
   gap: 10px;
+}
+
+.btnOutline {
+  border: solid 1px rgb(0 0 0 / 0.4) !important;
+  color: rgb(0 0 0 / 0.80);
+}
+
+.btnOutline:hover {
+  background-color: rgb(0 0 0 / 0.12) !important;
+}
+
+.statusBadges{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.statusBadges span{
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 15px;
+  border-radius: 30px;
 }

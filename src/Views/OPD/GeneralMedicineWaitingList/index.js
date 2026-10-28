@@ -5132,16 +5132,9 @@ const GeneralMedicineWaitingList = () => {
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h4 className="card-title p-2 mb-0">
-                    PATIENT CONSULTATION - {selectedPatient.patientName}
-                  </h4>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleBackToList}
-                  >
-                    <i className="icofont-arrow-left me-1"></i> Back to List
-                  </button>
+                <div className="d-flex align-items-center gap-1">
+                  <button className="btn-back" title="Back to List" onClick={handleBackToList}><i className="icofont-arrow-left"></i></button>
+                  <h4 className="card-title p-2 mb-0">Patient Consultation - {selectedPatient.patientName}</h4>
                 </div>
               </div>
 
@@ -5247,7 +5240,6 @@ const GeneralMedicineWaitingList = () => {
                         alt="Profile photo"
                         className="img-fluid rounded border shadow-sm"
                         style={{
-                          width: "90px",
                           height: "90px",
                           objectFit: "cover",
                         }}
@@ -5265,9 +5257,7 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("vitalDetail")}
                   >
                     <h6 className="mb-0 fw-bold">Vital and Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.vitalDetail ? "−" : "+"}
-                    </span>
+                    <span>{expandedSections.vitalDetail ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}</span>
                   </div>
                   {expandedSections.vitalDetail && (
                     <div className="card-body">
@@ -5464,6 +5454,11 @@ const GeneralMedicineWaitingList = () => {
                       <div className="mb-4">
                         <h4 className="fw-bold mb-3">Patient History</h4>
                         <div className="patientHistoryBtn">
+                          {/* { id: "audit-history", label: "Audit History" },
+                            {
+                              id: "psychiatrist",
+                              label: "Psychiatrist Assessment",
+                            }, */}
                           {[
                             {
                               id: "previous-visits",
@@ -5966,10 +5961,7 @@ const GeneralMedicineWaitingList = () => {
                       onClick={() => toggleSection("visionExamination")}
                     >
                       <h6 className="mb-0 fw-bold">Ophthal Examination</h6>
-
-                      <span style={{ fontSize: "18px" }}>
-                        {expandedSections.visionExamination ? "−" : "+"}
-                      </span>
+                      <span>{expandedSections.visionExamination ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}</span>
                     </div>
 
                     <div
@@ -6087,8 +6079,8 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("investigation")}
                   >
                     <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.investigation ? "−" : "+"}
+                    <span>
+                      {expandedSections.investigation ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.investigation && (
@@ -6148,10 +6140,10 @@ const GeneralMedicineWaitingList = () => {
                       )}
 
                       <div className="row mb-3 align-items-center">
-                        <div className="col-md-2">
+                        <div className="col-md-1">
                           <label className="form-label fw-bold">Template</label>
                         </div>
-                        <div className="col-md-4">
+                        <div className="col-md-3">
                           <select
                             className="form-select"
                             value={selectedInvestigationTemplate}
@@ -6404,8 +6396,8 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("treatment")}
                   >
                     <h6 className="mb-0 fw-bold">Treatment</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.treatment ? "−" : "+"}
+                    <span>
+                      {expandedSections.treatment ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
@@ -6468,7 +6460,7 @@ const GeneralMedicineWaitingList = () => {
 
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
-                          <label className="form-label fw-bold">Template</label>
+                          <label className="form-label fw-bold mb-0">Template</label>
                         </div>
 
                         <div className="col-md-4">
@@ -6808,25 +6800,25 @@ const GeneralMedicineWaitingList = () => {
                                   </td>
 
                                   <td className="text-center">
-                                  <div className="btnCenter"> 
-                                    <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddTreatmentItem}><i class="icofont-plus"></i></button>
-                                    <button className="btn btn-outline-danger btnDel" title="Delete"
-                                      onClick={() =>
-                                        handleRemoveTreatmentItem(index)
-                                      }
-                                      disabled={
-                                        treatmentItems.length === 1 &&
-                                        !treatmentItems[0].drugName &&
-                                        !treatmentItems[0].dispUnit &&
-                                        !treatmentItems[0].dosage &&
-                                        !treatmentItems[0].frequency &&
-                                        !treatmentItems[0].days &&
-                                        !treatmentItems[0].total &&
-                                        !treatmentItems[0].instruction &&
-                                        treatmentItems[0].stock === "0" &&
-                                        !treatmentItems[0].treatmentId
-                                      }
-                                    ><i class="icofont-trash"></i></button>
+                                    <div className="btnCenter">
+                                      <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddTreatmentItem}><i class="icofont-plus"></i></button>
+                                      <button className="btn btn-outline-danger btnDel" title="Delete"
+                                        onClick={() =>
+                                          handleRemoveTreatmentItem(index)
+                                        }
+                                        disabled={
+                                          treatmentItems.length === 1 &&
+                                          !treatmentItems[0].drugName &&
+                                          !treatmentItems[0].dispUnit &&
+                                          !treatmentItems[0].dosage &&
+                                          !treatmentItems[0].frequency &&
+                                          !treatmentItems[0].days &&
+                                          !treatmentItems[0].total &&
+                                          !treatmentItems[0].instruction &&
+                                          treatmentItems[0].stock === "0" &&
+                                          !treatmentItems[0].treatmentId
+                                        }
+                                      ><i class="icofont-trash"></i></button>
                                     </div>
                                   </td>
                                 </tr>
@@ -6848,7 +6840,7 @@ const GeneralMedicineWaitingList = () => {
                           <div className="d-flex align-items-center gap-2">
                             <textarea
                               className="form-control me-2"
-                              style={{height: "50px", flex:"1"}}
+                              style={{ height: "50px", flex: "1" }}
                               rows={3}
                               value={generalTreatmentAdvice}
                               placeholder="Treatment advice will be populated here"
@@ -6858,9 +6850,9 @@ const GeneralMedicineWaitingList = () => {
                             />
 
                             <button class="btn-view" onClick={(e) => {
-                                e.stopPropagation();
-                                openPopup("treatmentAdvice");
-                              }}><i class="icofont-plus"></i></button>                            
+                              e.stopPropagation();
+                              openPopup("treatmentAdvice");
+                            }}><i class="icofont-plus"></i></button>
                           </div>
                         </div>
                       </div>
@@ -6876,8 +6868,8 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("procedureCare")}
                   >
                     <h6 className="mb-0 fw-bold">Procedure Care</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.procedureCare ? "−" : "+"}
+                    <span>
+                      {expandedSections.procedureCare ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.procedureCare && (
@@ -7388,8 +7380,8 @@ const GeneralMedicineWaitingList = () => {
                     onClick={handleSurgeryAdviceOpen}
                   >
                     <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.surgeryAdvice ? "−" : "+"}
+                    <span>
+                      {expandedSections.surgeryAdvice ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.surgeryAdvice && (
@@ -7738,15 +7730,15 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("admissionAdvice")}
                   >
                     <h6 className="mb-0 fw-bold">Admission Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.admissionAdvice ? "−" : "+"}
+                    <span>
+                      {expandedSections.admissionAdvice ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.admissionAdvice && (
                     <div className="card-body">
                       <div className="row">
                         <div className="col-md-12">
-                          <div className="row mb-3">
+                          <div className="row">
                             <div className="col-md-3">
                               <div className="form-check d-flex align-items-center h-100">
                                 <input
@@ -7973,8 +7965,8 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("referral")}
                   >
                     <h6 className="mb-0 fw-bold">Referral</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.referral ? "−" : "+"}
+                    <span>
+                      {expandedSections.referral ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.referral && (
@@ -8376,25 +8368,22 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("followUp")}
                   >
                     <h6 className="mb-0 fw-bold">Follow Up</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.followUp ? "−" : "+"}
+                    <span>
+                      {expandedSections.followUp ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center gap-4">
-                        <div className="d-flex align-items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="form-check-input m-0"
-                            checked={Boolean(followUps.followUpFlag)}
-                            onChange={handleFollowUpChange}
-                          />
-                          <h6 className="fw-bold mb-0">Follow Up</h6>
-                        </div>
 
-                        <div className="d-flex align-items-center gap-4">
+                        <label class="form-check-label">
+                          <input class="form-check-input" type="checkbox" checked={Boolean(followUps.followUpFlag)}
+                            onChange={handleFollowUpChange} />
+                          <span>Follow Up</span>
+                        </label>
+
+                        {followUps.followUpFlag && <div className="d-flex align-items-center gap-4">
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">
                               Number of days
@@ -8447,6 +8436,9 @@ const GeneralMedicineWaitingList = () => {
                             />
                           </div>
                         </div>
+                        }
+
+
                       </div>
                     </div>
                   )}
@@ -8460,64 +8452,56 @@ const GeneralMedicineWaitingList = () => {
                     onClick={() => toggleSection("remarks")}
                   >
                     <h6 className="mb-0 fw-bold">Final Medicine Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.remarks ? "−" : "+"}
+                    <span>
+                      {expandedSections.remarks ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
                   {expandedSections.remarks && (
                     <div className="card-body">
                       <div className="d-flex align-items-center gap-2">
-                          <textarea
-                            className="form-control"
-                            style={{height:"40px", flex:"1"}}
-                            rows={4}
-                            value={doctorRemarksText}
-                            onChange={(e) =>
-                              setDoctorRemarksText(e.target.value)
-                            }
-                            placeholder="Doctor's remarks will be populated here"
-                          />
-                          <button class="btn-view" onClick={(e) => {
-                              e.stopPropagation();
-                              openPopup("doctorRemark");
-                            }}><i class="icofont-plus"></i></button>
-                        </div>
+                        <textarea
+                          className="form-control"
+                          style={{ height: "40px", flex: "1" }}
+                          rows={4}
+                          value={doctorRemarksText}
+                          onChange={(e) =>
+                            setDoctorRemarksText(e.target.value)
+                          }
+                          placeholder="Doctor's remarks will be populated here"
+                        />
+                        <button class="btn-view" onClick={(e) => {
+                          e.stopPropagation();
+                          openPopup("doctorRemark");
+                        }}><i class="icofont-plus"></i></button>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="text-center mt-4">
-                  <button
-                    className="btn btn-primary me-3"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    type="button"
-                  >
+                <div className="d-flex justify-content-between align-items-center mt-4">
+
+                <div className="">
+                  <button className="btn btnOutline" onClick={handleBackToList}>
+                    <i class="icofont-arrow-left"></i> <span>Back</span>
+                  </button>
+                </div>
+                <div className="">
+                  <button className="btn btnOutline me-3" onClick={handleResetForm}>Reset</button>
+                  <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={isSubmitting} type="button">
                     {isSubmitting ? (
                       <>
-                        <i className="mdi mdi-loading mdi-spin"></i>{" "}
-                        PROCESSING...
+                        <i className="mdi mdi-loading mdi-spin"></i>
+                        <span>Processing...</span>
                       </>
                     ) : (
                       <>
-                        <i className="mdi mdi-content-save"></i> SUBMIT
+                        Submit
                       </>
                     )}
                   </button>
-                  <button
-                    className="btn btn-secondary me-3"
-                    onClick={handleResetForm}
-                  >
-                    <i className="mdi mdi-refresh"></i> RESET
-                  </button>
-
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleBackToList}
-                  >
-                    <i className="mdi mdi-arrow-left"></i> BACK
-                  </button>
+                </div>
+                  
                 </div>
               </div>
             </div>
@@ -9221,11 +9205,9 @@ const GeneralMedicineWaitingList = () => {
                 </table>
               </div>
 
-              <div className="d-flex mb-3 mt-3">
-                <span className="badge bg-danger me-2">Priority-1</span>
-                <span className="badge bg-warning text-dark me-2">
-                  Priority-2
-                </span>
+              <div className="statusBadges">
+                <span className="badge bg-danger">Priority-1</span>
+                <span className="badge bg-warning text-dark">Priority-2</span>
                 <span className="badge bg-success">Priority-3</span>
               </div>
 

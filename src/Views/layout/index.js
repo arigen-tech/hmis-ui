@@ -14,11 +14,12 @@ const Layout = () => {
       <div id="ihealth-layout" className="theme-tradewind">
         <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
         <div className="main">
-
             <Header toggleSidebar={toggleSidebar} collapsed={sidebarCollapsed} />
             
             <div className="main-panel">
-              <Outlet />
+              <div className='mainContent'>
+                <Outlet />
+              </div>
               <Footer />
             </div>
 
