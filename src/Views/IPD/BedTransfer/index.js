@@ -556,15 +556,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
   }
 
   const handleAcceptTransfer = async (transfer, allocatedBed) => {
-    if (!allocatedBed) {
-      Swal.fire({
-        title: "Warning",
-        text: BED_TRANSFER_ALLOCATE_BED_WARN,
-        icon: "warning"
-      })
-      return
-    }
-    
+    const finalBed = allocatedBed || transfer?.targetBed || ""
     const inpatientId = transfer.raw?.inpatientId || transfer.id || 0
 
     try {
@@ -576,7 +568,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
       if (isSuccess) {
         Swal.fire({
           title: "Success",
-          html: `Transfer <b>${transfer.trfNo}</b> ACCEPTED. Bed <b>${allocatedBed}</b> allocated.<br/><br/>
+          html: `Transfer <b>${transfer.trfNo}</b> ACCEPTED.${finalBed ? ` Bed <b>${finalBed}</b> allocated.` : ""}<br/><br/>
                  <div class="text-start ps-4">
                    ✓ Main inpatient table Ward/Bed updated
                  </div>`,
@@ -584,7 +576,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
         }).then(() => {
           setTransfers(prev => prev.map(t =>
             t.id === transfer.id
-              ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
+              ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: finalBed }
               : t
           ))
           
@@ -653,8 +645,6 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
 
   // Detail view for a pending transfer
   const renderPendingDetail = (transfer) => {
-    const currentSelectedBed = selectedBedForTransfer || transfer.targetBed || ""
-
     return (
       <div>
         <div className="mb-3">
@@ -692,33 +682,13 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 <strong>Clinical Notes:</strong>
                 <p className="text-muted mb-2">{transfer.clinicalNotes || "—"}</p>
               </div>
-              
-              <div className="col-12 mt-2">
-                <div className="border rounded p-3 bg-light">
-                  <label className="form-label fw-bold mb-2">
-                    Allocate Bed in {transfer.targetWard}
-                  </label>
-                  <select
-                    className="form-select form-select-sm mb-2"
-                    value={currentSelectedBed}
-                    onChange={(e) => setSelectedBedForTransfer(e.target.value)}
-                  >
-                    <option value="">Select Bed</option>
-                    {detailWardBeds.map(b => (
-                      <option key={b.bedId || b.bedNo} value={b.bedNo || b.bedId}>
-                        {b.bedNo || b.bedId}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
             </div>
           </div>
           <div className="card-footer bg-white">
             {transfer.status === TRANSFER_STATUS.PENDING && (
               <button 
                 className="btn btn-success btn-sm me-2"
-                onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
+                onClick={() => handleAcceptTransfer(transfer, transfer.targetBed)}
               >
                 Accept Transfer
               </button>

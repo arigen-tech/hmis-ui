@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getRequest } from "../../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
@@ -6,7 +6,58 @@ import { INVESTIGATIONS_END_URL, LAB_REPORT_URL_WRT_ORDER_HD, MAX_MONTHS_BACK, R
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../../config/constants';
 import { checkInRange, getResultTextStyle } from "../../../../utils/rangeCheckService";
-import { formatDateForDisplay } from "../../../../utils/dateUtils";
+import {formatDateForDisplay} from "../../../../utils/dateUtils";
+
+
+const isTextInvestigation = (type) => String(type || "").toLowerCase() === "t";
+
+const htmlToPlainText = (html) => {
+  if (!html) return "";
+  try {
+    
+    const spaced = String(html)
+      .replace(/<\/(p|div|h[1-6]|li|ul|ol|tr|table)>/gi, " </$1>")
+      .replace(/<br\s*\/?>/gi, " ");
+    const doc = new DOMParser().parseFromString(spaced, "text/html");
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+  } catch (e) {
+    return String(html).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
+};
+
+
+const sanitizeHtml = (html) => {
+  if (!html) return "";
+  try {
+    const doc = new DOMParser().parseFromString(String(html), "text/html");
+    doc.querySelectorAll("script, style, iframe, object, embed, link, meta").forEach((el) => el.remove());
+    doc.body.querySelectorAll("*").forEach((el) => {
+      Array.from(el.attributes).forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const val = (attr.value || "").trim().toLowerCase();
+        if (name.startsWith("on") || val.startsWith("javascript:")) {
+          el.removeAttribute(attr.name);
+        }
+      });
+    });
+    return doc.body.innerHTML;
+  } catch (e) {
+    return "";
+  }
+};
+
+
+const clampedTextStyle = {
+  display: "-webkit-box",
+  WebkitLineClamp: 3,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: "380px",
+  cursor: "pointer",
+  color: "#0d6efd",
+  wordBreak: "break-word",
+};
 
 const LabReports = () => {
   const [mobileNo, setMobileNo] = useState("")
@@ -16,19 +67,88 @@ const LabReports = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [labData, setLabData] = useState([])
   const [totalElements, setTotalElements] = useState(0)
-  const [isSearching, setIsSearching] = useState(false)  // Added: separate search loading state
+  const [isSearching, setIsSearching] = useState(false)  // separate search loading state
   const [showReport, setShowReport] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null);
 
-  // Add these state variables for PDF handling
+  // PDF handling
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
+
+  // Full result (HTML) popup
+  const [resultPopup, setResultPopup] = useState(null); // { title, html }
+
+  // Hover preview popup for text results: { title, patientName, html, top, left, openUp }
+  const [hoverPopup, setHoverPopup] = useState(null);
+  const hoverOpenTimer = useRef(null);
+  const hoverCloseTimer = useRef(null);
 
   // Track loading states for individual records
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
 
   const hospitalId = sessionStorage.getItem("hospitalId");
+
+  // Clear hover timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(hoverOpenTimer.current);
+      clearTimeout(hoverCloseTimer.current);
+    };
+  }, []);
+
+  // Schedule opening the hover popup (small delay avoids accidental popups
+  // while the mouse is just passing over the table)
+  const handleResultMouseEnter = (e, item) => {
+    e.currentTarget.style.textDecoration = "underline";
+    clearTimeout(hoverCloseTimer.current);
+    clearTimeout(hoverOpenTimer.current);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    hoverOpenTimer.current = setTimeout(() => {
+      const popupWidth = 520;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - popupWidth - 8));
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < 320 && rect.top > spaceBelow;
+
+      setHoverPopup({
+        title: item.investigationName || "Result",
+        patientName: item.patientName,
+        html: sanitizeHtml(item.result),
+        left,
+        top: rect.bottom + 4,
+        bottom: window.innerHeight - rect.top + 4,
+        openUp,
+      });
+    }, 250);
+  };
+
+  // Schedule closing the hover popup (delay lets the mouse move onto the popup)
+  const handleResultMouseLeave = (e) => {
+    e.currentTarget.style.textDecoration = "none";
+    clearTimeout(hoverOpenTimer.current);
+    clearTimeout(hoverCloseTimer.current);
+    hoverCloseTimer.current = setTimeout(() => setHoverPopup(null), 200);
+  };
+
+  const keepHoverPopupOpen = () => {
+    clearTimeout(hoverCloseTimer.current);
+  };
+
+  const closeHoverPopupSoon = () => {
+    clearTimeout(hoverCloseTimer.current);
+    hoverCloseTimer.current = setTimeout(() => setHoverPopup(null), 200);
+  };
+
+  // Close the result popup with the Escape key
+  useEffect(() => {
+    if (!resultPopup) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setResultPopup(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [resultPopup]);
 
   // Function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -39,10 +159,10 @@ const LabReports = () => {
   const getMonthDifference = (date1, date2) => {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
-    
+
     let months = (d2.getFullYear() - d1.getFullYear()) * 12;
     months += d2.getMonth() - d1.getMonth();
-    
+
     return months;
   };
 
@@ -54,7 +174,7 @@ const LabReports = () => {
         setPopupMessage(null);
       },
     });
-  }; 
+  };
 
   // Build gender/age string from separate fields
   const getGenderAge = (gender, age) => {
@@ -85,7 +205,7 @@ const LabReports = () => {
         params.append([REQUEST_PARAM_FROM_DATE], fromDate);
         params.append([REQUEST_PARAM_TO_DATE], toDate);
       }
-      
+
       // Add pagination parameters (using 0-based page number for API)
       params.append([REQUEST_PARAM_PAGE], page - 1);
       params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
@@ -93,18 +213,18 @@ const LabReports = () => {
       // Make API call
       const response = await getRequest(`${INVESTIGATIONS_END_URL}?${params.toString()}`);
 
-      console.log("API Response:", response);
-
       if (response && response.status === 200 && response.response) {
         const pageData = response.response;
         const content = pageData.content || [];
         const total = pageData.totalElements || 0;
-        
+
         // Map API response to match frontend structure and calculate inRange
         const mappedData = content.map(item => {
-          // Calculate inRange using checkInRange function
-          const inRange = checkInRange(item.result, item.range);
-          
+          const isText = isTextInvestigation(item.investigationType);
+
+          // Range check only makes sense for simple (non-text) results
+          const inRange = isText ? null : checkInRange(item.result, item.range);
+
           return {
             id: item.resultEntryDetailsId || item.orderHdId || Math.random().toString(),
             orderHdId: item.orderHdId,
@@ -113,6 +233,8 @@ const LabReports = () => {
             mobileNo: item.phnNum || "",
             genderAge: getGenderAge(item.gender, item.age),
             investigationName: item.investigationName || "",
+            investigationType: item.investigationType || "",
+            isTextResult: isText,
             unit: item.unit || "",
             result: item.result || "",
             range: item.range || "",
@@ -164,16 +286,16 @@ const LabReports = () => {
       }
     }
 
-    setIsSearching(true);  // Added: set searching state to true
+    setIsSearching(true);
     setCurrentPage(1);
-    
+
     try {
       await fetchLabReports(1);
     } catch (error) {
       console.error("Error during search:", error);
       showPopup(FETCH_LAB_HISTORY_REPORT_ERR_MSG, "error");
     } finally {
-      setIsSearching(false);  // Added: set searching state to false
+      setIsSearching(false);
     }
   }
 
@@ -205,7 +327,7 @@ const LabReports = () => {
   const handleToDateChange = (e) => {
     const selectedDate = e.target.value;
     const today = getTodayDate();
-    
+
     // If user tries to select a date after today, set it to today
     if (selectedDate > today) {
       setToDate(today);
@@ -225,8 +347,23 @@ const LabReports = () => {
   };
 
   // Function to get result style based on inRange value using the service
-  const getResultStyle = (inRange) => {
-    return getResultTextStyle(inRange);
+  const getResultStyle = (item) => {
+    // Text results are not range-checked; keep default styling
+    if (item.isTextResult) return {};
+    return getResultTextStyle(item.inRange);
+  };
+
+  // Open the full-result popup for a text investigation
+  const openResultPopup = (item) => {
+    // Click opens the full modal; hide the hover preview first
+    clearTimeout(hoverOpenTimer.current);
+    clearTimeout(hoverCloseTimer.current);
+    setHoverPopup(null);
+    setResultPopup({
+      title: item.investigationName || "Result",
+      patientName: item.patientName,
+      html: sanitizeHtml(item.result),
+    });
   };
 
   // Generate lab report for viewing/downloading
@@ -318,9 +455,37 @@ const LabReports = () => {
 
   // View report handler
   const handleViewReport = (record) => {
-    console.log("View report for:", record);
     generateLabReport(record);
   }
+
+  // Render the Result cell: plain value for "s", clamped clickable preview for "t"
+  const renderResultCell = (item) => {
+    if (!item.isTextResult) {
+      return item.result;
+    }
+
+    const plainText = htmlToPlainText(item.result);
+    if (!plainText) return "";
+
+    return (
+      <div
+        style={clampedTextStyle}
+        role="button"
+        tabIndex={0}
+        onClick={() => openResultPopup(item)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openResultPopup(item);
+          }
+        }}
+        onMouseEnter={(e) => handleResultMouseEnter(e, item)}
+        onMouseLeave={handleResultMouseLeave}
+      >
+        {plainText}
+      </div>
+    );
+  };
 
   return (
     <div className="content-wrapper">
@@ -332,7 +497,7 @@ const LabReports = () => {
         />
       )}
 
-      {/* Add PDF Viewer Component */}
+      {/* PDF Viewer Component */}
       {pdfUrl && selectedRecord && (
         <PdfViewer
           pdfUrl={pdfUrl}
@@ -342,6 +507,112 @@ const LabReports = () => {
           }}
           name={`Lab Report - ${selectedRecord?.patientName || 'Patient'}`}
         />
+      )}
+
+      {/* Hover preview popup (only for text results) */}
+      {hoverPopup && !resultPopup && (
+        <div
+          onMouseEnter={keepHoverPopupOpen}
+          onMouseLeave={closeHoverPopupSoon}
+          style={{
+            position: "fixed",
+            left: hoverPopup.left,
+            ...(hoverPopup.openUp
+              ? { bottom: hoverPopup.bottom }
+              : { top: hoverPopup.top }),
+            width: "520px",
+            maxWidth: "calc(100vw - 16px)",
+            maxHeight: "320px",
+            display: "flex",
+            flexDirection: "column",
+            background: "#fff",
+            border: "1px solid #dee2e6",
+            borderRadius: "8px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            zIndex: 1070,
+          }}
+        >
+          <div
+            style={{
+              padding: "8px 12px",
+              borderBottom: "1px solid #dee2e6",
+              fontWeight: 600,
+            }}
+          >
+            {hoverPopup.title}
+            {hoverPopup.patientName ? ` - ${hoverPopup.patientName}` : ""}
+          </div>
+          <div
+            style={{ padding: "10px 12px", overflowY: "auto" }}
+            dangerouslySetInnerHTML={{ __html: hoverPopup.html }}
+          />
+        </div>
+      )}
+
+      {/* Full result (HTML) popup */}
+      {resultPopup && (
+        <div
+          onClick={() => setResultPopup(null)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            zIndex: 1080,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "8px",
+              width: "100%",
+              maxWidth: "800px",
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div
+              className="d-flex justify-content-between align-items-center"
+              style={{ padding: "12px 16px", borderBottom: "1px solid #dee2e6" }}
+            >
+              <h5 className="mb-0">
+                {resultPopup.title}
+                {resultPopup.patientName ? ` - ${resultPopup.patientName}` : ""}
+              </h5>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Close"
+                onClick={() => setResultPopup(null)}
+              ></button>
+            </div>
+            <div
+              style={{ padding: "16px", overflowY: "auto" }}
+              dangerouslySetInnerHTML={{ __html: resultPopup.html }}
+            />
+            <div
+              className="d-flex justify-content-end"
+              style={{ padding: "10px 16px", borderTop: "1px solid #dee2e6" }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setResultPopup(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="row">
@@ -406,9 +677,9 @@ const LabReports = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleSearch}
-                    disabled={isSearching || !isSearchButtonEnabled()}  // Changed: use isSearching instead of isGenerating
+                    disabled={isSearching || !isSearchButtonEnabled()}
                   >
-                    {isSearching ? (  // Changed: check isSearching instead of isGenerating
+                    {isSearching ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Searching...
@@ -427,7 +698,7 @@ const LabReports = () => {
                 </div>
               </div>
 
-              {!isSearching && showReport && (  // Changed: use isSearching instead of isGenerating
+              {!isSearching && showReport && (
                 <>
 
                   <div className="table-responsive">
@@ -457,8 +728,8 @@ const LabReports = () => {
                               <td>{item.genderAge}</td>
                               <td>{item.investigationName}</td>
                               <td>{item.unit}</td>
-                              <td style={getResultStyle(item.inRange)}>
-                                {item.result}
+                              <td style={getResultStyle(item)}>
+                                {renderResultCell(item)}
                               </td>
                               <td>{item.range}</td>
                               <td>{item.enteredBy}</td>

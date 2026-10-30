@@ -348,7 +348,7 @@ const DieticianDashboard = () => {
         dietTypeId: parseInt(newDietEntry.dietCategory),
         specialInstruction: newDietEntry.specialInstruction,
         effectiveFrom: newDietEntry.effectiveFrom.split("T")[0],
-        orderedBy: parseInt(localStorage.getItem("userId") || "0", 10),
+        orderedBy: parseInt(localStorage.getItem("userId") || parseInt(sessionStorage.getItem("userId") || "0", 10)),
         inpatientId: selectedPatient?.inpatientId || 0
       };
 

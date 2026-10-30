@@ -204,7 +204,7 @@ const Header = ({ toggleSidebar, collapsed }) => {
   return (
     <>
       <div className="header">
-        <nav className="navbar py-3">
+        <nav className="navbar">
           <div className="container-fluid d-flex align-items-center justify-content-between">
             {/* Left section: Hamburger & Search */}
             <div className="d-flex align-items-center gap-3">
@@ -252,21 +252,13 @@ const Header = ({ toggleSidebar, collapsed }) => {
             {/* Right section: Action items & Profile */}
             <div className="h-right d-flex align-items-center gap-2">
               <div className="d-flex">
-                <a
-                  className="nav-link text-primary collapsed"
-                  href="help.html"
-                  title="Get Help"
-                >
+              {/* href="help.html" */}
+                <a href="javascript:void(0)" className="nav-link text-primary collapsed" title="Get Help">
                   <i className="icofont-info-square fs-5" />
                 </a>
               </div>
               <div className="dropdown notifications zindex-popover">
-                <a
-                  className="nav-link dropdown-toggle pulse"
-                  href="#"
-                  role="button"
-                  data-bs-toggle="dropdown"
-                >
+                <a href="javascript:void(0)" className="nav-link dropdown-toggle pulse" role="button" data-bs-toggle="dropdown">
                   <i className="icofont-alarm fs-5" />
                   <span className="pulse-ring" />
                 </a>

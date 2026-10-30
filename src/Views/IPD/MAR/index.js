@@ -139,8 +139,10 @@ const MedicationModule = ({ selectedPatient }) => {
     if (!inpatientId) return;
     try {
       const res = await getRequest(`${GET_MAR_MEDICINE_LIST}?inpatientId=${inpatientId}`);
-      if (res && res.status === 200 && Array.isArray(res.response)) {
+      if (res && Array.isArray(res.response)) {
         setMarMedicineList(res.response);
+      } else if (Array.isArray(res)) {
+        setMarMedicineList(res);
       } else {
         setMarMedicineList([]);
       }
@@ -721,11 +723,14 @@ const MedicationModule = ({ selectedPatient }) => {
 
     try {
       const res = await postRequest(SAVE_MAR_DETAILS, payload);
+      fetchMarLogs();
+      fetchMarMedicineList();
       showConfirmationPopup(
         res?.message || "MAR entries saved successfully!",
         "success",
         () => {
           fetchMarLogs();
+          fetchMarMedicineList();
         }
       );
       setShowMarEntryModal(false);
@@ -805,11 +810,13 @@ const MedicationModule = ({ selectedPatient }) => {
   };
 
   const openAdverseModal = () => {
+    fetchMarMedicineList();
     resetAdverseForm();
     setShowAdverseModal(true);
   };
 
   const openAdverseModalForMed = (med) => {
+    fetchMarMedicineList();
     resetAdverseForm();
     setNewAdverse(prev => ({
       ...prev,

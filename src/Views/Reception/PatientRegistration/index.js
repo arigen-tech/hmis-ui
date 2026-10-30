@@ -73,6 +73,9 @@ import { integrationService } from "../../../service/integrationService";
 import ABHACreationModal from "../ABHACreationModel";
 import ABHAVerificationModal from "../ABHAVerificationModel";
 
+// Country code used to auto-select India when ABHA details are applied
+const COUNTRY_CODE_INDIA = "IND";
+
 const PatientRegistration = () => {
   const navigate = useNavigate();
   useEffect(() => {
@@ -129,6 +132,11 @@ const PatientRegistration = () => {
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   // Add this near other state declarations
   const [abhaNumber, setAbhaNumber] = useState("");
+  // ABHA registration meta (sent with the patient request)
+  const [isRegisterThroughAbha, setIsRegisterThroughAbha] = useState(false);
+  const [abhaXToken, setAbhaXToken] = useState("");
+  const [abhaProfilePhotoPath, setAbhaProfilePhotoPath] = useState("");
+  const [abhaProfileAddress, setAbhaProfileAddress] = useState("");
   const [formData, setFormData] = useState({
     imageurl: "",
     firstName: "",
@@ -266,6 +274,11 @@ const PatientRegistration = () => {
     ]);
     setNextAppointmentId(1);
     setAbhaNumber("");
+    setIsRegisterThroughAbha(false);
+    setAbhaXToken("");
+    setAbhaProfilePhotoPath("");
+    setAbhaProfileAddress("");
+    integrationService.clearAbhaSession();
     setFormData({
       imageurl: "",
       firstName: "",
@@ -564,6 +577,237 @@ const PatientRegistration = () => {
     return updatedFormData;
   };
 
+  // NEW: applies mobile (the number used to fetch the ABHA profile), default
+  // country (IND), state/district (matched by LGD codes) and city
+  // (subdistrictName) after the ABHA details are applied to the form.
+  const applyAbhaMobileCountryStateDistrictCity = async (
+    rawSourceAbha = {},
+  ) => {
+    // The modal may not pass every field, so fall back to the raw
+    // create/abha-details response captured in integrationService.
+    const rawProfile = integrationService.getLastAbhaProfile() || {};
+    const sourceAbha = {
+      ...rawSourceAbha,
+      stateCode: rawSourceAbha.stateCode ?? rawProfile.stateCode,
+      districtCode: rawSourceAbha.districtCode ?? rawProfile.districtCode,
+      stateName: rawSourceAbha.stateName || rawProfile.stateName,
+      districtName: rawSourceAbha.districtName || rawProfile.districtName,
+      subdistrictName:
+        rawSourceAbha.subdistrictName || rawProfile.subdistrictName,
+    };
+
+    try {
+      console.log("ABHA location autofill - source data:", {
+        stateCode: sourceAbha.stateCode,
+        districtCode: sourceAbha.districtCode,
+        stateName: sourceAbha.stateName,
+        districtName: sourceAbha.districtName,
+        subdistrictName: sourceAbha.subdistrictName,
+        loginMobile: sourceAbha.loginMobile,
+      });
+
+      // ---- Mobile: the number used to search/verify the ABHA profile ----
+      const rawMobile =
+        sourceAbha.loginMobile ||
+        sourceAbha.searchedMobile ||
+        sourceAbha.mobileNumber ||
+        sourceAbha.mobile ||
+        "";
+      const mobileDigits = String(rawMobile).replace(/\D/g, "");
+      const validMobile = /^\d{10}$/.test(mobileDigits) ? mobileDigits : "";
+
+      // ---- City: subdistrictName from ABHA ----
+      const cityName = (sourceAbha.subdistrictName || "").toString().trim();
+
+      // ---- Country: default India by countryCode ----
+      const indiaCountry =
+        countryData.find(
+          (c) =>
+            String(c.countryCode || "")
+              .trim()
+              .toUpperCase() === COUNTRY_CODE_INDIA,
+        ) ||
+        // fallback if the country master has no countryCode field
+        countryData.find(
+          (c) =>
+            String(c.countryName || "")
+              .trim()
+              .toUpperCase() === "INDIA",
+        );
+
+      if (!indiaCountry) {
+        console.warn(
+          "ABHA autofill: India not found in country master",
+          countryData,
+        );
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        ...(validMobile ? { mobileNo: validMobile } : {}),
+        ...(cityName ? { city: cityName } : {}),
+        ...(indiaCountry ? { country: indiaCountry.id } : {}),
+      }));
+
+      if (validMobile) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.mobileNo;
+          return next;
+        });
+      }
+
+      if (!indiaCountry) return;
+
+      // ---- State: hit state API for India, match stateCode with lgdStateCode ----
+      const abhaStateCode = String(
+        sourceAbha.stateCode ?? sourceAbha.lgdStateCode ?? "",
+      ).trim();
+      const abhaStateName = String(
+        sourceAbha.stateName ||
+          (typeof sourceAbha.state === "string" ? sourceAbha.state : ""),
+      )
+        .trim()
+        .toUpperCase();
+      const stateRes = await getRequest(
+        `${STATE_BY_COUNTRY}${indiaCountry.id}`,
+      );
+      if (stateRes?.status !== 200 || !Array.isArray(stateRes.response)) {
+        console.error(UNEXPECTED_API_RESPONSE_ERR, stateRes);
+        return;
+      }
+      setStateData(stateRes.response);
+
+      // 1st: match by lgdStateCode, 2nd (fallback): match by state name
+      let matchedState = abhaStateCode
+        ? stateRes.response.find(
+            (s) => String(s.lgdStateCode ?? "").trim() === abhaStateCode,
+          )
+        : undefined;
+      if (!matchedState && abhaStateName) {
+        matchedState = stateRes.response.find(
+          (s) =>
+            String(s.stateName || "")
+              .trim()
+              .toUpperCase() === abhaStateName,
+        );
+      }
+      if (!matchedState) {
+        console.warn("ABHA autofill: no state match", {
+          abhaStateCode,
+          abhaStateName,
+        });
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, state: matchedState.id }));
+
+      // ---- District: hit district API, match districtCode with lgdDistrictCode ----
+      const abhaDistrictCode = String(
+        sourceAbha.districtCode ?? sourceAbha.lgdDistrictCode ?? "",
+      ).trim();
+      const abhaDistrictName = String(
+        sourceAbha.districtName ||
+          (typeof sourceAbha.district === "string" ? sourceAbha.district : ""),
+      )
+        .trim()
+        .toUpperCase();
+      const districtRes = await getRequest(
+        `${DISTRICT_BY_STATE}${matchedState.id}`,
+      );
+      if (districtRes?.status !== 200 || !Array.isArray(districtRes.response)) {
+        console.error(UNEXPECTED_API_RESPONSE_ERR, districtRes);
+        return;
+      }
+      setDistrictData(districtRes.response);
+
+      // 1st: match by lgdDistrictCode (ignore districts whose code is null),
+      // 2nd (fallback): match by district name
+      let matchedDistrict = abhaDistrictCode
+        ? districtRes.response.find(
+            (d) =>
+              d.lgdDistrictCode != null &&
+              String(d.lgdDistrictCode).trim() === abhaDistrictCode,
+          )
+        : undefined;
+      if (!matchedDistrict && abhaDistrictName) {
+        matchedDistrict = districtRes.response.find(
+          (d) =>
+            String(d.districtName || "")
+              .trim()
+              .toUpperCase() === abhaDistrictName,
+        );
+      }
+      if (!matchedDistrict) {
+        console.warn("ABHA autofill: no district match", {
+          abhaDistrictCode,
+          abhaDistrictName,
+        });
+      }
+      if (matchedDistrict) {
+        setFormData((prev) => ({ ...prev, district: matchedDistrict.id }));
+      }
+    } catch (error) {
+      console.error("ABHA location autofill failed:", error);
+    }
+  };
+
+  // NEW: marks the registration as ABHA based, captures abhaAddress / xToken
+  // and uploads the ABHA profile photo to get abhaProfilePhotoPath.
+  const applyAbhaRegistrationMeta = async (sourceAbha = {}) => {
+    setIsRegisterThroughAbha(true);
+
+    const rawProfile = integrationService.getLastAbhaProfile() || {};
+
+    setAbhaXToken(
+  sourceAbha.xToken ||
+    sourceAbha.xtoken ||
+    integrationService.getLastAbhaXToken() ||
+    "",
+);
+
+    setAbhaProfileAddress(
+      sourceAbha.abhaAddress ||
+        sourceAbha.preferredAbhaAddress ||
+        rawProfile.preferredAbhaAddress ||
+        "",
+    );
+
+    const photo =
+      sourceAbha.photo ||
+      sourceAbha.profilePhoto ||
+      rawProfile.profilePhoto ||
+      "";
+    if (!photo) {
+      setAbhaProfilePhotoPath("");
+      return;
+    }
+
+    try {
+      const photoUrl = photo.startsWith("data:")
+        ? photo
+        : `data:image/jpeg;base64,${photo}`;
+      const blob = await fetch(photoUrl).then((res) => res.blob());
+      const photoForm = new FormData();
+      photoForm.append("file", blob, "abha-photo.jpg");
+
+      const uploadResponse = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+        method: "POST",
+        body: photoForm,
+      });
+      const uploadData = await uploadResponse.json();
+
+      if (uploadResponse.status === 200 && uploadData.response) {
+        setAbhaProfilePhotoPath(uploadData.response);
+      } else {
+        setAbhaProfilePhotoPath("");
+      }
+    } catch (error) {
+      console.error("ABHA profile photo upload failed:", error);
+      setAbhaProfilePhotoPath("");
+    }
+  };
+
   const handleAbhaCreationSuccess = (abhaData) => {
     console.log("ABHA Data received:", abhaData);
 
@@ -573,6 +817,8 @@ const PatientRegistration = () => {
 
     const updatedFormData = buildAbhaMappedFormData(abhaData);
     setFormData(updatedFormData);
+    applyAbhaMobileCountryStateDistrictCity(abhaData);
+    applyAbhaRegistrationMeta(abhaData);
 
     setAbhaData((prev) => ({
       ...prev,
@@ -671,6 +917,8 @@ const PatientRegistration = () => {
 
     const updatedFormData = buildAbhaMappedFormData(abhaData);
     setFormData(updatedFormData);
+    applyAbhaMobileCountryStateDistrictCity(abhaData);
+    applyAbhaRegistrationMeta(abhaData);
 
     setAbhaData((prev) => ({
       ...prev,
@@ -2168,6 +2416,12 @@ const PatientRegistration = () => {
           patientStatus: "",
           regDate: new Date(Date.now()).toJSON().split(".")[0].split("T")[0],
           patientAbhaId: currentAbhaNumber,
+          isRegisterThroughAbha: isRegisterThroughAbha,
+          abhaAddress: abhaData.abhaAddress || abhaProfileAddress || "",
+          abhaProfilePhotoPath: abhaProfilePhotoPath || "",
+          // Jackson maps Lombok's getXToken() to "xtoken", so send both keys
+          xToken: abhaXToken || "",
+          xtoken: abhaXToken || "",
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
           patientFn: formData.firstName,

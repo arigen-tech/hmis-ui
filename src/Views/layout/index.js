@@ -13,14 +13,16 @@ const Layout = () => {
     return(
       <div id="ihealth-layout" className="theme-tradewind">
         <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
-        <div className="main px-lg-2 px-md-2">
-          <Header toggleSidebar={toggleSidebar} collapsed={sidebarCollapsed} />
+        <div className="main">
+            <Header toggleSidebar={toggleSidebar} collapsed={sidebarCollapsed} />
             
             <div className="main-panel">
-
-                  <Outlet />
-            <Footer />
+              <div className='mainContent'>
+                <Outlet />
+              </div>
+              <Footer />
             </div>
+
           </div>
         </div>
     );

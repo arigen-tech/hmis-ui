@@ -144,13 +144,13 @@ const mapApiResponseToForm = (data) => {
   return mapped;
 };
 
-const OpdVision = forwardRef(({ 
-  patientId, 
-  visitId, 
-  hideHeader = false, 
-  hideButtons = false, 
-  isRecallMode = false, 
-  onSaveComplete 
+const OpdVision = forwardRef(({
+  patientId,
+  visitId,
+  hideHeader = false,
+  hideButtons = false,
+  isRecallMode = false,
+  onSaveComplete
 }, ref) => {
 
   const [waitingList, setWaitingList] = useState([]);
@@ -188,13 +188,13 @@ const OpdVision = forwardRef(({
       const params = new URLSearchParams();
       params.append("page", 0);
       params.append("size", 100);
-      
+
       const mobileNumber = searchParams?.mobileNumber ?? searchData.mobileNumber;
       const patientName = searchParams?.patientName ?? searchData.patientName;
-      
+
       if (mobileNumber) params.append("mobileNumber", mobileNumber);
       if (patientName) params.append("patientName", patientName);
-      
+
       const res = await getRequest(`${GET_WAITING_LIST}?${params.toString()}`);
       if (res?.status === 200 && res?.response?.content) {
         setWaitingList(res.response.content);
@@ -358,42 +358,42 @@ const OpdVision = forwardRef(({
     setCurrentPage(1);
   };
 
-const handleSearch = async (e) => {
-  e.preventDefault();
+  const handleSearch = async (e) => {
+    e.preventDefault();
 
-  if (isSearching) return;
+    if (isSearching) return;
 
-  setIsSearching(true);
-  setCurrentPage(1);
+    setIsSearching(true);
+    setCurrentPage(1);
 
-  try {
-    await fetchWaitingList(searchData);
-  } finally {
-    setIsSearching(false);
-  }
-};
-
-const handleReset = async (e) => {
-  e.preventDefault();
-
-  if (isResetting) return;
-
-  setIsResetting(true);
-
-  const resetData = {
-    mobileNumber: "",
-    patientName: "",
+    try {
+      await fetchWaitingList(searchData);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  setSearchData(resetData);
-  setCurrentPage(1);
+  const handleReset = async (e) => {
+    e.preventDefault();
 
-  try {
-    await fetchWaitingList(resetData);
-  } finally {
-    setIsResetting(false);
-  }
-};
+    if (isResetting) return;
+
+    setIsResetting(true);
+
+    const resetData = {
+      mobileNumber: "",
+      patientName: "",
+    };
+
+    setSearchData(resetData);
+    setCurrentPage(1);
+
+    try {
+      await fetchWaitingList(resetData);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const closeForm = async () => {
     setShowForm(false);
@@ -470,7 +470,7 @@ const handleReset = async (e) => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    
+
     if (isRecallMode) {
       setPopupMessage({
         message: "Vision examination data saved locally!",
@@ -545,7 +545,7 @@ const handleReset = async (e) => {
     <div className={hideHeader ? "p-0" : "content-wrapper"}>
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
-          <div className="card form-card">
+          <div className="card- form-card-">
             {!hideHeader && (
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">
@@ -565,7 +565,7 @@ const handleReset = async (e) => {
                 )}
               </div>
             )}
-            <div className="card-body p-2 pb-0">
+            <div className="card-body- p-2- pb-0">
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -622,11 +622,11 @@ const handleReset = async (e) => {
                       <div className="col-md-2">
                         <div className="d-flex gap-2">
                           <button
-  type="button"
-  className="btn btn-primary flex-fill"
-  onClick={handleSearch}
-  disabled={isSearching || isResetting}
->
+                            type="button"
+                            className="btn btn-primary flex-fill"
+                            onClick={handleSearch}
+                            disabled={isSearching || isResetting}
+                          >
                             {isSearching ? (
                               <>
                                 <LoadingSpinner />
@@ -637,11 +637,11 @@ const handleReset = async (e) => {
                             )}
                           </button>
                           <button
-  type="button"
-  className="btn btn-secondary flex-fill"
-  onClick={handleReset}
-  disabled={isSearching || isResetting}
->
+                            type="button"
+                            className="btn btn-secondary flex-fill"
+                            onClick={handleReset}
+                            disabled={isSearching || isResetting}
+                          >
                             {isResetting ? (
                               <>
                                 <LoadingSpinner />
@@ -753,9 +753,9 @@ const handleReset = async (e) => {
 
               {/* ── EXAMINATION FORM ──────────────────────────────────────── */}
               {showForm && selectedPatient && (
-                <div className="row mb-3 mt-3">
+                <div className="row mb-3-- mt-3--">
                   <div className="col-sm-12">
-                    <div className="card-body p-2 pb-0 ophthal-section-scroll">
+                    <div className="card-body- p-2- pb-0 ophthal-section-scroll">
                       {formLoading ? (
                         <div className="text-center py-5">
                           <div
@@ -790,9 +790,7 @@ const handleReset = async (e) => {
                           {/* ── VISION ── */}
                           <div className="row mb-3">
                             <div className="col-12">
-                              <h6 className="fw-bold bg-light text-primary border-bottom pb-1">
-                                VISION <span className="text-danger">*</span>
-                              </h6>
+                              <h6 className="fw-bold bg-light text-primary border-bottom pb-1"> Vision <span className="text-danger">*</span></h6>
                             </div>
                             <div className="col-12">
                               <div className="table-responsive">
@@ -918,11 +916,9 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── RETINOSCOPY ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-2">
                             <div className="col-12 mb-2">
-                              <h6 className="fw-bold text-primary border-bottom pb-1">
-                                RETINOSCOPY
-                              </h6>
+                              <h6 className="fw-bold text-primary border-bottom pb-1">Retinoscopy</h6>
                             </div>
                             <div className="col-12">
                               <div className="table-responsive">
@@ -1055,11 +1051,9 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── MEASUREMENTS ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-2">
                             <div className="col-12">
-                              <h6 className="fw-bold text-primary border-bottom pb-1">
-                                MEASUREMENTS
-                              </h6>
+                              <h6 className="fw-bold text-primary border-bottom pb-1">Measurements</h6>
                             </div>
                             <div className="col-12">
                               <div className="table-responsive">
@@ -1119,7 +1113,7 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── SPECTACLE CORRECTION ── */}
-                          <div className="row mb-3">
+                          <div className="row mb-2">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
                                 Spectacle Correction
@@ -1201,7 +1195,7 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── IPD ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-2">
                             <div className="col-12">
                               <div className="table-responsive">
                                 <table className="table table-bordered table-sm w-auto">
@@ -1268,7 +1262,7 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── ANTERIOR SEGMENT ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-2">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
                                 Anterior Segment <span className="text-danger">*</span>
@@ -1331,7 +1325,7 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── POSTERIOR SEGMENT ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-2">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
                                 Posterior Segment <span className="text-danger">*</span>
@@ -1394,7 +1388,7 @@ const handleReset = async (e) => {
                           </div>
 
                           {/* ── COLOUR VISION ── */}
-                          <div className="row mb-4">
+                          <div className="row mb-4--">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">
                                 Colour Vision

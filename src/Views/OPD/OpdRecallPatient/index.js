@@ -68,6 +68,7 @@ import Pagination, {
 } from "../../../Components/Pagination";
 import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryPopup";
 import PregnancySection from "../Pregnancy";
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 
 const OpdRRecallPatient = () => {
   const currentDoctorId =
@@ -282,6 +283,12 @@ const OpdRRecallPatient = () => {
       remarks: "",
     },
   ]);
+
+   // added by aanand
+    const [referralAdvised, setReferralAdvised] = useState(false);
+    const [referralType, setReferralType] = useState("");
+    const [isPregnant, setIsPregnant] = useState(false);
+    const [surgeryActionType, setSurgeryActionType] = useState("");
 
   const fetchWardCategoryData = async () => {
     try {
@@ -807,31 +814,31 @@ const OpdRRecallPatient = () => {
           ? normalizedRows
           : directDetails.length > 0
             ? [
-                {
-                  headingId:
-                    assessment?.topicId ??
-                    assessment?.headingId ??
-                    assessment?.topicWiseId ??
-                    "",
-                  headingName:
-                    assessment?.topicName ||
-                    assessment?.headingName ||
-                    assessment?.topic ||
-                    "",
-                  headingCode:
-                    assessment?.topicCode || assessment?.headingCode || "",
-                  questions: directDetails,
-                  score: 0,
-                },
-              ]
+              {
+                headingId:
+                  assessment?.topicId ??
+                  assessment?.headingId ??
+                  assessment?.topicWiseId ??
+                  "",
+                headingName:
+                  assessment?.topicName ||
+                  assessment?.headingName ||
+                  assessment?.topic ||
+                  "",
+                headingCode:
+                  assessment?.topicCode || assessment?.headingCode || "",
+                questions: directDetails,
+                score: 0,
+              },
+            ]
             : [];
 
     const details =
       directDetails.length > 0
         ? directDetails
         : rows.flatMap((row) =>
-            Array.isArray(row.questions) ? row.questions : [],
-          );
+          Array.isArray(row.questions) ? row.questions : [],
+        );
 
     const score =
       assessment?.totalScore ??
@@ -877,16 +884,16 @@ const OpdRRecallPatient = () => {
           topicName: block.topicName || block.headingName || topicName,
           questionsResponses: Array.isArray(block.questions)
             ? block.questions.map((question) => ({
-                questionName: question.questionText || "",
-                questionsAns:
-                  question.questionsAns ?? question.answerValue ?? "",
-                questionText: question.questionText || "",
-                answerValue:
-                  question.answerValue ?? question.questionsAns ?? "",
-                answerOptionId: question.answerOptionId ?? null,
-                answerCode: question.answerCode ?? null,
-                answerScore: question.answerScore ?? null,
-              }))
+              questionName: question.questionText || "",
+              questionsAns:
+                question.questionsAns ?? question.answerValue ?? "",
+              questionText: question.questionText || "",
+              answerValue:
+                question.answerValue ?? question.questionsAns ?? "",
+              answerOptionId: question.answerOptionId ?? null,
+              answerCode: question.answerCode ?? null,
+              answerScore: question.answerScore ?? null,
+            }))
             : [],
         })),
         topicId:
@@ -912,19 +919,19 @@ const OpdRRecallPatient = () => {
           rows.length > 0
             ? rows
             : [
-                {
-                  headingId:
-                    assessment?.topicId ||
-                    assessment?.headingId ||
-                    assessment?.topicWiseId ||
-                    "",
-                  headingName: topicName === "-" ? "" : topicName,
-                  headingCode:
-                    assessment?.topicCode || assessment?.headingCode || "",
-                  questions: details,
-                  score: Number.isFinite(Number(score)) ? Number(score) : 0,
-                },
-              ],
+              {
+                headingId:
+                  assessment?.topicId ||
+                  assessment?.headingId ||
+                  assessment?.topicWiseId ||
+                  "",
+                headingName: topicName === "-" ? "" : topicName,
+                headingCode:
+                  assessment?.topicCode || assessment?.headingCode || "",
+                questions: details,
+                score: Number.isFinite(Number(score)) ? Number(score) : 0,
+              },
+            ],
       },
     };
   };
@@ -954,12 +961,12 @@ const OpdRRecallPatient = () => {
       candidateList.find((item) => Array.isArray(item)) ||
       (payload && typeof payload === "object"
         ? [
-            payload.previousOpdPsychiatryHistoryResponse ||
-              payload.psychiatristAssessment ||
-              payload.psychiatricAssessment ||
-              payload.assessment ||
-              payload,
-          ]
+          payload.previousOpdPsychiatryHistoryResponse ||
+          payload.psychiatristAssessment ||
+          payload.psychiatricAssessment ||
+          payload.assessment ||
+          payload,
+        ]
         : []);
 
     const formattedData = content
@@ -999,9 +1006,9 @@ const OpdRRecallPatient = () => {
     const flattenedCount = formattedData.length;
     const backendTotalElements = Number(
       payload.totalElements ||
-        payload.total_elements ||
-        payload.totalCount ||
-        0,
+      payload.total_elements ||
+      payload.totalCount ||
+      0,
     );
 
     return {
@@ -1321,7 +1328,7 @@ const OpdRRecallPatient = () => {
   const fetchMasProcedureData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
-        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
+        `${MASTERS}/masProcedures/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
       );
 
       if (data.status === 200 && data.response?.content) {
@@ -1569,14 +1576,14 @@ const OpdRRecallPatient = () => {
     if (popupType === "past") {
       setFormData((prev) => ({
         ...prev,
-        pastHistory: mergeValues(prev.pastHistory, newNames),
+        pastMedicalHistory: mergeValues(prev.pastMedicalHistory, newNames),
       }));
     }
 
     if (popupType === "family") {
       setFormData((prev) => ({
         ...prev,
-        familyHistory: mergeValues(prev.familyHistory, newNames),
+        presentHistory: mergeValues(prev.presentHistory, newNames),
       }));
     }
 
@@ -1824,7 +1831,7 @@ const OpdRRecallPatient = () => {
     const errors = {};
 
     if (!formData.patientSymptoms) {
-      errors.patientSymptoms = "Patient signs & symptoms is required";
+      errors.patientSymptoms = "Chief Complaints is required";
     }
 
     const requiredVitals = [
@@ -1902,17 +1909,17 @@ const OpdRRecallPatient = () => {
 
     if (isSubmitting) return;
 
-  if (surgeryStartTime || surgeryEndTime) {
-    if (!surgeryStartTime || !surgeryEndTime) {
-      showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
-      return;
+    if (surgeryStartTime || surgeryEndTime) {
+      if (!surgeryStartTime || !surgeryEndTime) {
+        showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
+        return;
+      }
+
+      if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
+        showPopup("Surgery end time must be after start time", "error");
+        return;
+      }
     }
-    
-    if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
-      showPopup("Surgery end time must be after start time", "error");
-      return;
-    }
-  }
 
     if (!validateSubmitForm()) return;
 
@@ -1947,18 +1954,18 @@ const OpdRRecallPatient = () => {
 
       const mappedDepartmentId = Number(
         sessionStorage.getItem("departmentId") ||
-          localStorage.getItem("departmentId") ||
-          selectedPatient.deptId,
+        localStorage.getItem("departmentId") ||
+        selectedPatient.deptId,
       );
       const mappedHospitalId = Number(
         sessionStorage.getItem("hospitalId") ||
-          localStorage.getItem("hospitalId") ||
-          selectedPatient.hospitalId,
+        localStorage.getItem("hospitalId") ||
+        selectedPatient.hospitalId,
       );
       const mappedDoctorId = Number(
         sessionStorage.getItem("userId") ||
-          localStorage.getItem("userId") ||
-          selectedPatient.docterId,
+        localStorage.getItem("userId") ||
+        selectedPatient.docterId,
       );
       const visionExaminationData = visionRef.current?.getData?.();
 
@@ -2095,8 +2102,8 @@ const OpdRRecallPatient = () => {
 
         patientSignsSymptoms: formData.patientSymptoms || null,
         clinicalExamination: formData.clinicalExamination || null,
-        pastMedicalHistory: formData.pastHistory || null,
-        familyHistory: formData.familyHistory || null,
+        pastMedicalHistory: formData.pastMedicalHistory || null,
+        presentHistory: formData.presentHistory || null,
 
         height: formData.height || null,
         weight: formData.weight || null,
@@ -2131,13 +2138,13 @@ const OpdRRecallPatient = () => {
 
         ...(shouldShowVisionExamination &&
           visionExaminationData && {
-            ophthalmologyExaminationDetails: {
-              patientId: selectedPatient.patientId,
-              visitId: selectedPatient.visitId,
-              opdDate: getToday(),
-              ...visionExaminationData,
-            },
-          }),
+          ophthalmologyExaminationDetails: {
+            patientId: selectedPatient.patientId,
+            visitId: selectedPatient.visitId,
+            opdDate: getToday(),
+            ...visionExaminationData,
+          },
+        }),
 
         ...(ophthalmologyPayload && {
           ophthalmologyExaminationDetails: ophthalmologyPayload,
@@ -2146,13 +2153,13 @@ const OpdRRecallPatient = () => {
         // Include OBG details in the main payload
         ...(isObgynDepartment &&
           obgDetailsData && {
-            opdObgDetailsRequest: obgDetailsData,
-          }),
+          opdObgDetailsRequest: obgDetailsData,
+        }),
 
         ...(isEntDepartment &&
           entExaminationDetails && {
-            entExaminationDetails: entExaminationDetails,
-          }),
+          entExaminationDetails: entExaminationDetails,
+        }),
 
         followUpFlag: followUps.followUpFlag ? "y" : "n",
         followUpDate:
@@ -2178,30 +2185,30 @@ const OpdRRecallPatient = () => {
 
         surgeryAdvice:
           selectedOT ||
-          surgeryDate ||
-          surgeryStartTime ||surgeryEndTime ||
-          surgeryItems.some(
-            (item) => item.surgeryName && item.surgeryName.trim() !== "",
-          )
+            surgeryDate ||
+            surgeryStartTime || surgeryEndTime ||
+            surgeryItems.some(
+              (item) => item.surgeryName && item.surgeryName.trim() !== "",
+            )
             ? {
-                otId: selectedOT || null,
-                otHdId: otBookingRequestHdId || null,
-                surgeryDate: surgeryDate || null,
-                surgeryStartTime: surgeryStartTime || null,
-                surgeryEndTime: surgeryEndTime || null,
-                surgeryDetails: surgeryItems
-                  .filter(
-                    (item) =>
-                      item.surgeryId &&
-                      item.surgeryName &&
-                      item.surgeryName.trim() !== "",
-                  )
-                  .map((item) => ({
-                    surgeryId: item.surgeryId,
-                    otDtId: item.otBookingRequestDtId || null,
-                    surgeryName: item.surgeryName,
-                  })),
-              }
+              otId: selectedOT || null,
+              otHdId: otBookingRequestHdId || null,
+              surgeryDate: surgeryDate || null,
+              surgeryStartTime: surgeryStartTime || null,
+              surgeryEndTime: surgeryEndTime || null,
+              surgeryDetails: surgeryItems
+                .filter(
+                  (item) =>
+                    item.surgeryId &&
+                    item.surgeryName &&
+                    item.surgeryName.trim() !== "",
+                )
+                .map((item) => ({
+                  surgeryId: item.surgeryId,
+                  otDtId: item.otBookingRequestDtId || null,
+                  surgeryName: item.surgeryName,
+                })),
+            }
             : null,
 
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
@@ -2214,12 +2221,12 @@ const OpdRRecallPatient = () => {
           referralData.isReferred === "Yes" ? referralData.referTo : null,
         referredHospitalName:
           referralData.isReferred === "Yes" &&
-          referralData.referTo === "External"
+            referralData.referTo === "External"
             ? referralData.referredHospitalName
             : null,
         currentPriorityNo:
           referralData.isReferred === "Yes" &&
-          referralData.referTo === "Internal"
+            referralData.referTo === "Internal"
             ? referralData.currentPriorityNo
             : null,
 
@@ -2317,8 +2324,8 @@ const OpdRRecallPatient = () => {
     patientSymptoms: "",
     clinicalExamination: "",
     treatmentAdvice: "",
-    pastHistory: "",
-    familyHistory: "",
+    pastMedicalHistory: "",
+    presentHistory: "",
     mlcCase: false,
   });
 
@@ -3375,8 +3382,8 @@ const OpdRRecallPatient = () => {
           spo2: patientData.spo2 || "",
           patientSymptoms: patientData.patientSignsSymptoms || "",
           clinicalExamination: patientData.clinicalExamination || "",
-          pastHistory: patientData.pastMedicalHistory || "",
-          familyHistory: patientData.familyHistory || "",
+          pastMedicalHistory: patientData.pastMedicalHistory || "",
+          presentHistory: patientData.presentHistory || patientData.familyHistory || "",
           mlcCase: patientData.mlcFlag === "y",
         });
 
@@ -3384,6 +3391,7 @@ const OpdRRecallPatient = () => {
           patientData.patientSignsSymptoms ||
           patientData.clinicalExamination ||
           patientData.pastMedicalHistory ||
+          patientData.presentHistory ||
           patientData.familyHistory;
         if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
         setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
@@ -3395,49 +3403,49 @@ const OpdRRecallPatient = () => {
         setDiagnosisItems(
           patientData.icdDiag?.length
             ? patientData.icdDiag.map((item) => ({
-                id: item.id ?? null,
-                icdDiagId: item.icdId ?? "",
-                icdDiagnosis: item.icdDiagName ?? "",
+              id: item.id ?? null,
+              icdDiagId: item.icdId ?? "",
+              icdDiagnosis: item.icdDiagName ?? "",
+              communicableDisease: false,
+              infectiousDisease: false,
+            }))
+            : [
+              {
+                id: null,
+                icdDiagId: "",
+                icdDiagnosis: "",
                 communicableDisease: false,
                 infectiousDisease: false,
-              }))
-            : [
-                {
-                  id: null,
-                  icdDiagId: "",
-                  icdDiagnosis: "",
-                  communicableDisease: false,
-                  infectiousDisease: false,
-                },
-              ],
+              },
+            ],
         );
 
         const labInvestigations = Array.isArray(patientData.labOrderHds)
           ? patientData.labOrderHds.flatMap((hd) =>
-              (Array.isArray(hd?.labOrderDts) ? hd.labOrderDts : []).map((dt) => ({
-                id: dt.orderDtId || null,
-                name: dt.investigationName || "",
-                date: dt.appointmentDate || getToday(),
-                investigationId: dt.investigationId,
-                orderStatus: dt.orderStatus,
-                flag: 0,
-                templateIds: [],
-              })),
-            )
+            (Array.isArray(hd?.labOrderDts) ? hd.labOrderDts : []).map((dt) => ({
+              id: dt.orderDtId || null,
+              name: dt.investigationName || "",
+              date: dt.appointmentDate || getToday(),
+              investigationId: dt.investigationId,
+              orderStatus: dt.orderStatus,
+              flag: 0,
+              templateIds: [],
+            })),
+          )
           : [];
 
         const radInvestigations = Array.isArray(patientData.radOrderHds)
           ? patientData.radOrderHds.flatMap((hd) =>
-              (Array.isArray(hd?.radOrderDts) ? hd.radOrderDts : []).map((dt) => ({
-                id: dt.orderDtId || null,
-                name: dt.investigationName || "",
-                date: dt.appointmentDate || getToday(),
-                investigationId: dt.investigationId,
-                orderStatus: dt.studyStatus,
-                flag: 0,
-                templateIds: [],
-              })),
-            )
+            (Array.isArray(hd?.radOrderDts) ? hd.radOrderDts : []).map((dt) => ({
+              id: dt.orderDtId || null,
+              name: dt.investigationName || "",
+              date: dt.appointmentDate || getToday(),
+              investigationId: dt.investigationId,
+              orderStatus: dt.studyStatus,
+              flag: 0,
+              templateIds: [],
+            })),
+          )
           : [];
 
         const allInvestigations = [...labInvestigations, ...radInvestigations];
@@ -3460,49 +3468,49 @@ const OpdRRecallPatient = () => {
         setTreatmentItems(
           patientData.patientPrescriptionDts?.length
             ? patientData.patientPrescriptionDts.map((item) => {
-                const frequencyId = item.frequencyId || item.frequency || "";
-                const matchedFrequency = allFrequencies.find(
-                  (f) => String(f.frequencyId) === String(frequencyId),
-                );
+              const frequencyId = item.frequencyId || item.frequency || "";
+              const matchedFrequency = allFrequencies.find(
+                (f) => String(f.frequencyId) === String(frequencyId),
+              );
 
-                const frequencyName =
-                  matchedFrequency?.frequencyName || frequencyId;
+              const frequencyName =
+                matchedFrequency?.frequencyName || frequencyId;
 
-                const obj = {
-                  prescriptionHdId: item.prescriptionHdId ?? null,
-                  prescriptionDtId: item.prescriptionDtId ?? null,
-                  treatmentId: item.prescriptionDtId,
-                  drugId: item.itemId,
-                  drugName: item.itemName,
-                  dispUnit: item.dispUnit || item.depUnit || "",
-                  dosage: Number(item.dosage) || "",
-                  frequency: frequencyName,
-                  days: Number(item.days) || "",
-                  instruction: item.instraction || item.instruction || "",
-                  stock: item.stocks ?? "0",
-                  itemClassId: item.itemClassId ?? null,
-                  aDispQty: item.adispQty ?? 1,
-                  templateId: "",
-                  flag: 0, // Existing treatments should have flag 0
-                };
-                obj.total = calculateTotal(obj);
-                return obj;
-              })
+              const obj = {
+                prescriptionHdId: item.prescriptionHdId ?? null,
+                prescriptionDtId: item.prescriptionDtId ?? null,
+                treatmentId: item.prescriptionDtId,
+                drugId: item.itemId,
+                drugName: item.itemName,
+                dispUnit: item.dispUnit || item.depUnit || "",
+                dosage: Number(item.dosage) || "",
+                frequency: frequencyName,
+                days: Number(item.days) || "",
+                instruction: item.instraction || item.instruction || "",
+                stock: item.stocks ?? "0",
+                itemClassId: item.itemClassId ?? null,
+                aDispQty: item.adispQty ?? 1,
+                templateId: "",
+                flag: 0, // Existing treatments should have flag 0
+              };
+              obj.total = calculateTotal(obj);
+              return obj;
+            })
             : [
-                {
-                  treatmentId: null,
-                  drugId: "",
-                  drugName: "",
-                  dispUnit: "",
-                  dosage: "",
-                  frequency: "",
-                  days: "",
-                  total: "",
-                  instruction: "",
-                  stock: "",
-                  templateId: "",
-                },
-              ],
+              {
+                treatmentId: null,
+                drugId: "",
+                drugName: "",
+                dispUnit: "",
+                dosage: "",
+                frequency: "",
+                days: "",
+                total: "",
+                instruction: "",
+                stock: "",
+                templateId: "",
+              },
+            ],
         );
 
         const hasDoctorRemarks = patientData.doctorRemarks;
@@ -3514,10 +3522,10 @@ const OpdRRecallPatient = () => {
           patientData.psychiatristAssessment ||
           (patientData.topicId
             ? {
-                topicId: patientData.topicId,
-                details: patientData.details || [],
-                rows: patientData.rows || [],
-              }
+              topicId: patientData.topicId,
+              details: patientData.details || [],
+              rows: patientData.rows || [],
+            }
             : null);
 
         if (psychiatricAssessment?.rows?.length > 0) {
@@ -3595,29 +3603,29 @@ const OpdRRecallPatient = () => {
             Array.isArray(surgeryAdviceData.surgeryDetails) &&
               surgeryAdviceData.surgeryDetails.length > 0
               ? surgeryAdviceData.surgeryDetails.map((item) => ({
-                  otBookingRequestDtId: item.otBookingRequestDtId ?? null,
+                otBookingRequestDtId: item.otBookingRequestDtId ?? null,
 
-                  surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
+                surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
 
-                  surgeryName:
-                    item.surgeryName ||
-                    (() => {
-                      const surgery = (surgeryMasterData || []).find(
-                        (s) => Number(s.surgeryId) === Number(item.surgeryId),
-                      );
+                surgeryName:
+                  item.surgeryName ||
+                  (() => {
+                    const surgery = (surgeryMasterData || []).find(
+                      (s) => Number(s.surgeryId) === Number(item.surgeryId),
+                    );
 
-                      return surgery
-                        ? `${surgery.surgeryCode} - ${surgery.surgeryName}`
-                        : "";
-                    })(),
-                }))
+                    return surgery
+                      ? `${surgery.surgeryCode} - ${surgery.surgeryName}`
+                      : "";
+                  })(),
+              }))
               : [
-                  {
-                    otBookingRequestDtId: null,
-                    surgeryId: null,
-                    surgeryName: "",
-                  },
-                ],
+                {
+                  otBookingRequestDtId: null,
+                  surgeryId: null,
+                  surgeryName: "",
+                },
+              ],
           );
           surgeryDataFetchedRef.current = true;
         } else {
@@ -3644,8 +3652,8 @@ const OpdRRecallPatient = () => {
 
           setAdmissionCareLevelName(
             patientData.admissionCareLevelName ||
-              patientData.careLevelName ||
-              "",
+            patientData.careLevelName ||
+            "",
           );
 
           if (wardCategoryId) {
@@ -3682,8 +3690,8 @@ const OpdRRecallPatient = () => {
                     setOccupiedBeds(
                       String(
                         selectedWard.occupiedBed ||
-                          selectedWard.occupied ||
-                          "0",
+                        selectedWard.occupied ||
+                        "0",
                       ),
                     );
                     setVacantBeds(
@@ -3778,8 +3786,8 @@ const OpdRRecallPatient = () => {
       spo2: "",
       patientSymptoms: "",
       clinicalExamination: "",
-      pastHistory: "",
-      familyHistory: "",
+      pastMedicalHistory: "",
+      presentHistory: "",
       mlcCase: false,
     });
     setDiagnosisItems([
@@ -4138,9 +4146,7 @@ const OpdRRecallPatient = () => {
       clinicalExamination: "",
       mlcCase: false,
       pastMedicalHistory: "",
-      familyHistory: "",
-      presentComplaints: "",
-      pastHistory: "",
+      presentHistory: "",
     });
 
     setDiagnosisItems([
@@ -4799,16 +4805,9 @@ const OpdRRecallPatient = () => {
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h4 className="card-title p-2 mb-0">
-                    PATIENT RECALL - {selectedPatient.patientName}
-                  </h4>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleBackToList}
-                  >
-                    <i className="icofont-arrow-left me-1"></i> Back to List
-                  </button>
+                <div className="d-flex align-items-center gap-1">
+                  <button className="btn-back" title="Back to List" onClick={handleBackToList}><i className="icofont-arrow-left"></i></button>
+                  <h4 className="card-title p-2 mb-0">Patient Recall - {selectedPatient.patientName}</h4>
                 </div>
               </div>
               {popupMessage && (
@@ -4825,9 +4824,11 @@ const OpdRRecallPatient = () => {
                 onClose={() => setShowDuplicatePopup(false)}
               />
 
-              <div className="mb-1 card" style={{ border: "none" }}>
-              
-                <div className="card-body py-2 px-3">
+
+              <div className="card-body pt-1 forHeader">
+
+                <div className="mb-3 mt-2">
+                  <h4 className="fw-bold mb-2">Personal Details</h4>
                   <div className="row g-2 align-items-center">
                     <div className="col-md-10">
                       <div className="row g-2">
@@ -4881,7 +4882,7 @@ const OpdRRecallPatient = () => {
                           <input
                             type="text"
                             id="dob"
-                            value={selectedPatient?.dob}
+                            value={formatDateForDisplay(selectedPatient?.dob)}
                             name="dob"
                             className="form-control"
                             placeholder="dd/mm/yyyy"
@@ -4910,7 +4911,6 @@ const OpdRRecallPatient = () => {
                         alt="Profile photo"
                         className="img-fluid rounded border shadow-sm"
                         style={{
-                          width: "90px",
                           height: "90px",
                           objectFit: "cover",
                         }}
@@ -4918,112 +4918,376 @@ const OpdRRecallPatient = () => {
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="card-body pt-1">
-                {/* Clinical History Section */}
+
+                {/* Clinical History Section (with merged Diagnosis) */}
                 <div className="card mb-3 shadow-sm">
                   <div
-                    className="card-header py-3   d-flex justify-content-between align-items-center"
+                    className="card-header d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("clinicalHistory")}
                   >
-                    <h6 className="mb-0 fw-bold">Clinical History</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.clinicalHistory ? "−" : "+"}
+                    <h6 className="mb-0 fw-bold">Vital and Clinical History</h6>
+                    <span>
+                      {expandedSections.clinicalHistory ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
                   {expandedSections.clinicalHistory && (
                     <div className="card-body">
-                      <div className="row">
-                        <div className="col-md-3">
-                          <div className="d-flex flex-column gap-2">
-                            {[
-                              {
-                                id: "previous-visits",
-                                label: "Previous Visits",
-                              },
-                              {
-                                id: "previous-vitals",
-                                label: "Previous Vitals",
-                              },
-                              {
-                                id: "previous-lab",
-                                label: "Previous Lab Investigation",
-                              },
-                              {
-                                id: "previous-ecg",
-                                label: "Previous ECG Investigation",
-                              },
-                              { id: "audit-history", label: "Audit History" },
-                              {
-                                id: "previous-psychiatrist",
-                                label: "Psychiatrist Assessment History",
-                              },
-                              {
-                                id: "psychiatrist",
-                                label: "Psychiatrist Assessment",
-                              },
-                            ].map((btn) => (
-                              <button
-                                key={btn.id}
-                                className={`btn btn-sm ${
-                                  selectedHistoryType === btn.id
-                                    ? "btn-primary"
-                                    : "btn-outline-primary"
-                                }`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (btn.id === "previous-visits") {
-                                    await handleHistoryTypeClick(
-                                      "previous-visits",
-                                    );
-                                  } else if (btn.id === "previous-vitals") {
-                                    await handleHistoryTypeClick(
-                                      "previous-vitals",
-                                    );
-                                  } else if (
-                                    btn.id === "previous-psychiatrist"
-                                  ) {
-                                    await handleHistoryTypeClick(
-                                      "previous-psychiatrist",
-                                    );
-                                  } else if (btn.id === "psychiatrist") {
-                                    setClinicalPopupType("psychiatrist");
-                                    setShowClinicalPopup(true);
-                                    handleHistoryTypeClick(btn.id);
-                                  } else {
-                                    handleHistoryTypeClick(btn.id);
-                                  }
-                                }}
-                              >
-                                {btn.label}
-                              </button>
-                            ))}
-                          </div>
+
+                      <h4 class="fw-bold mb-3">Vital Detail</h4>
+                      <div className="row g-3 vitalDetails">
+                        <div className="col-md-2 d-flex position-relative">
+                          <label className="form-label me-2">Height</label>
+                          <input
+                            type="number"
+                            className={`form-control ${errors.height ? "is-invalid" : ""}`}
+                            min={0}
+                            placeholder="Height"
+                            name="height"
+                            value={formData.height}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">cm</span>
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">
+                              {errors.height}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="col-md-9">
-                          <div className="mb-3">
+                        <div className="col-md-2 d-flex position-relative">
+                          <label className="form-label me-2">Weight</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.weight ? "is-invalid" : ""}`}
+                            placeholder="Weight"
+                            name="weight"
+                            value={formData.weight}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">kg</span>
+                          {errors.weight && (
+                            <div className="invalid-feedback d-block">
+                              {errors.weight}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3 d-flex position-relative">
+                          <label className="form-label me-2">Temperature</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
+                            placeholder="Temperature"
+                            name="temperature"
+                            value={formData.temperature}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">°F</span>
+                          {errors.temperature && (
+                            <div className="invalid-feedback d-block">
+                              {errors.temperature}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-5 d-flex align-items-center gap-2 position-relative">
+                          <label className="form-label me-2">BP</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""}`}
+                            placeholder="Systolic"
+                            name="systolicBP"
+                            value={formData.systolicBP}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text-">/</span>
+                          {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.systolicBP}
+                            </div>
+                          )}
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""}`}
+                            placeholder="Diastolic"
+                            name="diastolicBP"
+                            value={formData.diastolicBP}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">mmHg</span>
+                          {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.diastolicBP}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3 d-flex position-relative">
+                          <label className="form-label me-2">Pulse</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
+                            placeholder="Pulse"
+                            name="pulse"
+                            value={formData.pulse}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">/min</span>
+                          {errors.pulse && (
+                            <div className="invalid-feedback d-block">
+                              {errors.pulse}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3 d-flex position-relative">
+                          <label className="form-label me-2">BMI</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.bmi ? "is-invalid" : ""}`}
+                            placeholder="BMI"
+                            name="bmi"
+                            value={formData.bmi}
+                            onChange={handleChange}
+                            readOnly
+                          />
+                          <span className="input-group-text">kg/m²</span>
+                          {errors.bmi && (
+                            <div className="invalid-feedback d-block">
+                              {errors.bmi}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3 d-flex position-relative">
+                          <label className="form-label me-2">RR</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.rr ? "is-invalid" : ""}`}
+                            placeholder="RR"
+                            name="rr"
+                            value={formData.rr}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">/min</span>
+                          {errors.rr && (
+                            <div className="invalid-feedback d-block">
+                              {errors.rr}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3 d-flex position-relative">
+                          <label className="form-label me-2">SpO2</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={`form-control ${errors.spo2 ? "is-invalid" : ""}`}
+                            placeholder="SpO2"
+                            name="spo2"
+                            value={formData.spo2}
+                            onChange={handleChange}
+                          />
+                          <span className="input-group-text">%</span>
+                          {errors.spo2 && (
+                            <div className="invalid-feedback d-block">
+                              {errors.spo2}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="row mt-3">
+                        <div className="col-12">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              name="mlcCase"
+                              checked={formData.mlcCase}
+                              onChange={handleChange}
+                            />
+                            <label className="form-check-label">
+                              Mark as MLC Case
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <hr />
+
+                      {/* Aanand */}
+
+                      <div className="mb-4">
+                        <h4 class="fw-bold mb-3">Patient History</h4>
+                        <div className="patientHistoryBtn">
+                          {/* { id: "audit-history", label: "Audit History" },
+                            {
+                              id: "psychiatrist",
+                              label: "Psychiatrist Assessment",
+                            }, */}
+                          {[
+                            {
+                              id: "previous-visits",
+                              label: "Previous Visits",
+                              icon: "icofont-ui-calendar",
+                            },
+                            {
+                              id: "previous-vitals",
+                              label: "Previous Vitals",
+                              icon: "icofont-heart-beat",
+                            },
+                            {
+                              id: "previous-lab",
+                              label: "Previous Lab Investigation",
+                              icon: "icofont-laboratory",
+                            },
+                            {
+                              id: "previous-ecg",
+                              label: "Previous ECG Investigation",
+                              icon: "icofont-sound-wave",
+                            },
+                            {
+                              id: "previous-psychiatrist",
+                              label: "Psychiatrist Assessment",
+                              icon: "icofont-brain-alt",
+                            },
+                          ].map((btn) => (
+                            <button
+                              key={btn.id}
+                              className={`btn btn-sm ${selectedHistoryType === btn.id
+                                ? "btn-primary"
+                                : "btn-outline-primary"
+                                }`}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (btn.id === "previous-visits") {
+                                  await handleHistoryTypeClick(
+                                    "previous-visits",
+                                  );
+                                } else if (btn.id === "previous-vitals") {
+                                  await handleHistoryTypeClick(
+                                    "previous-vitals",
+                                  );
+                                } else if (
+                                  btn.id === "previous-psychiatrist"
+                                ) {
+                                  await handleHistoryTypeClick(
+                                    "previous-psychiatrist",
+                                  );
+                                } else if (btn.id === "psychiatrist") {
+                                  setClinicalPopupType("psychiatrist");
+                                  setShowClinicalPopup(true);
+                                  handleHistoryTypeClick(btn.id);
+                                } else {
+                                  handleHistoryTypeClick(btn.id);
+                                }
+                              }}
+                            >
+                              <i class={btn.icon}></i>
+                              <span>{btn.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <hr />
+
+                      {/* ************************ */}
+                      <div className="">
+                        <h4 class="fw-bold mb-3">Clinical History</h4>
+                        <div className="row">
+                          {/* Chief Complaints */}
+                          <div className="col-md-6 mb-3">
                             <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Patient signs & symptoms
+                              <label className="form-label fw-bold ">
+                                Chief Complaints
                               </label>
                             </div>
-                            <input
-                              type="text"
-                              className="form-control mt-3"
+                            <textarea
+                              className="form-control"
+                              rows={6}
                               name="patientSymptoms"
                               value={formData.patientSymptoms}
                               onChange={handleChange}
-                              placeholder="Enter symptoms"
-                            />
+                              placeholder="Enter chief complaints"
+                              style={{ height: "60px" }}
+                            ></textarea>
+                            {/* <input
+                                type="text"
+                                className="form-control"
+                                name="patientSymptoms"
+                                value={formData.patientSymptoms}
+                                onChange={handleChange}
+                                placeholder="Enter chief complaints"
+                              /> */}
                           </div>
 
-                          <div className="mb-3">
+                          {/* Present History of Illness */}
+                          <div className="col-md-6 mb-3">
+                            <div className="showPopupBtn">
+                              <label className="form-label fw-bold m-0">
+                                Present History of Illness
+                              </label>
+                              <button
+                                className="btn-view"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("family");
+                                }}
+                              >
+                                <i class="icofont-plus"></i>
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control"
+                              rows={6}
+                              name="presentHistory"
+                              value={formData.presentHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Present History of Illness"
+                              style={{ height: "60px" }}
+                            ></textarea>
+                          </div>
+
+                          {/* Past Medical History */}
+                          <div className="col-md-6 mb-3">
+                            <div className="showPopupBtn">
+                              <label className="form-label fw-bold m-0">
+                                Past Medical History
+                              </label>
+                              <button
+                                className="btn-view"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPopup("past");
+                                }}
+                              >
+                                <i class="icofont-plus"></i>
+                              </button>
+                            </div>
+                            <textarea
+                              className="form-control"
+                              rows={6}
+                              name="pastMedicalHistory"
+                              value={formData.pastMedicalHistory}
+                              onChange={handleChange}
+                              placeholder="Enter Past Medical History"
+                              style={{ height: "60px" }}
+                            ></textarea>
+                          </div>
+
+                          {/* Clinical Reports / Old Reports */}
+                          <div className="col-md-6 mb-3">
                             <label className="form-label fw-bold">
-                              Clinical Examination
+                              Clinical Notes / Old Reports
                             </label>
                             <textarea
                               className="form-control"
@@ -5031,82 +5295,21 @@ const OpdRRecallPatient = () => {
                               name="clinicalExamination"
                               value={formData.clinicalExamination}
                               onChange={handleChange}
-                              placeholder="Enter details"
+                              placeholder="Enter clinical reports / old reports"
+                              style={{ height: "60px" }}
                             ></textarea>
                           </div>
-
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Past History
-                              </label>
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("past");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
+                          <div className="col-md-6 mb-2">
+                            <label className="form-label fw-bold">Allergy History</label>
                             <textarea
-                              className="form-control mt-3"
+                              className="form-control"
                               rows={3}
-                              name="pastHistory"
-                              value={formData.pastHistory}
-                              onChange={handleChange}
-                              placeholder="Enter Past History"
+                              placeholder="No known allergies / Known allergies / Unknown"
+                              style={{ height: "60px" }}
                             ></textarea>
                           </div>
 
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <label className="form-label fw-bold m-0">
-                                Family History
-                              </label>
-                              <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPopup("family");
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <textarea
-                              className="form-control mt-3"
-                              rows={3}
-                              name="familyHistory"
-                              value={formData.familyHistory}
-                              onChange={handleChange}
-                              placeholder="Enter Family History"
-                            ></textarea>
-                          </div>
-
-                          {String(
-                            selectedPatient?.gender || "",
-                          ).toLowerCase() === "female" && (
-                            <div className="mb-3">
-                              <div className="d-flex justify-content-between align-items-center">
-                                <label className="form-label fw-bold m-0">
-                                  Pregnancy Details
-                                </label>
-                              </div>
-                              <div className="mt-2">
-                                <PregnancySection
-                                  ref={pregnancyRef}
-                                  readOnly={false}
-                                  emitWhenNotPregnant
-                                  opdPatientDetailsId={
-                                    selectedPatient?.opdPatientId ?? null
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-
+                          {/* Psychiatrist Assessment display */}
                           {psychiatristAssessment?.rows?.length > 0 && (
                             <div className="mb-3 border rounded p-3 bg-light">
                               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -5162,21 +5365,235 @@ const OpdRRecallPatient = () => {
                             </div>
                           )}
                         </div>
+                        <hr />
+
+                        <div className="">
+                          <div class="row mb-3">
+                            {/* Diagnosis Section (merged, no header, no border) */}
+                            <div className="col-md-6">
+                              <label className="form-label fw-bold">Working Diagnosis</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={workingDiagnosis}
+                                onChange={(e) =>
+                                  setWorkingDiagnosis(e.target.value)
+                                }
+                                placeholder="Enter working diagnosis"
+                                maxLength={40}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="table-responsive"
+                            style={{ overflow: "visible" }}
+                          >
+                            <table className="table table-bordered">
+                              <thead>
+                                <tr>
+                                  <th className="col-md-6">ICD Diagnosis</th>
+                                  <th className="col-md-2 text-center">
+                                    Communicable
+                                  </th>
+                                  <th className="col-md-2 text-center">
+                                    Infectious
+                                  </th>
+                                  <th className="col-md-1 text-center">
+                                    Action
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {diagnosisItems.map((item, index) => (
+                                  <tr key={index}>
+                                    <td>
+                                      <div
+                                        className="position-relative"
+                                        style={{ width: "100%", zIndex: 20 }}
+                                        ref={dropdownRef}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="Search ICD..."
+                                          value={
+                                            diagnosisItems[index]
+                                              .icdDiagnosis ||
+                                            search[index] ||
+                                            ""
+                                          }
+                                          onChange={(e) =>
+                                            handleIcdSearch(
+                                              e.target.value,
+                                              index,
+                                            )
+                                          }
+                                          onClick={() => {
+                                            loadFirstPage(index);
+                                            setOpenDropdown(index);
+                                          }}
+                                          onBlur={() => {
+                                            setTimeout(() => {
+                                              setOpenDropdown(null);
+                                            }, 200);
+                                          }}
+                                        />
+
+                                        {openDropdown === index && (
+                                          <div
+                                            className="border rounded mt-1 bg-white position-absolute w-100"
+                                            style={{
+                                              maxHeight: "220px",
+                                              zIndex: 9999,
+                                              overflowY: "auto",
+                                            }}
+                                            onScroll={(e) => {
+                                              if (
+                                                e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                                e.target.clientHeight
+                                              ) {
+                                                loadMore();
+                                              }
+                                            }}
+                                          >
+                                            {icdDropdown.length > 0 ? (
+                                              icdDropdown.map((icd) => (
+                                                <div
+                                                  key={icd.icdId}
+                                                  className="p-2 cursor-pointer hover: "
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    updateICD(icd, index);
+                                                    setOpenDropdown(null);
+                                                  }}
+                                                >
+                                                  {icd.icdCode} -{" "}
+                                                  {icd.icdName}
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <div className="p-2 text-muted">
+                                                No results found
+                                              </div>
+                                            )}
+                                            {!lastPage && (
+                                              <div className="text-center p-2 text-primary small">
+                                                Loading...
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="text-center">
+                                      <input
+                                        type="checkbox"
+                                        className="form-check-input border-black"
+                                        checked={item.communicableDisease}
+                                        onChange={(e) =>
+                                          handleDiagnosisChange(
+                                            index,
+                                            "communicableDisease",
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <input
+                                        type="checkbox"
+                                        className="form-check-input border-black"
+                                        checked={item.infectiousDisease}
+                                        onChange={(e) =>
+                                          handleDiagnosisChange(
+                                            index,
+                                            "infectiousDisease",
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <div className="btnCenter">
+                                        <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddDiagnosisItem}><i class="icofont-plus"></i></button>
+                                        <button className="btn btn-outline-danger btnDel" title="Delete"
+                                          onClick={() =>
+                                            handleRemoveDiagnosisItem(index)
+                                          }
+                                          disabled={
+                                            diagnosisItems.length === 1 &&
+                                            !diagnosisItems[0].icdDiagId &&
+                                            !diagnosisItems[0].icdDiagnosis &&
+                                            !diagnosisItems[0]
+                                              .communicableDisease &&
+                                            !diagnosisItems[0]
+                                              .infectiousDisease
+                                          }><i class="icofont-trash"></i></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+
+                          {/* Pregnancy Details */}
+                          {String(
+                            selectedPatient?.gender || "",
+                          ).toLowerCase() === "female" && (
+                              <div className="">
+
+                                <div className="d-flex align-items-center gap-3">
+                                  <h4 className="fw-bold mb-0">Pregnancy Details</h4>
+                                  <div className="form-check mb-0">
+                                    <label className="form-check-label">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        name="pregnant"
+                                        checked={isPregnant}
+                                        onChange={(e) => setIsPregnant(e.target.checked)}
+                                      />
+                                      <sapn>Pregnant</sapn>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {isPregnant && <div className="mt-2">
+                                  <PregnancySection
+                                    ref={pregnancyRef}
+                                    readOnly={false}
+                                    emitWhenNotPregnant
+                                    opdPatientDetailsId={
+                                      selectedPatient?.opdPatientId ?? null
+                                    }
+                                  />
+                                </div>
+                                }
+                              </div>
+                            )}
+
+                        </div>
+
                       </div>
+
                     </div>
                   )}
                 </div>
+
                 {/* Vision Examination Section */}
                 {shouldShowVisionExamination && (
                   <div className="card mb-3">
                     <div
-                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                       style={{ cursor: "pointer" }}
                       onClick={() => toggleSection("visionExamination")}
                     >
                       <h6 className="mb-0 fw-bold">Ophthal Examination</h6>
-                      <span style={{ fontSize: "18px" }}>
-                        {expandedSections.visionExamination ? "−" : "+"}
+                      <span>
+                        {expandedSections.visionExamination ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                       </span>
                     </div>
                     {expandedSections.visionExamination && (
@@ -5258,208 +5675,6 @@ const OpdRRecallPatient = () => {
                   selectedItems={selectedItems}
                 />
 
-                {/* Vital Detail Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("vitalDetail")}
-                  >
-                    <h6 className="mb-0 fw-bold">Vital Detail</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.vitalDetail ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.vitalDetail && (
-                    <div className="card-body">
-                      <div className="row g-3 align-items-center">
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Height</label>
-                          <input
-                            type="number"
-                            className={`form-control ${errors.height ? "is-invalid" : ""}`}
-                            min={0}
-                            placeholder="Height"
-                            name="height"
-                            value={formData.height}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">cm</span>
-                          {errors.height && (
-                            <div className="invalid-feedback d-block">
-                              {errors.height}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Weight</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.weight ? "is-invalid" : ""}`}
-                            placeholder="Weight"
-                            name="weight"
-                            value={formData.weight}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">kg</span>
-                          {errors.weight && (
-                            <div className="invalid-feedback d-block">
-                              {errors.weight}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Temperature</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
-                            placeholder="Temperature"
-                            name="temperature"
-                            value={formData.temperature}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">°F</span>
-                          {errors.temperature && (
-                            <div className="invalid-feedback d-block">
-                              {errors.temperature}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">BP</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""}`}
-                            placeholder="Systolic"
-                            name="systolicBP"
-                            value={formData.systolicBP}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">/</span>
-                          {errors.systolicBP && (
-                            <div className="invalid-feedback d-block">
-                              {errors.systolicBP}
-                            </div>
-                          )}
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""}`}
-                            placeholder="Diastolic"
-                            name="diastolicBP"
-                            value={formData.diastolicBP}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">mmHg</span>
-                          {errors.diastolicBP && (
-                            <div className="invalid-feedback d-block">
-                              {errors.diastolicBP}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">Pulse</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
-                            placeholder="Pulse"
-                            name="pulse"
-                            value={formData.pulse}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">/min</span>
-                          {errors.pulse && (
-                            <div className="invalid-feedback d-block">
-                              {errors.pulse}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">BMI</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.bmi ? "is-invalid" : ""}`}
-                            placeholder="BMI"
-                            name="bmi"
-                            value={formData.bmi}
-                            onChange={handleChange}
-                            readOnly
-                          />
-                          <span className="input-group-text">kg/m²</span>
-                          {errors.bmi && (
-                            <div className="invalid-feedback d-block">
-                              {errors.bmi}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">RR</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.rr ? "is-invalid" : ""}`}
-                            placeholder="RR"
-                            name="rr"
-                            value={formData.rr}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">/min</span>
-                          {errors.rr && (
-                            <div className="invalid-feedback d-block">
-                              {errors.rr}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-md-4 d-flex">
-                          <label className="form-label me-2">SpO2</label>
-                          <input
-                            type="number"
-                            min={0}
-                            className={`form-control ${errors.spo2 ? "is-invalid" : ""}`}
-                            placeholder="SpO2"
-                            name="spo2"
-                            value={formData.spo2}
-                            onChange={handleChange}
-                          />
-                          <span className="input-group-text">%</span>
-                          {errors.spo2 && (
-                            <div className="invalid-feedback d-block">
-                              {errors.spo2}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="row mt-3">
-                        <div className="col-12">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              name="mlcCase"
-                              checked={formData.mlcCase}
-                              onChange={handleChange}
-                            />
-                            <label className="form-check-label">
-                              Mark as MLC Case
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Dental Section */}
                 {isDentalDepartment && (
@@ -5490,203 +5705,16 @@ const OpdRRecallPatient = () => {
                   </div>
                 )}
 
-                {/* Diagnosis Section */}
-                <div className="card mb-3" style={{ overflow: "visible" }}>
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("diagnosis")}
-                  >
-                    <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.diagnosis ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.diagnosis && (
-                    <div className="card-body" style={{ overflow: "visible" }}>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold">
-                          Working Diagnosis
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          style={{ width: "400px" }}
-                          value={workingDiagnosis}
-                          onChange={(e) => setWorkingDiagnosis(e.target.value)}
-                          placeholder="Enter working diagnosis"
-                          maxLength={40}
-                        />
-                      </div>
-
-                      <div
-                        className="table-responsive"
-                        style={{ overflow: "visible" }}
-                      >
-                        <table className="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th className="col-md-6">ICD Diagnosis</th>
-                              <th className="col-md-2 text-center">
-                                Communicable
-                              </th>
-                              <th className="col-md-2 text-center">
-                                Infectious
-                              </th>
-                              <th className="col-md-1 text-center">Add</th>
-                              <th className="col-md-1 text-center">Delete</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {diagnosisItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%", zIndex: 20 }}
-                                    ref={dropdownRef}
-                                  >
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Search ICD..."
-                                      value={
-                                        diagnosisItems[index].icdDiagnosis ||
-                                        search[index] ||
-                                        ""
-                                      }
-                                      onChange={(e) =>
-                                        handleIcdSearch(e.target.value, index)
-                                      }
-                                      onClick={() => {
-                                        loadFirstPage(index);
-                                        setOpenDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setOpenDropdown(null);
-                                        }, 200);
-                                      }}
-                                    />
-
-                                    {openDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMore();
-                                          }
-                                        }}
-                                      >
-                                        {icdDropdown.length > 0 ? (
-                                          icdDropdown.map((icd) => (
-                                            <div
-                                              key={icd.icdId}
-                                              className="p-2 cursor-pointer hover: "
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateICD(icd, index);
-                                                setOpenDropdown(null);
-                                              }}
-                                            >
-                                              {icd.icdCode} - {icd.icdName}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-                                        {!lastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.communicableDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "communicableDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input border-black"
-                                    checked={item.infectiousDisease}
-                                    onChange={(e) =>
-                                      handleDiagnosisChange(
-                                        index,
-                                        "infectiousDisease",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddDiagnosisItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveDiagnosisItem(index)
-                                    }
-                                    disabled={
-                                      diagnosisItems.length === 1 &&
-                                      !diagnosisItems[0].icdDiagId &&
-                                      !diagnosisItems[0].icdDiagnosis &&
-                                      !diagnosisItems[0].communicableDisease &&
-                                      !diagnosisItems[0].infectiousDisease
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Investigation Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("investigation")}
                   >
                     <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.investigation ? "−" : "+"}
+                    <span>
+                      {expandedSections.investigation ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.investigation && (
@@ -5747,10 +5775,10 @@ const OpdRRecallPatient = () => {
                       )}
 
                       <div className="row mb-3 align-items-center">
-                        <div className="col-md-2">
-                          <label className="form-label fw-bold">Template</label>
+                        <div className="col-md-1">
+                          <label className="form-label fw-bold m-0">Template</label>
                         </div>
-                        <div className="col-md-4">
+                        <div className="col-md-3">
                           <select
                             className="form-select"
                             value={selectedInvestigationTemplate}
@@ -5834,12 +5862,7 @@ const OpdRRecallPatient = () => {
                                     }}
                                   />
 
-                                  <label
-                                    className="form-check-label fw-bold"
-                                    htmlFor={`inv-type-${type.id}`}
-                                  >
-                                    {type.name.toUpperCase()}
-                                  </label>
+                                  <label className="form-check-label" htmlFor={`inv-type-${type.id}`}>{type.name}</label>
                                 </div>
                               ))
                             ) : (
@@ -5860,8 +5883,7 @@ const OpdRRecallPatient = () => {
                             <tr>
                               <th style={{ width: "55%" }}>Investigation</th>
                               <th style={{ width: "15%" }}>Date</th>
-                              <th style={{ width: "15%" }}>Add</th>
-                              <th style={{ width: "15%" }}>Delete</th>
+                              <th className="text-center" style={{ width: "15%" }}>Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -5916,7 +5938,7 @@ const OpdRRecallPatient = () => {
                                           onScroll={(e) => {
                                             if (
                                               e.target.scrollHeight -
-                                                e.target.scrollTop ===
+                                              e.target.scrollTop ===
                                               e.target.clientHeight
                                             ) {
                                               loadMoreInvestigations();
@@ -5976,30 +5998,20 @@ const OpdRRecallPatient = () => {
                                     />
                                   </td>
                                   <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-success"
-                                      onClick={handleAddInvestigationItem}
-                                    >
-                                      +
-                                    </button>
-                                  </td>
-                                  <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() =>
+                                    <div className="btnCenter">
+                                      <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddInvestigationItem}><i class="icofont-plus"></i></button>
+                                      <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() =>
                                         handleRemoveInvestigationItem(index)
                                       }
-                                      disabled={
-                                        (investigationItems.length === 1 &&
-                                          !investigationItems[0].name &&
-                                          (!investigationItems[0].templateIds ||
-                                            investigationItems[0].templateIds
-                                              .length === 0)) ||
-                                        isOrderCompleted
-                                      }
-                                    >
-                                      −
-                                    </button>
+                                        disabled={
+                                          (investigationItems.length === 1 &&
+                                            !investigationItems[0].name &&
+                                            (!investigationItems[0].templateIds ||
+                                              investigationItems[0].templateIds
+                                                .length === 0)) ||
+                                          isOrderCompleted
+                                        }><i class="icofont-trash"></i></button>
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -6014,13 +6026,13 @@ const OpdRRecallPatient = () => {
                 {/* Treatment Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("treatment")}
                   >
                     <h6 className="mb-0 fw-bold">Treatment</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.treatment ? "−" : "+"}
+                    <span>
+                      {expandedSections.treatment ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
@@ -6083,7 +6095,7 @@ const OpdRRecallPatient = () => {
                       {/* Template Dropdown + Buttons */}
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
-                          <label className="form-label fw-bold">Template</label>
+                          <label className="form-label fw-bold m-0">Template</label>
                         </div>
                         <div className="col-md-4">
                           <select
@@ -6198,17 +6210,12 @@ const OpdRRecallPatient = () => {
                                 Stock
                               </th>
                               <th
-                                style={{ width: "60px" }}
+                                style={{ width: "100px" }}
                                 className="text-center"
                               >
-                                Add
+                                Action
                               </th>
-                              <th
-                                style={{ width: "60px" }}
-                                className="text-center"
-                              >
-                                Delete
-                              </th>
+
                             </tr>
                           </thead>
                           <tbody>
@@ -6272,7 +6279,7 @@ const OpdRRecallPatient = () => {
                                             onScroll={(e) => {
                                               if (
                                                 e.target.scrollHeight -
-                                                  e.target.scrollTop ===
+                                                e.target.scrollTop ===
                                                 e.target.clientHeight
                                               ) {
                                                 loadMoreDrugs();
@@ -6422,42 +6429,30 @@ const OpdRRecallPatient = () => {
                                       />
                                     </td>
                                     <td
-                                      style={{ width: "60px" }}
+                                      style={{ width: "100px" }}
                                       className="text-center"
                                     >
-                                      <button
-                                        className="btn btn-sm btn-success"
-                                        onClick={handleAddTreatmentItem}
-                                      >
-                                        +
-                                      </button>
-                                    </td>
-                                    <td
-                                      style={{ width: "60px" }}
-                                      className="text-center"
-                                    >
-                                      <button
-                                        className="btn btn-sm btn-danger"
-                                        onClick={() =>
+                                      <div className="btnCenter">
+                                        <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddTreatmentItem}><i class="icofont-plus"></i></button>
+                                        <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() =>
                                           handleRemoveTreatmentItem(index)
                                         }
-                                        disabled={
-                                          // Only disable if it's the last row AND it's already empty AND not an existing record
-                                          treatmentItems.filter(
-                                            (r) => r.flag !== -1,
-                                          ).length === 1 &&
-                                          !treatmentItems[index].treatmentId &&
-                                          !treatmentItems[index]
-                                            .prescriptionDtId &&
-                                          !treatmentItems[index].drugName &&
-                                          !treatmentItems[index].dosage &&
-                                          !treatmentItems[index].frequency &&
-                                          !treatmentItems[index].days
-                                        }
-                                      >
-                                        −
-                                      </button>
+                                          disabled={
+                                            // Only disable if it's the last row AND it's already empty AND not an existing record
+                                            treatmentItems.filter(
+                                              (r) => r.flag !== -1,
+                                            ).length === 1 &&
+                                            !treatmentItems[index].treatmentId &&
+                                            !treatmentItems[index]
+                                              .prescriptionDtId &&
+                                            !treatmentItems[index].drugName &&
+                                            !treatmentItems[index].dosage &&
+                                            !treatmentItems[index].frequency &&
+                                            !treatmentItems[index].days
+                                          }><i class="icofont-trash"></i></button>
+                                      </div>
                                     </td>
+
                                   </tr>
                                 );
                               })}
@@ -6469,9 +6464,10 @@ const OpdRRecallPatient = () => {
                       <div className="card mt-3">
                         <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
                         <div className="card-body pt-0">
-                          <div className="d-flex align-items-end">
+                          <div className="d-flex align-items-center gap-2">
                             <textarea
                               className="form-control me-2"
+                              style={{ height: "50px", flex: "1" }}
                               rows={3}
                               value={generalTreatmentAdvice}
                               placeholder="Treatment advice will be populated here"
@@ -6480,14 +6476,12 @@ const OpdRRecallPatient = () => {
                               }
                             />
                             <button
-                              className="btn btn-sm btn-outline-success p-1 px-2"
+                              className="btn-view"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openPopup("treatmentAdvice");
                               }}
-                            >
-                              +
-                            </button>
+                            ><i class="icofont-plus"></i></button>
                           </div>
                         </div>
                       </div>
@@ -6498,13 +6492,13 @@ const OpdRRecallPatient = () => {
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("procedureCare")}
                   >
                     <h6 className="mb-0 fw-bold">Procedure Care</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.procedureCare ? "−" : "+"}
+                    <span>
+                      {expandedSections.procedureCare ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.procedureCare && (
@@ -6549,392 +6543,465 @@ const OpdRRecallPatient = () => {
                       </div>
 
                       {procedureCareType === "procedure" ? (
-                        <div
-                          className="table-responsive"
-                          style={{ overflow: "visible" }}
-                        >
-                          <table className="table table-bordered">
-                            <thead style={{ backgroundColor: "#b0c4de" }}>
-                              <tr>
-                                <th style={{ width: "40%" }}>
-                                  Nursing Care Name
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "20%" }}
-                                >
-                                  Frequency
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "15%" }}
-                                >
-                                  No.Of Days
-                                </th>
-                                <th style={{ width: "15%" }}>Remarks</th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "5%" }}
-                                >
-                                  Add
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "5%" }}
-                                >
-                                  Delete
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {procedureCareItems.map((row, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <div
-                                      className="procedure-wrapper"
-                                      ref={(el) =>
+                        <>
+                          <div className="subTitle mt-3">
+                            <h4>Procedure Advice</h4>
+                          </div>
+
+                          <div className="adviceWrapper">
+                            <div className="cardProcedure">
+                              <div class="row mb-3">
+                                <div class="col-md-4">
+                                  <label class="form-label fw-bold">Procedure Name</label>
+                                  <select class="form-select ">
+                                    <option value="">Wound Dressing</option>
+                                    <option value=""></option>
+                                  </select>
+                                </div>
+
+                                <div class="col-md-2">
+                                  <label class="form-label fw-bold">Days</label>
+                                  <input type="text" class="form-control" placeholder="" value="5" />
+                                </div>
+
+                                <div class="col-md-5">
+                                  <label class="form-label fw-bold">Remarks</label>
+                                  <textarea class="form-control" rows="6" placeholder="" style={{ height: "50px" }}>Daily dressing, Room 10</textarea>
+                                </div>
+                                <div class="col-md-1">
+                                  <label class="form-label fw-bold text-center">Action</label>
+                                  <div className="">
+                                    <button className="btn btn-primary btnAdd" title="Add"><i class="icofont-plus"></i></button>
+                                    <button className="btn btn-outline-danger btnDel" title="Delete"><i class="icofont-trash"></i></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+
+                          <div className="table-responsive" style={{ display: "none" }}>
+                            <table className="table table-bordered">
+                              <thead style={{ backgroundColor: "#b0c4de" }}>
+                                <tr>
+                                  <th style={{ width: "40%" }}>
+                                    Nursing Care Name
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "20%" }}
+                                  >
+                                    Frequency
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "15%" }}
+                                  >
+                                    No.Of Days
+                                  </th>
+                                  <th style={{ width: "15%" }}>Remarks</th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "5%" }}
+                                  >
+                                    Add
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "5%" }}
+                                  >
+                                    Delete
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {procedureCareItems.map((row, index) => (
+                                  <tr key={index}>
+                                    <td>
+                                      <div
+                                        className="procedure-wrapper"
+                                        ref={(el) =>
                                         (procedureDropdownRef.current[index] =
                                           el)
-                                      }
-                                      style={{
-                                        position: "relative",
-                                        width: "100%",
-                                      }}
-                                    >
+                                        }
+                                        style={{
+                                          position: "relative",
+                                          width: "100%",
+                                        }}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="Search Procedure..."
+                                          value={
+                                            row.procedureName ||
+                                            procedureSearch[index] ||
+                                            ""
+                                          }
+                                          onChange={async (e) => {
+                                            const val = e.target.value;
+                                            setProcedureSearch((prev) => {
+                                              const updated = [...prev];
+                                              updated[index] = val;
+                                              return updated;
+                                            });
+
+                                            const result =
+                                              await fetchMasProcedureData(0, val);
+                                            setProcedureDropdown(result.list);
+                                            setProcedureLastPage(result.last);
+                                            setProcedurePage(0);
+                                            setOpenProcedureDropdown(index);
+                                          }}
+                                          onClick={() => {
+                                            loadProcedureFirstPage(index);
+                                            setOpenProcedureDropdown(index);
+                                          }}
+                                          onBlur={() => {
+                                            setTimeout(() => {
+                                              const selected =
+                                                procedureCareItems[index];
+                                              const text = procedureSearch[index];
+
+                                              if (
+                                                (!selected.id ||
+                                                  selected.name !== text) &&
+                                                text !== ""
+                                              ) {
+                                                setProcedureSearch((prev) => {
+                                                  const updated = [...prev];
+                                                  updated[index] = "";
+                                                  return updated;
+                                                });
+
+                                                setProcedureCareItems((prev) => {
+                                                  const updated = [...prev];
+                                                  updated[index].id = "";
+                                                  updated[index].name = "";
+                                                  return updated;
+                                                });
+                                              }
+                                              setOpenProcedureDropdown(null);
+                                            }, 150);
+                                          }}
+                                        />
+
+                                        {openProcedureDropdown === index && (
+                                          <div
+                                            className="border rounded bg-white position-absolute w-100 shadow-lg"
+                                            style={{
+                                              maxHeight: "250px",
+                                              overflowY: "auto",
+                                              zIndex: 999999,
+                                              top: "100%",
+                                              left: 0,
+                                            }}
+                                            onScroll={(e) => {
+                                              if (
+                                                e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                                e.target.clientHeight
+                                              ) {
+                                                loadMoreProcedure();
+                                              }
+                                            }}
+                                          >
+                                            {procedureDropdown.length > 0 ? (
+                                              procedureDropdown.map((proc) => (
+                                                <div
+                                                  key={proc.procedureId}
+                                                  className="p-2 cursor-pointer hover:bg-light"
+                                                  onMouseDown={() => {
+                                                    updateProcedure(proc, index);
+                                                    setOpenProcedureDropdown(
+                                                      null,
+                                                    );
+                                                  }}
+                                                >
+                                                  {proc.procedureCode} -{" "}
+                                                  {proc.procedureName}
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <div className="p-2 text-muted">
+                                                No results found
+                                              </div>
+                                            )}
+
+                                            {!procedureLastPage && (
+                                              <div className="text-center p-2 text-primary small">
+                                                Loading...
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+
+                                    <td>
+                                      <select
+                                        className="form-select"
+                                        value={row.frequencyId || ""}
+                                        onChange={(e) =>
+                                          handleProcedureCareChange(
+                                            index,
+                                            "frequencyId",
+                                            e.target.value,
+                                          )
+                                        }
+                                      >
+                                        <option value="">Select..</option>
+                                        {allFrequencies.map((f) => (
+                                          <option
+                                            key={f.frequencyId}
+                                            value={f.frequencyId}
+                                          >
+                                            {f.frequencyName}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        className="form-control"
+                                        value={row.noOfDays}
+                                        onChange={(e) =>
+                                          handleProcedureCareChange(
+                                            index,
+                                            "noOfDays",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="num"
+                                        min={0}
+                                      />
+                                    </td>
+                                    <td>
                                       <input
                                         type="text"
                                         className="form-control"
-                                        placeholder="Search Procedure..."
-                                        value={
-                                          row.procedureName ||
-                                          procedureSearch[index] ||
-                                          ""
+                                        value={row.remarks}
+                                        onChange={(e) =>
+                                          handleProcedureCareChange(
+                                            index,
+                                            "remarks",
+                                            e.target.value,
+                                          )
                                         }
-                                        onChange={async (e) => {
-                                          const val = e.target.value;
-                                          setProcedureSearch((prev) => {
-                                            const updated = [...prev];
-                                            updated[index] = val;
-                                            return updated;
-                                          });
-
-                                          const result =
-                                            await fetchMasProcedureData(0, val);
-                                          setProcedureDropdown(result.list);
-                                          setProcedureLastPage(result.last);
-                                          setProcedurePage(0);
-                                          setOpenProcedureDropdown(index);
-                                        }}
-                                        onClick={() => {
-                                          loadProcedureFirstPage(index);
-                                          setOpenProcedureDropdown(index);
-                                        }}
-                                        onBlur={() => {
-                                          setTimeout(() => {
-                                            const selected =
-                                              procedureCareItems[index];
-                                            const text = procedureSearch[index];
-
-                                            if (
-                                              (!selected.id ||
-                                                selected.name !== text) &&
-                                              text !== ""
-                                            ) {
-                                              setProcedureSearch((prev) => {
-                                                const updated = [...prev];
-                                                updated[index] = "";
-                                                return updated;
-                                              });
-
-                                              setProcedureCareItems((prev) => {
-                                                const updated = [...prev];
-                                                updated[index].id = "";
-                                                updated[index].name = "";
-                                                return updated;
-                                              });
-                                            }
-                                            setOpenProcedureDropdown(null);
-                                          }, 150);
-                                        }}
+                                        placeholder="Enter remarks"
                                       />
-
-                                      {openProcedureDropdown === index && (
-                                        <div
-                                          className="border rounded bg-white position-absolute w-100 shadow-lg"
-                                          style={{
-                                            maxHeight: "250px",
-                                            overflowY: "auto",
-                                            zIndex: 999999,
-                                            top: "100%",
-                                            left: 0,
-                                          }}
-                                          onScroll={(e) => {
-                                            if (
-                                              e.target.scrollHeight -
-                                                e.target.scrollTop ===
-                                              e.target.clientHeight
-                                            ) {
-                                              loadMoreProcedure();
-                                            }
-                                          }}
-                                        >
-                                          {procedureDropdown.length > 0 ? (
-                                            procedureDropdown.map((proc) => (
-                                              <div
-                                                key={proc.procedureId}
-                                                className="p-2 cursor-pointer hover:bg-light"
-                                                onMouseDown={() => {
-                                                  updateProcedure(proc, index);
-                                                  setOpenProcedureDropdown(
-                                                    null,
-                                                  );
-                                                }}
-                                              >
-                                                {proc.procedureCode} -{" "}
-                                                {proc.procedureName}
-                                              </div>
-                                            ))
-                                          ) : (
-                                            <div className="p-2 text-muted">
-                                              No results found
-                                            </div>
-                                          )}
-
-                                          {!procedureLastPage && (
-                                            <div className="text-center p-2 text-primary small">
-                                              Loading...
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  <td>
-                                    <select
-                                      className="form-select"
-                                      value={row.frequencyId || ""}
-                                      onChange={(e) =>
-                                        handleProcedureCareChange(
-                                          index,
-                                          "frequencyId",
-                                          e.target.value,
-                                        )
-                                      }
-                                    >
-                                      <option value="">Select..</option>
-                                      {allFrequencies.map((f) => (
-                                        <option
-                                          key={f.frequencyId}
-                                          value={f.frequencyId}
-                                        >
-                                          {f.frequencyName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="number"
-                                      className="form-control"
-                                      value={row.noOfDays}
-                                      onChange={(e) =>
-                                        handleProcedureCareChange(
-                                          index,
-                                          "noOfDays",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="num"
-                                      min={0}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.remarks}
-                                      onChange={(e) =>
-                                        handleProcedureCareChange(
-                                          index,
-                                          "remarks",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="Enter remarks"
-                                    />
-                                  </td>
-                                  <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-success"
-                                      onClick={handleAddProcedureCareItem}
-                                    >
-                                      +
-                                    </button>
-                                  </td>
-                                  <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() =>
-                                        handleRemoveProcedureCareItem(index)
-                                      }
-                                      disabled={
-                                        procedureCareItems.length === 1 &&
-                                        !procedureCareItems[0].procedureId &&
-                                        !procedureCareItems[0].procedureName &&
-                                        !procedureCareItems[0].frequencyId &&
-                                        (procedureCareItems[0].noOfDays ===
-                                          "" ||
-                                          procedureCareItems[0].noOfDays ===
+                                    </td>
+                                    <td className="text-center">
+                                      <button
+                                        className="btn btn-sm btn-success"
+                                        onClick={handleAddProcedureCareItem}
+                                      >
+                                        +
+                                      </button>
+                                    </td>
+                                    <td className="text-center">
+                                      <button
+                                        className="btn btn-sm btn-danger"
+                                        onClick={() =>
+                                          handleRemoveProcedureCareItem(index)
+                                        }
+                                        disabled={
+                                          procedureCareItems.length === 1 &&
+                                          !procedureCareItems[0].procedureId &&
+                                          !procedureCareItems[0].procedureName &&
+                                          !procedureCareItems[0].frequencyId &&
+                                          (procedureCareItems[0].noOfDays ===
+                                            "" ||
+                                            procedureCareItems[0].noOfDays ===
                                             0) &&
-                                        !procedureCareItems[0].remarks
-                                      }
-                                    >
-                                      −
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                                          !procedureCareItems[0].remarks
+                                        }
+                                      >
+                                        −
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
                       ) : (
-                        <div className="table-responsive">
-                          <table className="table table-bordered">
-                            <thead style={{ backgroundColor: "#b0c4de" }}>
-                              <tr>
-                                <th style={{ width: "40%" }}>
-                                  Nursing Care Name
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "20%" }}
-                                >
-                                  Frequency
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "15%" }}
-                                >
-                                  No.Of Days
-                                </th>
-                                <th style={{ width: "15%" }}>Remarks</th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "5%" }}
-                                >
-                                  Add
-                                </th>
-                                <th
-                                  className="text-center"
-                                  style={{ width: "5%" }}
-                                >
-                                  Delete
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {physiotherapyItems.map((row, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.name}
-                                      onChange={(e) =>
-                                        handlePhysiotherapyChange(
-                                          index,
-                                          "name",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="Enter nursing care name"
-                                    />
-                                  </td>
-                                  <td>
-                                    <select
-                                      className="form-select"
-                                      value={row.frequency || ""}
-                                      onChange={(e) =>
-                                        handlePhysiotherapyChange(
-                                          index,
-                                          "frequency",
-                                          e.target.value,
-                                        )
-                                      }
-                                    >
-                                      <option value="">Select..</option>
-                                      {allFrequencies.map((f) => (
-                                        <option
-                                          key={f.frequencyId}
-                                          value={f.frequencyId}
-                                        >
-                                          {f.frequencyName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="number"
-                                      className="form-control"
-                                      value={row.days}
-                                      onChange={(e) =>
-                                        handlePhysiotherapyChange(
-                                          index,
-                                          "days",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="0"
-                                      min={0}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.remarks}
-                                      onChange={(e) =>
-                                        handlePhysiotherapyChange(
-                                          index,
-                                          "remarks",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="Enter remarks"
-                                    />
-                                  </td>
-                                  <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-success"
-                                      onClick={handleAddPhysiotherapyItem}
-                                    >
-                                      +
-                                    </button>
-                                  </td>
-                                  <td className="text-center">
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() =>
-                                        handleRemovePhysiotherapyItem(index)
-                                      }
-                                      disabled={
-                                        physiotherapyItems.length === 1 &&
-                                        !physiotherapyItems[0].name &&
-                                        !physiotherapyItems[0].frequency &&
-                                        physiotherapyItems[0].days === "0" &&
-                                        !physiotherapyItems[0].remarks
-                                      }
-                                    >
-                                      −
-                                    </button>
-                                  </td>
+                        <>
+                          <div className="subTitle mt-3">
+                            <h4>Physiotherapy Advice</h4>
+                            {/* <span>OPD</span> */}
+                          </div>
+
+                          <div className="adviceWrapper">
+                            <div className="cardProcedure">
+                              <div class="row mb-3">
+                                <div class="col-md-4">
+                                  <label class="form-label fw-bold">Physiotherapy Name</label>
+                                  <select class="form-select ">
+                                    <option value="">Knee Mobilisation</option>
+                                    <option value=""></option>
+                                  </select>
+                                </div>
+
+                                <div class="col-md-2">
+                                  <label class="form-label fw-bold">Days</label>
+                                  <input type="text" class="form-control " placeholder="" value="7" />
+                                </div>
+
+                                <div class="col-md-5">
+                                  <label class="form-label fw-bold">Remarks</label>
+                                  <textarea class="form-control" rows="6" placeholder="" style={{ height: "50px" }}>As advised by physiotherapist</textarea>
+                                </div>
+                                <div class="col-md-1">
+                                  <label class="form-label fw-bold text-center">Action</label>
+                                  <div className="">
+                                    <button className="btn btn-primary btnAdd" title="Add"><i class="icofont-plus"></i></button>
+                                    <button className="btn btn-outline-danger btnDel" title="Delete"><i class="icofont-trash"></i></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="table-responsive" style={{ display: "none" }}>
+                            <table className="table table-bordered">
+                              <thead style={{ backgroundColor: "#b0c4de" }}>
+                                <tr>
+                                  <th style={{ width: "40%" }}>
+                                    Nursing Care Name
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "20%" }}
+                                  >
+                                    Frequency
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "15%" }}
+                                  >
+                                    No.Of Days
+                                  </th>
+                                  <th style={{ width: "15%" }}>Remarks</th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "5%" }}
+                                  >
+                                    Add
+                                  </th>
+                                  <th
+                                    className="text-center"
+                                    style={{ width: "5%" }}
+                                  >
+                                    Delete
+                                  </th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody>
+                                {physiotherapyItems.map((row, index) => (
+                                  <tr key={index}>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        value={row.name}
+                                        onChange={(e) =>
+                                          handlePhysiotherapyChange(
+                                            index,
+                                            "name",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Enter nursing care name"
+                                      />
+                                    </td>
+                                    <td>
+                                      <select
+                                        className="form-select"
+                                        value={row.frequency || ""}
+                                        onChange={(e) =>
+                                          handlePhysiotherapyChange(
+                                            index,
+                                            "frequency",
+                                            e.target.value,
+                                          )
+                                        }
+                                      >
+                                        <option value="">Select..</option>
+                                        {allFrequencies.map((f) => (
+                                          <option
+                                            key={f.frequencyId}
+                                            value={f.frequencyId}
+                                          >
+                                            {f.frequencyName}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        className="form-control"
+                                        value={row.days}
+                                        onChange={(e) =>
+                                          handlePhysiotherapyChange(
+                                            index,
+                                            "days",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="0"
+                                        min={0}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        value={row.remarks}
+                                        onChange={(e) =>
+                                          handlePhysiotherapyChange(
+                                            index,
+                                            "remarks",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="Enter remarks"
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <button
+                                        className="btn btn-sm btn-success"
+                                        onClick={handleAddPhysiotherapyItem}
+                                      >
+                                        +
+                                      </button>
+                                    </td>
+                                    <td className="text-center">
+                                      <button
+                                        className="btn btn-sm btn-danger"
+                                        onClick={() =>
+                                          handleRemovePhysiotherapyItem(index)
+                                        }
+                                        disabled={
+                                          physiotherapyItems.length === 1 &&
+                                          !physiotherapyItems[0].name &&
+                                          !physiotherapyItems[0].frequency &&
+                                          physiotherapyItems[0].days === "0" &&
+                                          !physiotherapyItems[0].remarks
+                                        }
+                                      >
+                                        −
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -6943,344 +7010,374 @@ const OpdRRecallPatient = () => {
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={handleSurgeryAdviceOpen}
                   >
                     <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.surgeryAdvice ? "−" : "+"}
+                    <span>
+                      {expandedSections.surgeryAdvice ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.surgeryAdvice && (
                     <div className="card-body">
-                      <div className="row mb-3 align-items-center">
-                        <div className="col-auto">
-                          <label className="form-label small fw-bold d-block">
-                            Surgery Level
+
+                      <div className="d-flex align-items-center gap-4">
+                        {/* Referral Advised checkbox */}
+                        <h4 class="fw-bold mb-0">Surgery Action <span className="text-danger">*</span></h4>
+
+                        {/* Internal / External radio buttons */}
+                        <div className="radio-options">
+                          <label class="radioLabel">
+                            <input
+                              type="radio"
+                              name="surgeryActionType"
+                              value="advise"
+                              checked={surgeryActionType === "advise"}
+                              onChange={() => setSurgeryActionType("advise")} />
+                            <span>Advise</span>
                           </label>
-                          <div className="d-flex gap-3 align-items-center">
-                            <div className="form-check mb-0">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="surgeryType"
-                                id="major"
-                                checked={surgeryType === "major"}
-                                onChange={() =>
-                                  handleSurgeryTypeChange("major")
-                                }
-                              />
-                              <label
-                                className="form-check-label"
-                                htmlFor="major"
-                              >
-                                Major
-                              </label>
-                            </div>
-                            <div className="form-check mb-0">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="surgeryType"
-                                id="minor"
-                                checked={surgeryType === "minor"}
-                                onChange={() =>
-                                  handleSurgeryTypeChange("minor")
-                                }
-                              />
-                              <label
-                                className="form-check-label"
-                                htmlFor="minor"
-                              >
-                                Minor
-                              </label>
+                          <label class="radioLabel">
+                            <input
+                              type="radio"
+                              name="surgeryActionType"
+                              value="schedule"
+                              checked={surgeryActionType === "schedule"}
+                              onChange={() => setSurgeryActionType("schedule")} />
+                            <span>Schedule</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* advise data */}
+                      {surgeryActionType === "advise" && (
+                        <>
+                          <div class="row mt-3">
+                            <div class="col-md-12">
+                              <label class="form-label fw-bold">Surgery Advice</label>
+                              <textarea class="form-control" rows="6" placeholder="Enter surgery advice / recommendations..." style={{ height: "60px" }}></textarea>
                             </div>
                           </div>
-                        </div>
+                        </>
+                      )}
 
-                        <div className="col-auto" style={{ minWidth: "180px" }}>
-                          <label className="form-label small fw-bold mb-1">
-                            OT <span className="text-danger">*</span>
-                          </label>
-                          <select
-                            className="form-select form-select-sm"
-                            value={selectedOT}
-                            onChange={(e) => handleOTChange(e.target.value)}
-                          >
-                            <option value="">Select OT</option>
-                            {otOptions.map((ot) => (
-                              <option key={ot.otId} value={ot.otId}>
-                                {ot.otCode} - {ot.otName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-auto">
-                          <label className="form-label small fw-bold mb-1">
-                            Surgery Date <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="date"
-                            className="form-control form-control-sm"
-                            value={surgeryDate}
-                            onChange={(e) =>
-                              handleSurgeryDateChange(e.target.value)
-                            }
-                            min={getToday()}
-                          />
-                        </div>
-
-                        {/* Start Time Input */}
-                        <div className="col-auto">
-                          <label className="form-label small fw-bold mb-1">
-                            Start Time <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="time"
-                            className={`form-control form-control-sm ${
-                              surgeryStartTime &&
-                              surgeryEndTime &&
-                              !validateSurgeryTimes(
-                                surgeryStartTime,
-                                surgeryEndTime,
-                              )
-                                ? "is-invalid"
-                                : ""
-                            }`}
-                            value={surgeryStartTime}
-                            onChange={(e) =>
-                              handleSurgeryStartTimeChange(e.target.value)
-                            }
-                          />
-                          {surgeryStartTime &&
-                            surgeryEndTime &&
-                            !validateSurgeryTimes(
-                              surgeryStartTime,
-                              surgeryEndTime,
-                            ) && (
-                              <div className="invalid-feedback d-block">
-                                End time must be after start time
-                              </div>
-                            )}
-                        </div>
-
-                        {/* End Time Input */}
-                        <div className="col-auto">
-                          <label className="form-label small fw-bold mb-1">
-                            End Time <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="time"
-                            className={`form-control form-control-sm ${
-                              surgeryStartTime &&
-                              surgeryEndTime &&
-                              !validateSurgeryTimes(
-                                surgeryStartTime,
-                                surgeryEndTime,
-                              )
-                                ? "is-invalid"
-                                : ""
-                            }`}
-                            value={surgeryEndTime}
-                            onChange={(e) =>
-                              handleSurgeryEndTimeChange(e.target.value)
-                            }
-                          />
-                          {surgeryStartTime &&
-                            surgeryEndTime &&
-                            !validateSurgeryTimes(
-                              surgeryStartTime,
-                              surgeryEndTime,
-                            ) && (
-                              <div className="invalid-feedback d-block">
-                                End time must be after start time
-                              </div>
-                            )}
-                        </div>
-
-                        <div className="col-auto">
-                          <label className="form-label small fw-bold mb-1 d-block opacity-0">
-                            OTCalendar
-                          </label>
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowOtCalendarModal(true);
-                            }}
-                            style={{ fontSize: "12px" }}
-                          >
-                            OTCalendar
-                          </button>
-                        </div>
-                      </div>
-
-                      <div
-                        className="table-responsive"
-                        style={{ overflow: "visible" }}
-                      >
-                        <table className="table table-bordered">
-                          <thead style={{ backgroundColor: "#b0c4de" }}>
-                            <tr>
-                              <th style={{ width: "10%" }}>S.No</th>
-                              <th style={{ width: "75%" }}>Surgery</th>
-                              <th style={{ width: "5%" }}>Add</th>
-                              <th style={{ width: "5%" }}>Delete</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {surgeryItems.map((item, index) => (
-                              <tr key={index}>
-                                <td className="text-center">{index + 1}</td>
-                                <td>
-                                  {/* Surgery input with dropdown */}
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%" }}
+                      {/* schedule data */}
+                      {surgeryActionType === "schedule" && (
+                        <>
+                          <div className="row mt-3 mb-3 align-items-center">
+                            <div className="col-auto">
+                              <label className="form-label small fw-bold d-block">
+                                Surgery Level
+                              </label>
+                              <div className="d-flex gap-3 align-items-center">
+                                <div className="form-check mb-0">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="surgeryType"
+                                    id="major"
+                                    checked={surgeryType === "major"}
+                                    onChange={() =>
+                                      handleSurgeryTypeChange("major")
+                                    }
+                                  />
+                                  <label
+                                    className="form-check-label"
+                                    htmlFor="major"
                                   >
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Search Surgery..."
-                                      value={item.surgeryName || ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSurgeryItems((prev) => {
-                                          const newItems = [...prev];
-                                          newItems[index] = {
-                                            ...newItems[index],
-                                            surgeryId: null,
-                                            surgeryName: value,
-                                          };
-                                          return newItems;
-                                        });
-                                        setSurgerySearchInput(value);
-                                        setSelectedSurgeryIndex(index);
-                                        setIsSurgeryDropdownVisible(true);
-                                      }}
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (!surgeryMasterLoadedRef.current) {
-                                          await fetchSurgeryMasterData();
-                                        }
-                                        // Close other dropdowns and open this one
-                                        setIsSurgeryDropdownVisible(true);
-                                        setSelectedSurgeryIndex(index);
-                                      }}
-                                      onFocus={async () => {
-                                        if (!surgeryMasterLoadedRef.current) {
-                                          await fetchSurgeryMasterData();
-                                        }
-                                        setIsSurgeryDropdownVisible(true);
-                                        setSelectedSurgeryIndex(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setIsSurgeryDropdownVisible(false);
-                                          setSelectedSurgeryIndex(null);
-                                        }, 200);
-                                      }}
-                                      autoComplete="off"
-                                    />
+                                    Major
+                                  </label>
+                                </div>
+                                <div className="form-check mb-0">
+                                  <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="surgeryType"
+                                    id="minor"
+                                    checked={surgeryType === "minor"}
+                                    onChange={() =>
+                                      handleSurgeryTypeChange("minor")
+                                    }
+                                  />
+                                  <label
+                                    className="form-check-label"
+                                    htmlFor="minor"
+                                  >
+                                    Minor
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
 
-                                    {isSurgeryDropdownVisible &&
-                                      selectedSurgeryIndex === index && (
-                                        <div
-                                          className="border rounded mt-1 bg-white position-absolute w-100"
-                                          style={{
-                                            maxHeight: "220px",
-                                            zIndex: 9999,
-                                            overflowY: "auto",
-                                            boxShadow:
-                                              "0 2px 8px rgba(0,0,0,0.15)",
-                                            top: "100%",
-                                            left: 0,
+                            <div className="col-auto" style={{ minWidth: "180px" }}>
+                              <label className="form-label small fw-bold mb-1">
+                                OT <span className="text-danger">*</span>
+                              </label>
+                              <select
+                                className="form-select form-select-sm"
+                                value={selectedOT}
+                                onChange={(e) => handleOTChange(e.target.value)}
+                              >
+                                <option value="">Select OT</option>
+                                {otOptions.map((ot) => (
+                                  <option key={ot.otId} value={ot.otId}>
+                                    {ot.otCode} - {ot.otName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="col-auto">
+                              <label className="form-label small fw-bold mb-1">
+                                Surgery Date <span className="text-danger">*</span>
+                              </label>
+                              <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                value={surgeryDate}
+                                onChange={(e) =>
+                                  handleSurgeryDateChange(e.target.value)
+                                }
+                                min={getToday()}
+                              />
+                            </div>
+
+                            {/* Start Time Input */}
+                            <div className="col-auto">
+                              <label className="form-label small fw-bold mb-1">
+                                Start Time <span className="text-danger">*</span>
+                              </label>
+                              <input
+                                type="time"
+                                className={`form-control form-control-sm ${surgeryStartTime &&
+                                  surgeryEndTime &&
+                                  !validateSurgeryTimes(
+                                    surgeryStartTime,
+                                    surgeryEndTime,
+                                  )
+                                  ? "is-invalid"
+                                  : ""
+                                  }`}
+                                value={surgeryStartTime}
+                                onChange={(e) =>
+                                  handleSurgeryStartTimeChange(e.target.value)
+                                }
+                              />
+                              {surgeryStartTime &&
+                                surgeryEndTime &&
+                                !validateSurgeryTimes(
+                                  surgeryStartTime,
+                                  surgeryEndTime,
+                                ) && (
+                                  <div className="invalid-feedback d-block">
+                                    End time must be after start time
+                                  </div>
+                                )}
+                            </div>
+
+                            {/* End Time Input */}
+                            <div className="col-auto">
+                              <label className="form-label small fw-bold mb-1">
+                                End Time <span className="text-danger">*</span>
+                              </label>
+                              <input
+                                type="time"
+                                className={`form-control form-control-sm ${surgeryStartTime &&
+                                  surgeryEndTime &&
+                                  !validateSurgeryTimes(
+                                    surgeryStartTime,
+                                    surgeryEndTime,
+                                  )
+                                  ? "is-invalid"
+                                  : ""
+                                  }`}
+                                value={surgeryEndTime}
+                                onChange={(e) =>
+                                  handleSurgeryEndTimeChange(e.target.value)
+                                }
+                              />
+                              {surgeryStartTime &&
+                                surgeryEndTime &&
+                                !validateSurgeryTimes(
+                                  surgeryStartTime,
+                                  surgeryEndTime,
+                                ) && (
+                                  <div className="invalid-feedback d-block">
+                                    End time must be after start time
+                                  </div>
+                                )}
+                            </div>
+
+                            <div className="col-auto">
+                              <label className="form-label small fw-bold mb-1 d-block opacity-0">
+                                OTCalendar
+                              </label>
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowOtCalendarModal(true);
+                                }}
+                                style={{ fontSize: "12px" }}
+                              >
+                                OTCalendar
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="table-responsive" style={{ overflow: "visible" }}>
+                            <table className="table table-bordered mb-2">
+                              <thead style={{ backgroundColor: "#b0c4de" }}>
+                                <tr>
+                                  <th style={{ width: "10%" }}>S.No</th>
+                                  <th style={{ width: "75%" }}>Surgery</th>
+                                  <th className="text-center" style={{ width: "10%" }}>Action</th>
+                                </tr>
+                              </thead>
+
+                              <tbody>
+                                {surgeryItems.map((item, index) => (
+                                  <tr key={index}>
+                                    <td className="text-center">{index + 1}</td>
+                                    <td>
+                                      {/* Surgery input with dropdown */}
+                                      <div
+                                        className="position-relative"
+                                        style={{ width: "100%" }}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="Search Surgery..."
+                                          value={item.surgeryName || ""}
+                                          onChange={(e) => {
+                                            const value = e.target.value;
+                                            setSurgeryItems((prev) => {
+                                              const newItems = [...prev];
+                                              newItems[index] = {
+                                                ...newItems[index],
+                                                surgeryId: null,
+                                                surgeryName: value,
+                                              };
+                                              return newItems;
+                                            });
+                                            setSurgerySearchInput(value);
+                                            setSelectedSurgeryIndex(index);
+                                            setIsSurgeryDropdownVisible(true);
                                           }}
-                                        >
-                                          {surgeryOptions.length > 0 ? (
-                                            surgeryOptions
-                                              .filter((surgery) => {
-                                                const query =
-                                                  surgerySearchInput?.toLowerCase() ||
-                                                  "";
-                                                const isSearchMatch =
-                                                  surgery.surgeryName
-                                                    ?.toLowerCase()
-                                                    .includes(query) ||
-                                                  surgery.surgeryCode
-                                                    ?.toLowerCase()
-                                                    .includes(query);
-                                                const selectedIds =
-                                                  getSelectedSurgeryIds(index);
-                                                return (
-                                                  isSearchMatch &&
-                                                  !selectedIds.includes(
-                                                    Number(surgery.surgeryId),
-                                                  )
-                                                );
-                                              })
-                                              .map((surgery) => (
-                                                <div
-                                                  key={surgery.surgeryId}
-                                                  className="p-2 cursor-pointer hover:bg-light"
-                                                  style={{
-                                                    cursor: "pointer",
-                                                    borderBottom:
-                                                      "1px solid #f0f0f0",
-                                                  }}
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleSurgerySelect(
-                                                      surgery,
-                                                      index,
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (!surgeryMasterLoadedRef.current) {
+                                              await fetchSurgeryMasterData();
+                                            }
+                                            // Close other dropdowns and open this one
+                                            setIsSurgeryDropdownVisible(true);
+                                            setSelectedSurgeryIndex(index);
+                                          }}
+                                          onFocus={async () => {
+                                            if (!surgeryMasterLoadedRef.current) {
+                                              await fetchSurgeryMasterData();
+                                            }
+                                            setIsSurgeryDropdownVisible(true);
+                                            setSelectedSurgeryIndex(index);
+                                          }}
+                                          onBlur={() => {
+                                            setTimeout(() => {
+                                              setIsSurgeryDropdownVisible(false);
+                                              setSelectedSurgeryIndex(null);
+                                            }, 200);
+                                          }}
+                                          autoComplete="off"
+                                        />
+
+                                        {isSurgeryDropdownVisible &&
+                                          selectedSurgeryIndex === index && (
+                                            <div
+                                              className="border rounded mt-1 bg-white position-absolute w-100"
+                                              style={{
+                                                maxHeight: "220px",
+                                                zIndex: 9999,
+                                                overflowY: "auto",
+                                                boxShadow:
+                                                  "0 2px 8px rgba(0,0,0,0.15)",
+                                                top: "100%",
+                                                left: 0,
+                                              }}
+                                            >
+                                              {surgeryOptions.length > 0 ? (
+                                                surgeryOptions
+                                                  .filter((surgery) => {
+                                                    const query =
+                                                      surgerySearchInput?.toLowerCase() ||
+                                                      "";
+                                                    const isSearchMatch =
+                                                      surgery.surgeryName
+                                                        ?.toLowerCase()
+                                                        .includes(query) ||
+                                                      surgery.surgeryCode
+                                                        ?.toLowerCase()
+                                                        .includes(query);
+                                                    const selectedIds =
+                                                      getSelectedSurgeryIds(index);
+                                                    return (
+                                                      isSearchMatch &&
+                                                      !selectedIds.includes(
+                                                        Number(surgery.surgeryId),
+                                                      )
                                                     );
-                                                  }}
-                                                >
-                                                  <strong>
-                                                    {surgery.surgeryCode}
-                                                  </strong>{" "}
-                                                  - {surgery.surgeryName}
+                                                  })
+                                                  .map((surgery) => (
+                                                    <div
+                                                      key={surgery.surgeryId}
+                                                      className="p-2 cursor-pointer hover:bg-light"
+                                                      style={{
+                                                        cursor: "pointer",
+                                                        borderBottom:
+                                                          "1px solid #f0f0f0",
+                                                      }}
+                                                      onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handleSurgerySelect(
+                                                          surgery,
+                                                          index,
+                                                        );
+                                                      }}
+                                                    >
+                                                      <strong>
+                                                        {surgery.surgeryCode}
+                                                      </strong>{" "}
+                                                      - {surgery.surgeryName}
+                                                    </div>
+                                                  ))
+                                              ) : (
+                                                <div className="p-2 text-muted text-center">
+                                                  {surgeryMasterLoadedRef.current
+                                                    ? "No surgeries found"
+                                                    : "Loading surgeries..."}
                                                 </div>
-                                              ))
-                                          ) : (
-                                            <div className="p-2 text-muted text-center">
-                                              {surgeryMasterLoadedRef.current
-                                                ? "No surgeries found"
-                                                : "Loading surgeries..."}
+                                              )}
                                             </div>
                                           )}
-                                        </div>
-                                      )}
-                                  </div>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddSurgeryItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveSurgeryItem(index)
-                                    }
-                                    disabled={surgeryItems.length === 1}
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                                      </div>
+                                    </td>
+                                    <td className="text-center">
+                                      <div className="btnCenter">
+                                        <button className="btn btn-primary btnAdd" title="Add" onClick={handleAddSurgeryItem}><i class="icofont-plus"></i></button>
+                                        <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() =>
+                                          handleRemoveSurgeryItem(index)
+                                        }
+                                          disabled={surgeryItems.length === 1}><i class="icofont-trash"></i></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      )}
+
                     </div>
                   )}
                 </div>
@@ -7288,20 +7385,20 @@ const OpdRRecallPatient = () => {
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("admissionAdvice")}
                   >
                     <h6 className="mb-0 fw-bold">Admission Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.admissionAdvice ? "−" : "+"}
+                    <span>
+                      {expandedSections.admissionAdvice ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.admissionAdvice && (
                     <div className="card-body">
                       <div className="row">
                         <div className="col-md-12">
-                          <div className="row mb-3">
+                          <div className="row">
                             <div className="col-md-3">
                               <div className="form-check d-flex align-items-center h-100">
                                 <input
@@ -7475,18 +7572,114 @@ const OpdRRecallPatient = () => {
                 {/* Referral Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("referral")}
                   >
                     <h6 className="mb-0 fw-bold">Referral</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.referral ? "−" : "+"}
+                    <span>
+                      {expandedSections.referral ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.referral && (
                     <div className="card-body">
-                      <div className="row mb-3">
+
+                      <div className="d-flex align-items-center gap-4">
+                        {/* Referral Advised checkbox */}
+                        <label class="form-check-label">
+                          <input class="form-check-input" type="checkbox" checked={referralAdvised} onChange={(e) => setReferralAdvised(e.target.checked)} />
+                          <span>Referral Advised</span>
+                        </label>
+
+                        {/* Internal / External radio buttons */}
+                        {referralAdvised && <div className="radio-options">
+                          <label class="radioLabel">
+                            <input
+                              type="radio"
+                              name="referralType"
+                              value="internal"
+                              checked={referralType === "internal"}
+                              onChange={() => setReferralType("internal")} />
+                            <span>Internal</span>
+                          </label>
+                          <label class="radioLabel">
+                            <input
+                              type="radio"
+                              name="referralType"
+                              value="external"
+                              checked={referralType === "external"}
+                              onChange={() => setReferralType("external")} />
+                            <span>External</span>
+                          </label>
+                        </div>
+                        }
+                      </div>
+
+                      {/* Internal data */}
+                      {referralAdvised && referralType === "internal" && (
+                        <div className="internal-data mt-3">
+                          <h4 className="fw-bold mb-3">Internal Referral</h4>
+                          <div class="row">
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Specialty <span>*</span></label>
+                              <select class="form-select ">
+                                <option value="">Select Specialty</option>
+                                <option value=""></option>
+                              </select>
+                            </div>
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Doctor Name <span>*</span></label>
+                              <select class="form-select ">
+                                <option value="">Select Doctor</option>
+                                <option value=""></option>
+                              </select>
+                            </div>
+
+                            <div class="col-md-6">
+                              <label class="form-label fw-bold">Referral Notes <span>*</span></label>
+                              <textarea class="form-control" rows="6" placeholder="Enter Referral Notes" style={{ height: "60px" }}></textarea>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* External data */}
+                      {referralAdvised && referralType === "external" && (
+                        <div className="external-data mt-3">
+                          <h4 className="fw-bold mb-3">External Referral</h4>
+                          <div class="row">
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Specialty <span>*</span></label>
+                              <select class="form-select ">
+                                <option value="">Select Specialty</option>
+                                <option value=""></option>
+                              </select>
+                            </div>
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Doctor Name</label>
+                              <input type="text" class="form-control " placeholder="Enter Doctor Name" />
+                            </div>
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Hospital Name <span>*</span></label>
+                              <input type="text" class="form-control " placeholder="Enter Hospital Name" value="" />
+                            </div>
+
+                            <div class="col-md-3">
+                              <label class="form-label fw-bold">Referral Notes</label>
+                              <textarea class="form-control" rows="6" placeholder="Enter Referral Notes" style={{ height: "60px" }}></textarea>
+                            </div>
+
+                          </div>
+                        </div>
+                      )}
+
+
+                      <div className="row mb-3" style={{ display: "none" }}>
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Referral</label>
                           <div className="d-flex gap-3">
@@ -7786,31 +7979,28 @@ const OpdRRecallPatient = () => {
                 {/* Follow Up Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("followUp")}
                   >
                     <h6 className="mb-0 fw-bold">Follow Up</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.followUp ? "−" : "+"}
+                    <span>
+                      {expandedSections.followUp ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
 
                   {expandedSections.followUp && (
                     <div className="card-body">
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div className="d-flex align-items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="form-check-input m-0"
+                      <div className="d-flex align-items-center gap-4">
+
+                        <label class="form-check-label">
+                          <input class="form-check-input" type="checkbox"
                             checked={followUps.followUpFlag}
-                            onChange={handleFollowUpChange}
-                          />
+                            onChange={handleFollowUpChange} />
+                          <span>Follow Up</span>
+                        </label>
 
-                          <h6 className="fw-bold mb-0">Follow Up</h6>
-                        </div>
-
-                        <div className="d-flex align-items-center gap-4">
+                        {followUps.followUpFlag && <div className="d-flex align-items-center gap-4">
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">
                               Number of days
@@ -7838,14 +8028,16 @@ const OpdRRecallPatient = () => {
                               Follow Up date
                             </label>
                             <input
-                              type="date"
+                              type="text"
                               className="form-control"
                               style={{ width: "170px" }}
-                              value={followUps.followUpDate}
+                              value={formatDateForDisplay(followUps.followUpDate)}
                               readOnly
                             />
                           </div>
                         </div>
+                        }
+
                       </div>
                     </div>
                   )}
@@ -7854,46 +8046,50 @@ const OpdRRecallPatient = () => {
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >
                     <h6 className="mb-0 fw-bold">Final Medicine Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.remarks ? "−" : "+"}
+                    <span>
+                      {expandedSections.remarks ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
                   </div>
                   {expandedSections.remarks && (
                     <div className="card-body">
-                      <div className="row align-items-end">
-                        <div className="col-md-11">
-                          <textarea
-                            className="form-control"
-                            rows={4}
-                            value={doctorRemarksText}
-                            onChange={(e) =>
-                              setDoctorRemarksText(e.target.value)
-                            }
-                            placeholder="Doctor's remarks will be populated here"
-                          />
-                        </div>
-                        <div className="col-md-1 text-center">
-                          <button
-                            className="btn btn-sm btn-outline-success p-1 px-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openPopup("doctorRemark");
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <textarea
+                          className="form-control"
+                          style={{ height: "40px", flex: "1" }}
+                          rows={4}
+                          value={doctorRemarksText}
+                          onChange={(e) =>
+                            setDoctorRemarksText(e.target.value)
+                          }
+                          placeholder="Doctor's remarks will be populated here"
+                        />
+                        <button
+                          class="btn-view"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPopup("doctorRemark");
+                          }}
+                        ><i class="icofont-plus"></i></button>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="text-center mt-4">
+
+
+                <div className="d-flex justify-content-between align-items-center mt-4">
+                <div className="">
+                <button className="btn btnOutline" onClick={handleBackToList}>
+                    <i class="icofont-arrow-left"></i> <span>Back</span>
+                  </button>
+                </div>
+                <div className="">
+                  <button className="btn btnOutline me-3" onClick={handleResetForm}>Reset</button>
                   <button
                     type="button"
                     className="btn btn-primary me-3"
@@ -7902,27 +8098,16 @@ const OpdRRecallPatient = () => {
                   >
                     {isSubmitting ? (
                       <>
-                        <i className="mdi mdi-loading mdi-spin"></i>{" "}
-                        PROCESSING...
+                        <i className="mdi mdi-loading mdi-spin"></i>
+                        <span>Processing...</span>
                       </>
                     ) : (
                       <>
-                        <i className="mdi mdi-content-save"></i> SUBMIT
+                        Submit
                       </>
                     )}
                   </button>
-                  <button
-                    className="btn btn-secondary me-3"
-                    onClick={handleResetForm}
-                  >
-                    <i className="mdi mdi-refresh"></i> RESET
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleBackToList}
-                  >
-                    <i className="mdi mdi-arrow-left"></i> BACK
-                  </button>
+                </div>                  
                 </div>
               </div>
             </div>
@@ -8077,14 +8262,14 @@ const OpdRRecallPatient = () => {
                           <th className="text-center" style={{ minWidth: 70 }}>
                             Total
                           </th>
-                          <th className="text-center" style={{ minWidth: 70 }}>
+                          {/* <th className="text-center" style={{ minWidth: 70 }}>
                             Stock
-                          </th>
-                          <th style={{ minWidth: 130 }}>Prescribed By</th>
+                          </th> */}
+                          {/* <th style={{ minWidth: 130 }}>Prescribed By</th> */}
                           <th style={{ minWidth: 130 }}>Department</th>
-                          <th className="text-center" style={{ minWidth: 110 }}>
+                          {/* <th className="text-center" style={{ minWidth: 110 }}>
                             Prescribed Date
-                          </th>
+                          </th> */}
                           <th className="text-center" style={{ minWidth: 50 }}>
                             Stop
                           </th>
@@ -8109,16 +8294,16 @@ const OpdRRecallPatient = () => {
                               <td className="text-center">
                                 {medication.total}
                               </td>
-                              <td className="text-center">
+                              {/* <td className="text-center">
                                 {medication.stock || 0}
-                              </td>
-                              <td>{medication.prescribedBy}</td>
+                              </td> */}
+                              {/* <td>{medication.prescribedBy}</td> */}
                               <td>{medication.department}</td>
-                              <td className="text-center">
+                              {/* <td className="text-center">
                                 {formatDateForDisplay(
                                   medication.prescribedDate,
                                 )}
-                              </td>
+                              </td> */}
                               <td className="text-center">
                                 <input
                                   type="checkbox"
@@ -8177,16 +8362,15 @@ const OpdRRecallPatient = () => {
                             .map((medication) => (
                               <span
                                 key={medication.id}
-                                className={`badge ${
-                                  currentMedicationActions[medication.id] ===
+                                className={`badge ${currentMedicationActions[medication.id] ===
                                   "repeat"
-                                    ? "bg-primary"
-                                    : "bg-danger"
-                                }`}
+                                  ? "bg-primary"
+                                  : "bg-danger"
+                                  }`}
                               >
                                 {medication.drugName} -{" "}
                                 {currentMedicationActions[medication.id] ===
-                                "repeat"
+                                  "repeat"
                                   ? "Repeat"
                                   : "Stop"}
                               </span>
@@ -8273,7 +8457,7 @@ const OpdRRecallPatient = () => {
               clinicalPopupType === "visits"
                 ? handleVisitsPageSizeChange
                 : clinicalPopupType === "psychiatrist-history"
-                  ? () => {}
+                  ? () => { }
                   : handleVitalsPageSizeChange
             }
             isLoading={
