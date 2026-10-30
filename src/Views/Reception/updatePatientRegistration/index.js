@@ -233,6 +233,12 @@ const UpdatePatientRegistration = () => {
     abhaAddress: "",
   });
 
+  // ABHA registration meta (sent with the patient follow-up request)
+  const [isRegisterThroughAbha, setIsRegisterThroughAbha] = useState(false);
+  const [abhaXToken, setAbhaXToken] = useState("");
+  const [abhaProfilePhotoPath, setAbhaProfilePhotoPath] = useState("");
+  const [abhaProfileAddress, setAbhaProfileAddress] = useState("");
+
   const createInitialCreateState = () => ({
     loading: false,
     txnId: "",
@@ -805,7 +811,17 @@ const UpdatePatientRegistration = () => {
     );
   }, [location.key, location.pathname, location.state]);
 
+  // Clears the ABHA registration meta (so it is never sent for another patient)
+  const resetAbhaMeta = () => {
+    setIsRegisterThroughAbha(false);
+    setAbhaXToken("");
+    setAbhaProfilePhotoPath("");
+    setAbhaProfileAddress("");
+    integrationService.clearAbhaSession();
+  };
+
   const handleReset = () => {
+    resetAbhaMeta();
     setFormData({
       mobileNo: "",
       patientName: "",
@@ -885,6 +901,85 @@ const UpdatePatientRegistration = () => {
     const digits = value.replace(/\D/g, "");
     if (digits.length !== 14) return value;
     return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}-${digits.slice(10, 14)}`;
+  };
+
+  // NEW: marks the update as ABHA based, captures abhaAddress / xToken
+  // and uploads the ABHA profile photo to get abhaProfilePhotoPath.
+  const applyAbhaRegistrationMeta = async (sourceAbha = {}) => {
+    setIsRegisterThroughAbha(true);
+
+    const rawProfile = integrationService.getLastAbhaProfile() || {};
+
+    setAbhaXToken(
+      sourceAbha.xToken ||
+        sourceAbha.xtoken ||
+        integrationService.getLastAbhaXToken() ||
+        "",
+    );
+
+    setAbhaProfileAddress(
+      sourceAbha.abhaAddress ||
+        sourceAbha.preferredAbhaAddress ||
+        rawProfile.preferredAbhaAddress ||
+        "",
+    );
+
+    const photo =
+      sourceAbha.photo ||
+      sourceAbha.profilePhoto ||
+      rawProfile.profilePhoto ||
+      "";
+    if (!photo) {
+      setAbhaProfilePhotoPath("");
+      return;
+    }
+
+    try {
+      const photoUrl = photo.startsWith("data:")
+        ? photo
+        : `data:image/jpeg;base64,${photo}`;
+      const blob = await fetch(photoUrl).then((res) => res.blob());
+      const photoForm = new FormData();
+      photoForm.append("file", blob, "abha-photo.jpg");
+
+      const uploadResponse = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+        method: "POST",
+        body: photoForm,
+      });
+      const uploadData = await uploadResponse.json();
+
+      if (uploadResponse.status === 200 && uploadData.response) {
+        setAbhaProfilePhotoPath(uploadData.response);
+      } else {
+        setAbhaProfilePhotoPath("");
+      }
+    } catch (error) {
+      console.error("ABHA profile photo upload failed:", error);
+      setAbhaProfilePhotoPath("");
+    }
+  };
+
+  // NEW: fills the City input (patientCity) from the ABHA subdistrictName.
+  // The value is read from what the modal passes, from the raw profile nested
+  // inside it (fullProfile.fullProfile), or from the profile saved in
+  // integrationService after the abha-details call.
+  const applyAbhaCity = (sourceAbha = {}) => {
+    const storedProfile = integrationService.getLastAbhaProfile() || {};
+    const nestedProfile =
+      sourceAbha.fullProfile?.fullProfile || sourceAbha.fullProfile || {};
+
+    const cityName = String(
+      sourceAbha.subdistrictName ||
+        nestedProfile.subdistrictName ||
+        storedProfile.subdistrictName ||
+        "",
+    ).trim();
+
+    console.log("ABHA city autofill - subdistrictName:", cityName);
+
+    if (!cityName) return;
+
+    setPatientDetailForm((prev) => ({ ...prev, patientCity: cityName }));
   };
 
   // Handle ABHA Creation Success
@@ -1015,6 +1110,8 @@ const UpdatePatientRegistration = () => {
 
     // Update form data
     setPatientDetailForm(updatedFormData);
+    applyAbhaRegistrationMeta(abhaData);
+    applyAbhaCity(abhaData);
 
     // Store ABHA data for reference
     setAbhaData((prev) => ({
@@ -1178,6 +1275,8 @@ const UpdatePatientRegistration = () => {
     }
 
     setPatientDetailForm(updatedFormData);
+    applyAbhaRegistrationMeta(abhaData);
+    applyAbhaCity(abhaData);
 
     setAbhaData((prev) => ({
       ...prev,
@@ -1435,6 +1534,7 @@ const UpdatePatientRegistration = () => {
           patientImage: data.photoUrl || "",
         };
 
+        resetAbhaMeta();
         setPatientDetailForm(mappedPatientData);
         setImage(data.photoUrl || placeholderImage);
         setImageURL(data.photoUrl || "");
@@ -2213,6 +2313,17 @@ const UpdatePatientRegistration = () => {
       },
     });
 
+    // ABHA details for the ro patient ABHA mapping table.
+    // Added AFTER prepareData so the long xToken is not cut to 255 characters.
+    Object.assign(finalRequest.patientDetails.patient, {
+      isRegisterThroughAbha: isRegisterThroughAbha,
+      abhaAddress: abhaData.abhaAddress || abhaProfileAddress || "",
+      abhaProfilePhotoPath: abhaProfilePhotoPath || "",
+      // Jackson maps Lombok's getXToken() to "xtoken", so send both keys
+      xToken: abhaXToken || "",
+      xtoken: abhaXToken || "",
+    });
+
     console.log(FINAL_REQUEST_READY_LOG, finalRequest);
 
     try {
@@ -2474,6 +2585,7 @@ const UpdatePatientRegistration = () => {
   };
 
   const handleBackToSearch = () => {
+    resetAbhaMeta();
     setShowPatientDetails(false);
     setShowDetails(false);
     setLoading(false);
