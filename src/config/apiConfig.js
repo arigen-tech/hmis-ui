@@ -105,11 +105,13 @@ export const MAS_ANAESTHESIA_TYPE = `${MASTERS}/masAnaesthesiaType`;
 export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction`;
 export const MAS_OT_SCHEDULE_CHANGE_REASON = `${MASTERS}/masOtScheduleChangeReason`;
 export const MAS_OT_TEAM_ROLE = `${MASTERS}/otTeamRole`;
+export const MAS_OT_TEAM_ROLE_GET_ALL = `${MAS_OT_TEAM_ROLE}/getAll/1`;
 export const MAS_OT_BOOKING_STATUS = `${MASTERS}/otBookingStatus`;
 export const MAS_OT_BOOKING_STATUS_GET_ALL = `${MAS_OT_BOOKING_STATUS}/getAll/1`;
 
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
+export const GET_USERS_BY_USER_TYPE = `/users/byUserTypeOrDesignation`;
 export const SESSION = `/opd-session`;
 export const APPOINTMENT = `/admin`;
 export const LOGIN = `/authController/login`;

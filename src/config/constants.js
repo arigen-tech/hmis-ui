@@ -1508,6 +1508,7 @@ export const UPDATE_STATUS_OT_TEAM_ROLE = "Role status updated successfully!";
 export const FAIL_OT_TEAM_ROLE = "Failed to save OT Team Role. Please try again.";
 export const DUPLICATE_OT_TEAM_ROLE = "A role with the same code or name already exists.";
 export const UPDATE_FAIL_OT_TEAM_ROLE = "Failed to update role status. Please try again.";
+export const FETCH_USERS_BY_USER_TYPE_ERR = "Failed to fetch users for the selected role. Please try again.";
 
 
 export const FETCH_OT_BOOKING_STATUS = "Failed to fetch OT Booking Status data. Please try again.";
