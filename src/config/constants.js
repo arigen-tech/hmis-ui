@@ -1518,6 +1518,7 @@ export const UPDATE_STATUS_OT_BOOKING_STATUS = "Booking status updated successfu
 export const FAIL_OT_BOOKING_STATUS = "Failed to save OT Booking Status. Please try again.";
 export const DUPLICATE_OT_BOOKING_STATUS = "A booking status with the same code already exists.";
 export const UPDATE_FAIL_OT_BOOKING_STATUS = "Failed to update booking status. Please try again.";
+export const FETCH_OT_BOOKING_HISTORY = "Failed to fetch OT booking history. Please try again.";
 
 // Item Type Codes
 export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";

@@ -106,6 +106,7 @@ export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction
 export const MAS_OT_SCHEDULE_CHANGE_REASON = `${MASTERS}/masOtScheduleChangeReason`;
 export const MAS_OT_TEAM_ROLE = `${MASTERS}/otTeamRole`;
 export const MAS_OT_BOOKING_STATUS = `${MASTERS}/otBookingStatus`;
+export const MAS_OT_BOOKING_STATUS_GET_ALL = `${MAS_OT_BOOKING_STATUS}/getAll/1`;
 
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
@@ -303,6 +304,7 @@ export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailabil
 export const SAVE_OT_REQUEST = `/otController/saveOtRequest`;
 export const PENDING_FOR_REVIEW_OT_LIST = `/otController/pendingForReviewOtList`;
 export const SAVE_ACCEPT_REJECT_OT = `/otController/saveAcceptAndReject`;
+export const OT_BOOKING_HISTORY = `/otController/bookingHistory`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;

@@ -1,21 +1,27 @@
-// OTBookingHistory/OTBookingHistory.js
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import OTTeamAssignment from "../OTTeamAssignment"; // import the separate component
+import OTTeamAssignment from "../OTTeamAssignment";
+import { getRequest } from "../../../service/apiService";
+import { MAS_OT_BOOKING_STATUS_GET_ALL, OT_BOOKING_HISTORY } from "../../../config/apiConfig";
+import { FETCH_OT_BOOKING_STATUS, FETCH_OT_BOOKING_HISTORY } from "../../../config/constants";
 
 const OTBookingHistory = () => {
   // ----- State -----
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({ patient: "", statusId: "" });
 
   // Reschedule / Cancel modal
   const [showModal, setShowModal] = useState(false);
@@ -31,192 +37,193 @@ const OTBookingHistory = () => {
   const [showTeamAssignment, setShowTeamAssignment] = useState(false);
   const [teamAssignmentRecord, setTeamAssignmentRecord] = useState(null);
 
-  // ----- Dummy data -----
-  const dummyData = [
-    {
-      id: 1,
-      patientName: "Rajesh Kumar",
-      uhid: "OPD/26/00125",
-      ipNo: null,
-      patientType: "OPD",
-      surgery: "Total Knee Replacement",
-      priority: "Elective",
-      otName: "Main OT-01",
-      date: "2026-08-28",
-      time: "10:00 AM",
-      endTime: "12:00 PM",
-      status: "SCHEDULED",
-      department: "Orthopaedics",
-      surgeon: "Dr. Sharma",
-      pacStatus: "Cleared",
-      primarySurgeon: "Dr. Sharma",
-      assistantSurgeon: "Dr. Verma",
-      anaesthetist: "Dr. Kumar",
-      assistantAnaesthetist: "",
-      scrubNurse: "Nurse Priya",
-      circulatingNurse: "Nurse Anita",
-      otTechnician: "Ravi Kumar",
-    },
-    // ... more dummy records as before (keep all 6 entries)
-    // (I'll include the full set for completeness)
-    {
-      id: 2,
-      patientName: "Amit Kumar",
-      uhid: null,
-      ipNo: "IPD/26/00128",
-      patientType: "IPD",
-      surgery: "Hernia Repair",
-      priority: "Urgent",
-      otName: "Main OT-02",
-      date: "2026-08-28",
-      time: "02:00 PM",
-      endTime: "04:00 PM",
-      status: "SCHEDULED",
-      department: "General Surgery",
-      surgeon: "Dr. Gupta",
-      pacStatus: "Pending",
-      primarySurgeon: "Dr. Gupta",
-      assistantSurgeon: "",
-      anaesthetist: "",
-      assistantAnaesthetist: "",
-      scrubNurse: "",
-      circulatingNurse: "",
-      otTechnician: "",
-    },
-    {
-      id: 3,
-      patientName: "Sunita Devi",
-      uhid: "OPD/26/00131",
-      ipNo: null,
-      patientType: "OPD",
-      surgery: "CABG",
-      priority: "Emergency",
-      otName: "Cardio OT",
-      date: "2026-08-29",
-      time: "09:00 AM",
-      endTime: "11:00 AM",
-      status: "COMPLETED",
-      department: "Cardiology",
-      surgeon: "Dr. Verma",
-      pacStatus: "Cleared",
-      primarySurgeon: "Dr. Verma",
-      assistantSurgeon: "Dr. Patel",
-      anaesthetist: "Dr. Reddy",
-      assistantAnaesthetist: "Dr. Joshi",
-      scrubNurse: "Nurse Sneha",
-      circulatingNurse: "Nurse Rani",
-      otTechnician: "Suresh",
-    },
-    {
-      id: 4,
-      patientName: "Neha Singh",
-      uhid: null,
-      ipNo: "IPD/26/00135",
-      patientType: "IPD",
-      surgery: "Laparoscopic Cholecystectomy",
-      priority: "Elective",
-      otName: "Main OT-01",
-      date: "2026-08-30",
-      time: "11:30 AM",
-      endTime: "01:30 PM",
-      status: "CANCELLED",
-      department: "General Surgery",
-      surgeon: "Dr. Mehta",
-      pacStatus: "Not Required",
-      primarySurgeon: "Dr. Mehta",
-      assistantSurgeon: "",
-      anaesthetist: "",
-      assistantAnaesthetist: "",
-      scrubNurse: "",
-      circulatingNurse: "",
-      otTechnician: "",
-    },
-    {
-      id: 5,
-      patientName: "Vikram Singh",
-      uhid: "OPD/26/00142",
-      ipNo: null,
-      patientType: "OPD",
-      surgery: "Prostatectomy",
-      priority: "Urgent",
-      otName: "Main OT-03",
-      date: "2026-08-30",
-      time: "03:00 PM",
-      endTime: "05:00 PM",
-      status: "SCHEDULED",
-      department: "Urology",
-      surgeon: "Dr. Rao",
-      pacStatus: "Pending",
-      primarySurgeon: "Dr. Rao",
-      assistantSurgeon: "",
-      anaesthetist: "",
-      assistantAnaesthetist: "",
-      scrubNurse: "",
-      circulatingNurse: "",
-      otTechnician: "",
-    },
-    {
-      id: 6,
-      patientName: "Pooja Sharma",
-      uhid: null,
-      ipNo: "IPD/26/00150",
-      patientType: "IPD",
-      surgery: "Appendectomy",
-      priority: "Emergency",
-      otName: "Main OT-02",
-      date: "2026-08-31",
-      time: "08:00 AM",
-      endTime: "10:00 AM",
-      status: "SCHEDULED",
-      department: "General Surgery",
-      surgeon: "Dr. Gupta",
-      pacStatus: "Cleared",
-      primarySurgeon: "Dr. Gupta",
-      assistantSurgeon: "Dr. Mehta",
-      anaesthetist: "Dr. Singh",
-      assistantAnaesthetist: "",
-      scrubNurse: "Nurse Kavita",
-      circulatingNurse: "Nurse Priya",
-      otTechnician: "Mahesh",
-    },
+  const otOptions = ["Operation Theatre 1", "Main OT-01", "Main OT-02", "Main OT-03", "Cardio OT"];
+  const timeOptions = [
+    "08:00 AM",
+    "09:00 AM",
+    "10:00 AM",
+    "11:00 AM",
+    "12:00 PM",
+    "01:00 PM",
+    "02:00 PM",
+    "03:00 PM",
+    "04:00 PM",
+    "16:00:00",
   ];
 
-  const otOptions = ["Main OT-01", "Main OT-02", "Main OT-03", "Cardio OT"];
-  const timeOptions = ["08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"];
+  // ----- Fetch Dropdown Statuses -----
+  const fetchStatusOptions = async () => {
+    try {
+      setStatusLoading(true);
+      const res = await getRequest(MAS_OT_BOOKING_STATUS_GET_ALL);
+      if (res?.response && Array.isArray(res.response)) {
+        setStatusOptions(res.response.filter((item) => item.status === "Y" || !item.status));
+      } else {
+        setStatusOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching OT booking statuses:", error);
+      showPopup(FETCH_OT_BOOKING_STATUS, "error");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  // ----- Fetch Booking History (Patient list) -----
+  const fetchBookingHistory = async (page = 0, patientQuery = appliedFilters.patient, statusIdQuery = appliedFilters.statusId) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+      });
+
+      if (patientQuery && patientQuery.trim()) {
+        params.append("patient", patientQuery.trim());
+      }
+      if (statusIdQuery !== "" && statusIdQuery !== undefined && statusIdQuery !== null) {
+        params.append("statusId", statusIdQuery);
+      }
+
+      const res = await getRequest(`${OT_BOOKING_HISTORY}?${params.toString()}`);
+
+      if (res?.response?.content) {
+        // otBookingRequestDtId is unique for each detail/row
+        const seenDtIds = new Set();
+        const uniqueItems = [];
+
+        res.response.content.forEach((item) => {
+          const key = item.otBookingRequestDtId ?? item.otBookingId ?? item.id;
+          if (key !== undefined && key !== null) {
+            if (!seenDtIds.has(key)) {
+              seenDtIds.add(key);
+              uniqueItems.push(item);
+            }
+          } else {
+            uniqueItems.push(item);
+          }
+        });
+
+        const normalized = uniqueItems.map((item, idx) => ({
+          ...item,
+          otBookingRequestDtId: item.otBookingRequestDtId,
+          otBookingRequestId: item.otBookingRequestId,
+          otBookingId: item.otBookingId,
+          id: item.otBookingRequestDtId || item.otBookingId || item.bookingId || item.id || item.patientId || (page * DEFAULT_ITEMS_PER_PAGE + idx + 1),
+          bookingNo: item.bookingNo || "-",
+          uhid: item.uhidNo || item.uhid || "-",
+          uhidNo: item.uhidNo || item.uhid || "-",
+          ipNo: item.ipNo || item.admissionNo || "",
+          patientType: item.patientType || (item.uhidNo ? "OPD" : "IPD"),
+          surgery: item.surgeryName || item.surgery || "-",
+          surgeryName: item.surgeryName || item.surgery || "-",
+          department: item.departmentName || item.department || "-",
+          departmentName: item.departmentName || item.department || "-",
+          date: item.preferredDate || item.date || "-",
+          preferredDate: item.preferredDate || item.date || "-",
+          time: item.preferredStartTime || item.time || "-",
+          preferredStartTime: item.preferredStartTime || item.time || "-",
+          endTime: item.preferredEndTime || item.endTime || "",
+          preferredEndTime: item.preferredEndTime || item.endTime || "",
+          status: item.statusCode || item.statusName?.toUpperCase() || item.status || "",
+          statusName: item.statusName || item.status || "-",
+          bookingStatusId: item.bookingStatusId,
+          surgeon: item.surgeonName || item.surgeon || "-",
+          surgeonName: item.surgeonName || item.surgeon || "-",
+          primarySurgeon: item.surgeonName || item.primarySurgeon || item.surgeon || "-",
+          pacStatus:
+            item.pacStatus ||
+            (item.pacRequired === "N"
+              ? "Not Required"
+              : item.pacDone === "Y"
+                ? "Cleared"
+                : item.pacRequired === "Y"
+                  ? "Pending"
+                  : "N/A"),
+        }));
+
+        setData(normalized);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalItems(res.response.totalElements || 0);
+      } else {
+        setData([]);
+        setTotalPages(0);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching OT booking history:", error);
+      showPopup(FETCH_OT_BOOKING_HISTORY, "error");
+      setData([]);
+      setTotalPages(0);
+      setTotalItems(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ----- Effects -----
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
-      setLoading(false);
-    }, 300);
+    fetchStatusOptions();
+    fetchBookingHistory(0, "", "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ----- Filtered data -----
-  const filteredData = data.filter((item) => {
-    const matchSearch =
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.uhid && item.uhid.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.ipNo && item.ipNo.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchStatus = statusFilter ? item.status === statusFilter : true;
-    return matchSearch && matchStatus;
-  });
-
-  // ----- Pagination -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
   // ----- Handlers -----
-  const handlePageChange = (page) => setCurrentPage(page);
-  const handleSearch = () => setCurrentPage(1);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchBookingHistory(page - 1, appliedFilters.patient, appliedFilters.statusId);
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    const newFilters = { patient: searchQuery, statusId: statusFilter };
+    setAppliedFilters(newFilters);
+    fetchBookingHistory(0, searchQuery, statusFilter);
+  };
+
   const handleReset = () => {
     setSearchQuery("");
     setStatusFilter("");
     setCurrentPage(1);
+    const resetFilters = { patient: "", statusId: "" };
+    setAppliedFilters(resetFilters);
+    fetchBookingHistory(0, "", "");
+  };
+
+  // ----- Helper formatters -----
+  const formatDateTime = (item) => {
+    const date = item.preferredDate || item.date || "";
+    const startTime = item.preferredStartTime || item.time || "";
+    const endTime = item.preferredEndTime || item.endTime || "";
+    if (!date && !startTime) return "-";
+    if (startTime && endTime) {
+      return `${date} (${startTime} - ${endTime})`.trim();
+    }
+    return `${date} ${startTime}`.trim();
+  };
+
+  const getPacBadge = (item) => {
+    const pacText = item.pacStatus || "N/A";
+    let badgeClass = "bg-secondary";
+    if (pacText === "Cleared") badgeClass = "bg-success";
+    else if (pacText === "Pending") badgeClass = "bg-warning text-dark";
+    else if (pacText === "Not Required") badgeClass = "bg-info";
+
+    return <span className={`badge ${badgeClass}`}>{pacText}</span>;
+  };
+
+  const getStatusBadge = (item) => {
+    const name = item.statusName || item.statusCode || item.status || "-";
+    const code = (item.statusCode || item.statusName || item.status || "").toUpperCase();
+    let badgeClass = "bg-secondary";
+    if (code === "SCHEDULED") badgeClass = "bg-primary";
+    else if (code === "COMPLETED") badgeClass = "bg-success";
+    else if (code === "CANCELLED" || code === "REJECTED") badgeClass = "bg-danger";
+    else if (code.includes("PROGRESS")) badgeClass = "bg-warning text-dark";
+    else if (code.includes("OT")) badgeClass = "bg-info";
+    else if (code === "REQUESTED") badgeClass = "bg-warning text-dark";
+
+    return <span className={`badge ${badgeClass}`}>{name}</span>;
   };
 
   // ----- Open modals -----
@@ -224,9 +231,9 @@ const OTBookingHistory = () => {
     setSelectedRecord(record);
     setModalAction(action);
     setRemarks("");
-    setNewOT(record.otName);
-    setNewDate(record.date);
-    setNewTime(record.time);
+    setNewOT(record.otName || otOptions[0]);
+    setNewDate(record.preferredDate || record.date || "");
+    setNewTime(record.preferredStartTime || record.time || timeOptions[0]);
     setShowModal(true);
   };
 
@@ -253,11 +260,25 @@ const OTBookingHistory = () => {
     setIsProcessing(true);
     setTimeout(() => {
       const updatedData = data.map((item) => {
-        if (item.id === selectedRecord.id) {
+        const isMatch = selectedRecord.otBookingRequestDtId
+          ? item.otBookingRequestDtId === selectedRecord.otBookingRequestDtId
+          : selectedRecord.otBookingId
+            ? item.otBookingId === selectedRecord.otBookingId
+            : item.id === selectedRecord.id;
+        if (isMatch) {
           if (modalAction === "reschedule") {
-            return { ...item, otName: newOT, date: newDate, time: newTime, status: "RESCHEDULED" };
+            return {
+              ...item,
+              otName: newOT,
+              date: newDate,
+              preferredDate: newDate,
+              time: newTime,
+              preferredStartTime: newTime,
+              status: "RESCHEDULED",
+              statusName: "Rescheduled",
+            };
           } else {
-            return { ...item, status: "CANCELLED" };
+            return { ...item, status: "CANCELLED", statusName: "Cancelled" };
           }
         }
         return item;
@@ -280,10 +301,15 @@ const OTBookingHistory = () => {
 
   const handleTeamSave = (teamData) => {
     const updatedData = data.map((item) => {
-      if (item.id === teamAssignmentRecord.id) {
+      const isMatch = teamAssignmentRecord.otBookingRequestDtId
+        ? item.otBookingRequestDtId === teamAssignmentRecord.otBookingRequestDtId
+        : teamAssignmentRecord.otBookingId
+          ? item.otBookingId === teamAssignmentRecord.otBookingId
+          : item.id === teamAssignmentRecord.id;
+      if (isMatch) {
         return {
           ...item,
-          primarySurgeon: teamData.primarySurgeon || item.surgeon,
+          primarySurgeon: teamData.primarySurgeon || item.surgeon || item.surgeonName,
           assistantSurgeon: teamData.assistantSurgeon,
           anaesthetist: teamData.anaesthetist,
           assistantAnaesthetist: teamData.assistantAnaesthetist,
@@ -343,17 +369,22 @@ const OTBookingHistory = () => {
               <h4 className="card-title p-2 mb-0">OT Booking History</h4>
             </div>
             <div className="card-body">
-              {/* Search */}
+              {/* Search & Filters */}
               <div className="mb-4">
                 <div className="row g-3 align-items-end">
                   <div className="col-md-3">
-                    <label className="form-label fw-bold">Patient Name / UHID / IP No.</label>
+                    <label className="form-label fw-bold">Patient Name / UHID</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Search..."
+                      placeholder="Search by Patient or UHID..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSearch();
+                        }
+                      }}
                     />
                   </div>
                   <div className="col-md-2">
@@ -362,17 +393,23 @@ const OTBookingHistory = () => {
                       className="form-select"
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
+                      disabled={statusLoading}
                     >
                       <option value="">All</option>
-                      <option value="SCHEDULED">Scheduled</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="CANCELLED">Cancelled</option>
-                      <option value="RESCHEDULED">Rescheduled</option>
+                      {statusOptions.map((st) => (
+                        <option key={st.bookingStatusId} value={st.bookingStatusId}>
+                          {st.statusName}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="col-md-3 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>Search</button>
-                    <button className="btn btn-secondary" onClick={handleReset}>Reset</button>
+                    <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+                      <i className="fa fa-search me-1"></i> Search
+                    </button>
+                    <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                      <i className="fa fa-refresh me-1"></i> Reset
+                    </button>
                   </div>
                 </div>
               </div>
@@ -390,58 +427,81 @@ const OTBookingHistory = () => {
                       <th>OT</th>
                       <th>Date / Time</th>
                       <th>PAC</th>
+                      <th>Status</th>
                       <th>OT Team</th>
                       <th className="text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item, idx) => (
-                        <tr key={item.id}>
-                          <td>{indexOfFirstItem + idx + 1}</td>
-                          <td>{item.patientType === "OPD" ? item.uhid : item.ipNo}</td>
-                          <td>{item.patientName}</td>
-                          <td>{item.department}</td>
-                          <td>{item.surgery}</td>
-                          <td>{item.otName}</td>
-                          <td>{`${item.date} ${item.time}`}</td>
+                    {data.length > 0 ? (
+                      data.map((item, idx) => (
+                        <tr key={`booking-dt-${item.otBookingRequestDtId || item.otBookingId || item.id || idx}`}>
+                          <td>{item.bookingNo || item.otBookingId || item.otBookingRequestDtId || (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE + idx + 1}</td>
+                          <td>{item.uhidNo || (item.patientType === "OPD" ? item.uhid : item.ipNo) || "-"}</td>
+                          <td>{item.patientName || "-"}</td>
+                          <td>{item.departmentName || item.department || "-"}</td>
+                          <td>{item.surgeryName || item.surgery || "-"}</td>
+                          <td>{item.otName || "-"}</td>
+                          <td>{formatDateTime(item)}</td>
+                          <td>{getPacBadge(item)}</td>
+                          <td>{getStatusBadge(item)}</td>
                           <td>
-                            <span className={`badge ${item.pacStatus === "Cleared" ? "bg-success" : item.pacStatus === "Pending" ? "bg-warning text-dark" : "bg-secondary"}`}>
-                              {item.pacStatus || "N/A"}
-                            </span>
-                          </td>
-                          <td>
-                            <button className="btn btn-sm btn-info" onClick={() => handleViewTeam(item)} title="View Team">
+                            <button
+                              className="btn btn-sm btn-info"
+                              onClick={() => handleViewTeam(item)}
+                              title="View Team"
+                            >
                               <i className="fa fa-users"></i> View
                             </button>
                           </td>
                           <td className="text-center">
-                            {item.status === "SCHEDULED" ? (
+                            {item.status === "SCHEDULED" ||
+                            item.statusCode === "SCHEDULED" ||
+                            item.statusName?.toUpperCase() === "SCHEDULED" ||
+                            item.bookingStatusId === 3 ? (
                               <>
-                                <button className="btn btn-sm btn-warning me-1" onClick={() => openModal(item, "reschedule")} title="Reschedule">
+                                <button
+                                  className="btn btn-sm btn-warning me-1"
+                                  onClick={() => openModal(item, "reschedule")}
+                                  title="Reschedule"
+                                >
                                   <i className="fa fa-calendar"></i>
                                 </button>
-                                <button className="btn btn-sm btn-danger" onClick={() => openModal(item, "cancel")} title="Cancel">
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => openModal(item, "cancel")}
+                                  title="Cancel"
+                                >
                                   <i className="fa fa-times"></i>
                                 </button>
                               </>
-                            ) : <span className="text-muted">—</span>}
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="10" className="text-center">No booking records found.</td></tr>
+                      <tr>
+                        <td colSpan="11" className="text-center py-4 text-muted">
+                          <i className="fa fa-search fa-2x mb-3 d-block"></i>
+                          No booking records found.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-              />
+              {totalItems > 0 && (
+                <Pagination
+                  totalItems={totalItems}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  totalPages={totalPages}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -449,36 +509,82 @@ const OTBookingHistory = () => {
 
       {/* ===== RESCHEDULE / CANCEL MODAL ===== */}
       {showModal && selectedRecord && (
-        <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          role="dialog"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">{modalAction === "reschedule" ? "Reschedule OT Booking" : "Cancel OT Booking"}</h5>
-                <button type="button" className="btn-close" onClick={closeModal} disabled={isProcessing}></button>
+                <h5 className="modal-title">
+                  {modalAction === "reschedule" ? "Reschedule OT Booking" : "Cancel OT Booking"}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closeModal}
+                  disabled={isProcessing}
+                ></button>
               </div>
               <div className="modal-body">
-                <p><strong>Patient:</strong> {selectedRecord.patientName} ({selectedRecord.patientType === "OPD" ? selectedRecord.uhid : selectedRecord.ipNo})</p>
-                <p><strong>Surgery:</strong> {selectedRecord.surgery}</p>
-                <p><strong>Current OT:</strong> {selectedRecord.otName}</p>
-                <p><strong>Current Date/Time:</strong> {selectedRecord.date} {selectedRecord.time}</p>
+                <p>
+                  <strong>Patient:</strong> {selectedRecord.patientName} (
+                  {selectedRecord.uhidNo || selectedRecord.uhid || selectedRecord.ipNo || "-"}
+                  )
+                </p>
+                <p>
+                  <strong>Surgery:</strong> {selectedRecord.surgeryName || selectedRecord.surgery || "-"}
+                </p>
+                <p>
+                  <strong>Current OT:</strong> {selectedRecord.otName || "-"}
+                </p>
+                <p>
+                  <strong>Current Date/Time:</strong> {formatDateTime(selectedRecord)}
+                </p>
 
                 {modalAction === "reschedule" && (
                   <>
                     <div className="mb-3">
                       <label className="form-label fw-bold">New OT *</label>
-                      <select className="form-select" value={newOT} onChange={(e) => setNewOT(e.target.value)} disabled={isProcessing}>
-                        {otOptions.map((ot) => <option key={ot} value={ot}>{ot}</option>)}
+                      <select
+                        className="form-select"
+                        value={newOT}
+                        onChange={(e) => setNewOT(e.target.value)}
+                        disabled={isProcessing}
+                      >
+                        {otOptions.map((ot) => (
+                          <option key={ot} value={ot}>
+                            {ot}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="row">
                       <div className="col-md-6 mb-3">
                         <label className="form-label fw-bold">New Date *</label>
-                        <input type="date" className="form-control" value={newDate} onChange={(e) => setNewDate(e.target.value)} disabled={isProcessing} />
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={newDate}
+                          onChange={(e) => setNewDate(e.target.value)}
+                          disabled={isProcessing}
+                        />
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label fw-bold">New Time *</label>
-                        <select className="form-select" value={newTime} onChange={(e) => setNewTime(e.target.value)} disabled={isProcessing}>
-                          {timeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                        <select
+                          className="form-select"
+                          value={newTime}
+                          onChange={(e) => setNewTime(e.target.value)}
+                          disabled={isProcessing}
+                        >
+                          {timeOptions.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -486,15 +592,42 @@ const OTBookingHistory = () => {
                 )}
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold">{modalAction === "reschedule" ? "Reschedule Remarks" : "Cancellation Reason"} *</label>
-                  <textarea className="form-control" rows="3" value={remarks} onChange={(e) => setRemarks(e.target.value)}
-                    placeholder={modalAction === "reschedule" ? "Enter reason for reschedule..." : "Enter reason for cancellation..."} disabled={isProcessing} />
+                  <label className="form-label fw-bold">
+                    {modalAction === "reschedule" ? "Reschedule Remarks" : "Cancellation Reason"} *
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder={
+                      modalAction === "reschedule"
+                        ? "Enter reason for reschedule..."
+                        : "Enter reason for cancellation..."
+                    }
+                    disabled={isProcessing}
+                  />
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={closeModal} disabled={isProcessing}>Cancel</button>
-                <button className={`btn ${modalAction === "reschedule" ? "btn-warning" : "btn-danger"}`} onClick={handleConfirm} disabled={isProcessing}>
-                  {isProcessing ? <><span className="spinner-border spinner-border-sm me-2" />Processing...</> : (modalAction === "reschedule" ? "Reschedule" : "Cancel Booking")}
+                <button className="btn btn-secondary" onClick={closeModal} disabled={isProcessing}>
+                  Cancel
+                </button>
+                <button
+                  className={`btn ${modalAction === "reschedule" ? "btn-warning" : "btn-danger"}`}
+                  onClick={handleConfirm}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" />
+                      Processing...
+                    </>
+                  ) : modalAction === "reschedule" ? (
+                    "Reschedule"
+                  ) : (
+                    "Cancel Booking"
+                  )}
                 </button>
               </div>
             </div>
@@ -502,7 +635,13 @@ const OTBookingHistory = () => {
         </div>
       )}
 
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
     </div>
   );
 };
