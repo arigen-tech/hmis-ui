@@ -15,9 +15,10 @@ import {
   ABDM_M2_CONSENT_LIST,
   ABDM_M2_CONSENT_STATUS,
   ABDM_M2_FETCH_RECORDS,
+  API_HOST,
 } from "../config/apiConfig";
 
-const INTEGRATION_BASE_URL = "https://api.arigenhmis.com/hims";
+const INTEGRATION_BASE_URL = API_HOST;
 const ABDM_PREFIX = "/api/v1/abdm";
 const NHCX_PREFIX = "/beneficiary/api/v1/bis";
 

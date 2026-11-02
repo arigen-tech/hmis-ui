@@ -760,11 +760,11 @@ const PatientRegistration = () => {
     const rawProfile = integrationService.getLastAbhaProfile() || {};
 
     setAbhaXToken(
-      integrationService.getLastAbhaXToken() ||
-        sourceAbha.xToken ||
-        sourceAbha.xtoken ||
-        "",
-    );
+  sourceAbha.xToken ||
+    sourceAbha.xtoken ||
+    integrationService.getLastAbhaXToken() ||
+    "",
+);
 
     setAbhaProfileAddress(
       sourceAbha.abhaAddress ||
