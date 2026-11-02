@@ -6,7 +6,7 @@ import { INVESTIGATIONS_END_URL, LAB_REPORT_URL_WRT_ORDER_HD, MAX_MONTHS_BACK, R
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../../config/constants';
 import { checkInRange, getResultTextStyle } from "../../../../utils/rangeCheckService";
-import {formatDateForDisplay} from "../../../../utils/dateUtils";
+import { formatDateForDisplay } from "../../../../utils/dateUtils";
 
 
 const isTextInvestigation = (type) => String(type || "").toLowerCase() === "t";
@@ -14,7 +14,7 @@ const isTextInvestigation = (type) => String(type || "").toLowerCase() === "t";
 const htmlToPlainText = (html) => {
   if (!html) return "";
   try {
-    
+
     const spaced = String(html)
       .replace(/<\/(p|div|h[1-6]|li|ul|ol|tr|table)>/gi, " </$1>")
       .replace(/<br\s*\/?>/gi, " ");
@@ -87,7 +87,7 @@ const LabReports = () => {
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
 
-  const hospitalId = sessionStorage.getItem("hospitalId");
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
 
   // Clear hover timers on unmount
   useEffect(() => {
@@ -112,7 +112,9 @@ const LabReports = () => {
       const openUp = spaceBelow < 320 && rect.top > spaceBelow;
 
       setHoverPopup({
-        title: item.investigationName || "Result",
+        title: item.subInvestigationName
+          ? `${item.investigationName} - ${item.subInvestigationName}`
+          : item.investigationName || "Result",
         patientName: item.patientName,
         html: sanitizeHtml(item.result),
         left,
@@ -227,12 +229,16 @@ const LabReports = () => {
 
           return {
             id: item.resultEntryDetailsId || item.orderHdId || Math.random().toString(),
+            resultEntryHeaderId: item.resultEntryHeaderId,
+            resultEntryDetailsId: item.resultEntryDetailsId,
             orderHdId: item.orderHdId,
             investigationDate: formatDateForDisplay(item.investigationDate),
             patientName: item.patientName || "",
             mobileNo: item.phnNum || "",
             genderAge: getGenderAge(item.gender, item.age),
             investigationName: item.investigationName || "",
+            subInvestigationName: (item.subInvestigationName || "").trim(),
+            subInvestigationId: item.subInvestigationId || null,
             investigationType: item.investigationType || "",
             isTextResult: isText,
             unit: item.unit || "",
@@ -360,7 +366,9 @@ const LabReports = () => {
     clearTimeout(hoverCloseTimer.current);
     setHoverPopup(null);
     setResultPopup({
-      title: item.investigationName || "Result",
+      title: item.subInvestigationName
+        ? `${item.investigationName} - ${item.subInvestigationName}`
+        : item.investigationName || "Result",
       patientName: item.patientName,
       html: sanitizeHtml(item.result),
     });
@@ -710,6 +718,7 @@ const LabReports = () => {
                           <th>Mobile No</th>
                           <th>Gender / Age</th>
                           <th>Investigation Name</th>
+                          <th>Sub Investigation Name</th>
                           <th>Unit</th>
                           <th>Result</th>
                           <th>Range</th>
@@ -727,6 +736,7 @@ const LabReports = () => {
                               <td>{item.mobileNo}</td>
                               <td>{item.genderAge}</td>
                               <td>{item.investigationName}</td>
+                              <td>{item.subInvestigationName || "-"}</td>
                               <td>{item.unit}</td>
                               <td style={getResultStyle(item)}>
                                 {renderResultCell(item)}
@@ -772,9 +782,9 @@ const LabReports = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="11" className="text-center py-4">
-                              No Record Found
-                            </td>
+                              <td colSpan="12" className="text-center py-4">
+                                No Record Found
+                              </td>
                           </tr>
                         )}
                       </tbody>
