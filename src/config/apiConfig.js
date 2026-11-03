@@ -307,6 +307,7 @@ export const SAVE_OT_REQUEST = `/otController/saveOtRequest`;
 export const PENDING_FOR_REVIEW_OT_LIST = `/otController/pendingForReviewOtList`;
 export const SAVE_ACCEPT_REJECT_OT = `/otController/saveAcceptAndReject`;
 export const OT_BOOKING_HISTORY = `/otController/bookingHistory`;
+export const OT_TEAM_MEMBER = `/otController/teamMember`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
