@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import notificationImg from "../../assets/images/xs/avatar1.jpg";
 import ProfileImg from "../../assets/images/profile_av.png";
@@ -252,20 +252,15 @@ const Header = ({ toggleSidebar, collapsed }) => {
             {/* Right section: Action items & Profile */}
             <div className="h-right d-flex align-items-center gap-2">
               <div className="d-flex">
-              {/* href="help.html" */}
-                <a href="javascript:void(0)" className="nav-link text-primary collapsed" title="Get Help">
-                  <i className="icofont-info-square fs-5" />
-                </a>
+                <button className="nav-link text-primary collapsed" title="Get Help"><i className="icofont-info-square fs-5" /></button>
               </div>
               <div className="dropdown notifications zindex-popover">
-                <a href="javascript:void(0)" className="nav-link dropdown-toggle pulse" role="button" data-bs-toggle="dropdown">
+                <button className="nav-link dropdown-toggle pulse" role="button" data-bs-toggle="dropdown">
                   <i className="icofont-alarm fs-5" />
                   <span className="pulse-ring" />
-                </a>
-                <div
-                  id="NotificationsDiv"
-                  className="dropdown-menu rounded-lg shadow border-0 dropdown-animation dropdown-menu-sm-end p-0 m-0"
-                >
+                  </button>
+                <div id="NotificationsDiv"
+                  className="dropdown-menu rounded-lg shadow border-0 dropdown-animation dropdown-menu-sm-end p-0 m-0">
                   <div className="card border-0 w380">
                     <div className="card-header border-0 p-3">
                       <h5 className="mb-0 font-weight-light d-flex justify-content-between">
@@ -277,7 +272,7 @@ const Header = ({ toggleSidebar, collapsed }) => {
                       <div className="tab-pane fade show active">
                         <ul className="list-unstyled list mb-0">
                           <li className="py-2 mb-1 border-bottom">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <img
                                 className="avatar rounded-circle"
                                 src={notificationImg}
@@ -295,10 +290,10 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                   <span className="badge bg-success">Book</span>
                                 </span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                           <li className="py-2 mb-1 border-bottom">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <div className="avatar rounded-circle no-thumbnail">
                                 AH
                               </div>
@@ -311,10 +306,10 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                 </p>
                                 <span className="">Lab sample collection</span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                           <li className="py-2 mb-1 border-bottom">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <img
                                 className="avatar rounded-circle"
                                 src="assets/images/xs/avatar3.jpg"
@@ -331,10 +326,10 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                   Invoice Create Patient Room A-803
                                 </span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                           <li className="py-2 mb-1 border-bottom">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <img
                                 className="avatar rounded-circle"
                                 src="assets/images/xs/avatar5.jpg"
@@ -351,10 +346,10 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                   Medicine Order to Medical
                                 </span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                           <li className="py-2 mb-1 border-bottom">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <img
                                 className="avatar rounded-circle"
                                 src="assets/images/xs/avatar6.jpg"
@@ -369,10 +364,10 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                 </p>
                                 <span className="">Leave Apply</span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                           <li className="py-2">
-                            <a href="javascript:void(0);" className="d-flex">
+                            <Link className="d-flex">
                               <img
                                 className="avatar rounded-circle"
                                 src="assets/images/xs/avatar7.jpg"
@@ -389,14 +384,12 @@ const Header = ({ toggleSidebar, collapsed }) => {
                                   Patient Food Order Room A-809
                                 </span>
                               </div>
-                            </a>
+                            </Link>
                           </li>
                         </ul>
                       </div>
                     </div>
-                    <a className="card-footer text-center border-top-0" href="#">
-                      View all notifications
-                    </a>
+                    <Link className="card-footer text-center border-top-0">View all notifications</Link>
                   </div>
                 </div>
               </div>

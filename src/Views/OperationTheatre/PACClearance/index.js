@@ -192,47 +192,47 @@ const PACClearance = () => {
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="PatientName">Patient Name</label>
-                    <input type="text" id="PatientName" name="PatientName" className="form-control" value="Rajesh Kumar" readonly="" />
+                    <input type="text" id="PatientName" name="PatientName" className="form-control" value="Rajesh Kumar" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="ipdNo">IPD No.</label>
-                    <input type="text" id="ipdNo" name="ipdNo" className="form-control" value="IPD/26/00125" readonly="" />
+                    <input type="text" id="ipdNo" name="ipdNo" className="form-control" value="IPD/26/00125" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="uhidNo">UHID/10025</label>
-                    <input type="text" id="uhidNo" name="uhidNo" className="form-control" value="UHID/10025" readonly="" />
+                    <input type="text" id="uhidNo" name="uhidNo" className="form-control" value="UHID/10025" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="ageSex">Age / Sex</label>
-                    <input type="text" id="ageSex" name="ageSex" className="form-control" value="58 / Male" readonly="" />
+                    <input type="text" id="ageSex" name="ageSex" className="form-control" value="58 / Male" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="wardBed">Ward / Bed</label>
-                    <input type="text" id="wardBed" name="wardBed" className="form-control" value="Ortho / B-12" readonly="" />
+                    <input type="text" id="wardBed" name="wardBed" className="form-control" value="Ortho / B-12" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeonName">Surgeon</label>
-                    <input type="text" id="surgeonName" name="surgeonName" className="form-control" value="Dr. Sharma" readonly="" />
+                    <input type="text" id="surgeonName" name="surgeonName" className="form-control" value="Dr. Sharma" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeryId">Surgery</label>
-                    <input type="text" id="surgeryId" name="surgeryId" className="form-control" value="Total Knee Replacement" readonly="" />
+                    <input type="text" id="surgeryId" name="surgeryId" className="form-control" value="Total Knee Replacement" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="OtId">OT</label>
-                    <input type="text" id="OtId" name="OtId" className="form-control" value="Main OT-01" readonly="" />
+                    <input type="text" id="OtId" name="OtId" className="form-control" value="Main OT-01" readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeryDate">Surgery Date</label>
-                    <input type="text" id="surgeryDate" name="surgeryDate" className="form-control" value="06 Nov 2026" readonly="" />
+                    <input type="text" id="surgeryDate" name="surgeryDate" className="form-control" value="06 Nov 2026" readOnly />
                   </div>
 
                 </div>
@@ -274,7 +274,7 @@ const PACClearance = () => {
                   <div className="row g-3 mb-2">
                     <div className="col-md-6">
                       <label className="form-label fw-bold">Current Medications</label>
-                      <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>Medication details from IPD chart / reconciliation notes</textarea>
+                      <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Medication details from IPD chart / reconciliation notes"></textarea>
                     </div>
                     <div className="col-md-3">
                       <label className="form-label fw-bold">Allergy History</label>
@@ -552,19 +552,19 @@ const PACClearance = () => {
                     <div className="row g-3 mb-2">
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CVS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>S1, S2 heard; no murmur</textarea>
+                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="S1, S2 heard; no murmur"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">RS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>Bilateral air entry equal; no added sounds</textarea>
+                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Bilateral air entry equal; no added sounds"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CNS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>Conscious, oriented; no focal neurological deficit</textarea>
+                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Conscious, oriented; no focal neurological deficit"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">Abdomen</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>Soft, non-tender; no palpable organomegaly</textarea>
+                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Soft, non-tender; no palpable organomegaly"></textarea>
                       </div>
                     </div>
                   </div>
@@ -587,21 +587,21 @@ const PACClearance = () => {
                       <div className="row g-3 mb-4">
                         <div className="col-md-12">
                           <label className="form-label fw-bold">Previous LAB Investigations</label>
-                          <textarea className="form-control" rows="6" value="Show investigation, result, date, abnormal flag and report preview." readOnly style={{ height: "60px" }}></textarea>
+                          <textarea className="form-control" rows="6" readOnly style={{ height: "60px" }} defaultValue="Show investigation, result, date, abnormal flag and report preview."></textarea>
                         </div>
                       </div>
                       <div className="row g-3 mb-3">
                         <div className="col-md-12">
                           <label className="form-label fw-bold">Investigation Review Status</label>
-                          <label class="radioLabel">
+                          <label className="radioLabel">
                             <input type="radio" name="reviewStatusType" value="Reviewed" />
                             <span>Reviewed</span>
                           </label>
-                          <label class="radioLabel mt-2">
+                          <label className="radioLabel mt-2">
                             <input type="radio" name="reviewStatusType" value="Additional Investigation Required" />
                             <span>Additional Investigation Required</span>
                           </label>
-                          <label class="radioLabel mt-2">
+                          <label className="radioLabel mt-2">
                             <input type="radio" name="reviewStatusType" value="Not Indicated" />
                             <span>Not Indicated</span>
                           </label>
@@ -611,7 +611,7 @@ const PACClearance = () => {
                       <div className="row g-3 mb-1">
                         <div className="col-md-12">
                           <label className="form-label fw-bold">Investigation Findings / Additional Tests</label>
-                          <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }}>ECG, Echo, Chest X-Ray, laboratory findings or further tests</textarea>
+                          <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="ECG, Echo, Chest X-Ray, laboratory findings or further tests"></textarea>
                         </div>
                       </div>
 
@@ -640,7 +640,7 @@ const PACClearance = () => {
                       <div className="col-md-6">
                         <div className="infoStatus mb-1">
                           <label className="form-label mb-0">ASA Physical Status <span className="text-danger">*</span></label>
-                          <Link><i class="icofont-info"></i></Link>
+                          <Link><i className="icofont-info"></i></Link>
                         </div>
                         <select className="form-select ">
                           <option value="">Select ASA Grade</option>
@@ -660,24 +660,24 @@ const PACClearance = () => {
                   <div className="">
                     <h5 className="fw-bold">Pre-Anaesthesia Instructions</h5>
                     <div className="mb-3">
-                      <label class="radioLabel">
+                      <label className="radioLabel">
                         <input type="radio" name="instructionsType" value="" />
                         <span>Review allergies and current medications</span>
                       </label>
-                      <label class="radioLabel mt-2">
+                      <label className="radioLabel mt-2">
                         <input type="radio" name="instructionsType" value="" />
                         <span>Verify required consent</span>
                       </label>
-                      <label class="radioLabel mt-2">
+                      <label className="radioLabel mt-2">
                         <input type="radio" name="instructionsType" value="" />
                         <span>Confirm fasting instructions and status</span>
                       </label>
-                      <label class="radioLabel mt-2">
+                      <label className="radioLabel mt-2">
                         <input type="radio" name="instructionsType" value="" />
                         <span>Review airway assessment and anaesthesia plan</span>
                       </label>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary addBtn"><i class="icofont-plus"></i><span>Add Instruction</span></button>
+                    <button className="btn btn-sm btn-outline-primary addBtn"><i className="icofont-plus"></i><span>Add Instruction</span></button>
                   </div>
 
                 </div>
@@ -703,16 +703,16 @@ const PACClearance = () => {
                   <div className="row g-3 mb-3">
                     <div className="col-md-12">
                       <label className="form-label fw-bold">Clearance Status <span className="text-danger">*</span></label>
-                      <div class="radio-options">
-                        <label class="radioLabel">
+                      <div className="radio-options">
+                        <label className="radioLabel">
                           <input type="radio" name="pacClearanceType" value="Cleared" />
                           <span>Cleared</span>
                         </label>
-                        <label class="radioLabel">
+                        <label className="radioLabel">
                           <input type="radio" name="pacClearanceType" value="Pending" />
                           <span>Pending</span>
                         </label>
-                        <label class="radioLabel">
+                        <label className="radioLabel">
                           <input type="radio" name="pacClearanceType" value="Not Cleared" />
                           <span>Not Cleared</span>
                         </label>
@@ -727,13 +727,13 @@ const PACClearance = () => {
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center">
-                  <div class="">
-                    <button class="btn btnOutline" onClick={() => setEditPACClearance(false)}><i class="icofont-arrow-left"></i> <span>Back</span></button>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="">
+                    <button className="btn btnOutline" onClick={() => setEditPACClearance(false)}><i className="icofont-arrow-left"></i> <span>Back</span></button>
                   </div>
-                  <div class="">
-                    <button class="btn btn btn-secondary me-3">Save Draft</button>
-                    <button type="button" class="btn btn-primary me-3">Save PAC Assessment</button>
+                  <div className="">
+                    <button className="btn btn btn-secondary me-3">Save Draft</button>
+                    <button type="button" className="btn btn-primary me-3">Save PAC Assessment</button>
                   </div>
                 </div>
 
