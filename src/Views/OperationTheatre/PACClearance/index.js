@@ -274,7 +274,7 @@ const PACClearance = () => {
                   <div className="row g-3 mb-2">
                     <div className="col-md-6">
                       <label className="form-label fw-bold">Current Medications</label>
-                      <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Medication details from IPD chart / reconciliation notes"></textarea>
+                      <textarea className="form-control" rows="6" placeholder="" defaultValue="Medication details from IPD chart / reconciliation notes"></textarea>
                     </div>
                     <div className="col-md-3">
                       <label className="form-label fw-bold">Allergy History</label>
@@ -422,19 +422,19 @@ const PACClearance = () => {
                     <div className="row g-3 mb-2">
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CVS</label>
-                        <textarea className="form-control" rows="6" placeholder="Clinical findings" style={{ height: "60px" }}></textarea>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">RS</label>
-                        <textarea className="form-control" rows="6" placeholder="Clinical findings" style={{ height: "60px" }}></textarea>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CNS</label>
-                        <textarea className="form-control" rows="6" placeholder="Clinical findings" style={{ height: "60px" }}></textarea>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">Abdomen</label>
-                        <textarea className="form-control" rows="6" placeholder="Clinical findings" style={{ height: "60px" }}></textarea>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
                       </div>
                     </div>
                   </div>
@@ -552,19 +552,19 @@ const PACClearance = () => {
                     <div className="row g-3 mb-2">
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CVS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="S1, S2 heard; no murmur"></textarea>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="S1, S2 heard; no murmur"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">RS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Bilateral air entry equal; no added sounds"></textarea>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Bilateral air entry equal; no added sounds"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">CNS</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Conscious, oriented; no focal neurological deficit"></textarea>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Conscious, oriented; no focal neurological deficit"></textarea>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-bold">Abdomen</label>
-                        <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="Soft, non-tender; no palpable organomegaly"></textarea>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Soft, non-tender; no palpable organomegaly"></textarea>
                       </div>
                     </div>
                   </div>
@@ -587,7 +587,7 @@ const PACClearance = () => {
                       <div className="row g-3 mb-4">
                         <div className="col-md-12">
                           <label className="form-label fw-bold">Previous LAB Investigations</label>
-                          <textarea className="form-control" rows="6" readOnly style={{ height: "60px" }} defaultValue="Show investigation, result, date, abnormal flag and report preview."></textarea>
+                          <textarea className="form-control" rows="6" readOnly  defaultValue="Show investigation, result, date, abnormal flag and report preview."></textarea>
                         </div>
                       </div>
                       <div className="row g-3 mb-3">
@@ -611,7 +611,7 @@ const PACClearance = () => {
                       <div className="row g-3 mb-1">
                         <div className="col-md-12">
                           <label className="form-label fw-bold">Investigation Findings / Additional Tests</label>
-                          <textarea className="form-control" rows="6" placeholder="" style={{ height: "60px" }} defaultValue="ECG, Echo, Chest X-Ray, laboratory findings or further tests"></textarea>
+                          <textarea className="form-control" rows="6" placeholder=""  defaultValue="ECG, Echo, Chest X-Ray, laboratory findings or further tests"></textarea>
                         </div>
                       </div>
 
@@ -722,7 +722,7 @@ const PACClearance = () => {
                   <div className="row mb-1">
                     <div className="col-md-12">
                       <label className="form-label fw-bold">PAC Remarks</label>
-                      <textarea className="form-control" rows="6" placeholder="Enter PAC remarks" style={{ height: "60px" }}></textarea>
+                      <textarea className="form-control" rows="6" placeholder="Enter PAC remarks" ></textarea>
                     </div>
                   </div>
                 </div>

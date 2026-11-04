@@ -2474,7 +2474,7 @@ progress {
 }
 
 textarea.form-control {
-  min-height: calc(1.5em + 0.75rem + 2px);
+  height: 60px !important;
 }
 
 textarea.form-control-sm {
@@ -24649,9 +24649,14 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 }
 
 .main .main-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 0px 12px;
+}
+
+.mainContent{
+  flex: 1;
 }
 
 .main .body {
@@ -26343,7 +26348,7 @@ table td .status {
 
 
 
-/* ********************** */
+/* ********************** tabs */
 
 .tabs-container {
   width: 100%;
@@ -26398,6 +26403,32 @@ table td .status {
   }
 }
 
+/* ---------------------- */
+.tab-container .nav-tabs{
+  gap: 8px;
+}
+.tab-container .nav-tabs .nav-item button.nav-link{
+  background: rgb(0 0 0 / 0.02);
+  border: solid 1px rgb(0 0 0 / 0.08);
+  border-bottom: 0;
+  font-size: 14px;
+  color: rgb(0 0 0 / 0.80);
+}
+.tab-container .nav-tabs .nav-item button.nav-link:hover{
+  background: rgb(0 0 0 / 0.05);
+}
+.tab-container .nav-tabs .nav-item button.active{
+  background-color: var(--white-color);
+  color: #2563eb;
+  font-weight: 600;
+}
+.tab-container .tab-content-panel{
+  border: solid 1px rgb(0 0 0 / 0.15);  
+  border-radius: 0 0 8px 8px;
+  padding: 15px;
+  margin-top: -1px;
+}
+
 /* *********************** */
 
 .infoStatus {
@@ -26445,7 +26476,7 @@ table td .status {
   padding: 14px 16px;
 }
 
-.popupModal .modal-header button{
+.popupModal .modal-header button {
   background-color: rgb(0 0 0 / 0.08);
   width: 20px;
   height: 20px;
@@ -26453,14 +26484,17 @@ table td .status {
   position: absolute;
   right: 20px;
 }
-.popupModal .modal-header button:hover{
+
+.popupModal .modal-header button:hover {
   background-color: rgb(0 0 0 / 0.12);
 }
-.popupModal .modal-footer{
+
+.popupModal .modal-footer {
   padding: 10px 16px;
   gap: 10px;
 }
-.popupModal .modal-footer button{
+
+.popupModal .modal-footer button {
   margin: 0;
 }
 
@@ -26471,7 +26505,7 @@ table td .status {
   background: #f8fafc;
   border: 1px solid #e8edf3;
   border-radius: 12px;
-  padding: 12px 15px;
+  padding: 15px;
   margin-bottom: 20px;
 }
 
@@ -26506,6 +26540,14 @@ table td .status {
   gap: 12px 20px;
 }
 
+.grid-col-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-col-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .detail-item {
   display: flex;
   flex-direction: column;
@@ -26528,7 +26570,7 @@ table td .status {
 
 /* ------- */
 
-.surgery-list ol{
+.surgery-list ol {
   margin: 0;
   padding: 0;
 }
@@ -26562,7 +26604,15 @@ table td .status {
   color: #1f2937;
 }
 
-.smSelect{
+.smSelect {
   width: 90px !important;
   height: 30px !important;
+}
+
+.forBadge {
+  align-self: flex-start;
+  padding: 5px 12px !important;
+  border-radius: 30px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
 }
