@@ -2285,10 +2285,6 @@ progress {
   }
 }
 
-.form-label {
-  margin-bottom: 0.5rem;
-}
-
 .col-form-label {
   padding-top: calc(0.375rem + 1px);
   padding-bottom: calc(0.375rem + 1px);
@@ -22600,6 +22596,9 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 
 .form-label {
   font-size: 12px;
+  font-weight: 600;
+  color: rgb(0 0 0/0.80);
+  margin-bottom: 5px !important;
 }
 
 .form-check-label {
@@ -26261,6 +26260,7 @@ table td .status {
   display: flex !important;
   align-items: center;
   justify-content: center;
+  flex: 0 0 38px;
 }
 
 .btnAdd i {
@@ -26278,6 +26278,7 @@ table td .status {
   display: flex !important;
   align-items: center;
   justify-content: center;
+  flex: 0 0 38px;
 }
 
 .btnDel:hover {
@@ -26304,14 +26305,104 @@ table td .status {
   background-color: rgb(0 0 0 / 0.12) !important;
 }
 
-.statusBadges{
+.statusBadges {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.statusBadges span{
+
+.statusBadges span {
   font-size: 12px;
   font-weight: 600;
   padding: 6px 15px;
   border-radius: 30px;
+}
+
+.addBtn {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  border-radius: 30px !important;
+}
+
+
+
+/* ********************** */
+
+.tabs-container {
+  width: 100%;
+}
+
+.tabs-container .tabs-header {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tabs-container .tab-button {
+  border: none;
+  background: rgb(0 0 0 / 0.02);
+  color: #666;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  padding: 8px 20px;
+  margin-bottom: -2px;
+  transition: 0.3s;
+  border-radius: 8px 8px 0px 0px;
+}
+
+.tabs-container .tab-button:hover {
+  background: rgb(0 0 0 / 0.05);
+  color: var(--primary-color);
+}
+
+.tabs-container .tab-button.active {
+  background: rgb(0 0 0 / 0.05);
+  background: var(--primary-color);
+  color: var(--white-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tabs-container .tab-content {
+  border: solid 1px rgb(0 0 0 / 0.15);
+  border-radius: 0 0 8px 8px;
+  padding: 15px;
+}
+
+@media (max-width: 500px) {
+  .tabs-container .tabs-header {
+    overflow-x: auto;
+  }
+
+  .tabs-container .tab-button {
+    white-space: nowrap;
+    padding: 10px 15px;
+  }
+}
+
+/* *********************** */
+
+.infoStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.infoStatus a {
+  width: 20px;
+  height: 20px;
+  border-radius: 30px;
+  border: solid 1px rgb(0 0 0 / 0.20);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 13px;
+  transition: 0.3s;
+}
+
+.infoStatus a:hover {
+  background: #0D6EFD;
+  color: var(--white-color);
 }
