@@ -1,10 +1,11 @@
 // OTBookingHistory/OTTeamAssignment.js
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Popup from "../../../Components/popup";
-import { getRequest } from "../../../service/apiService";
+import { getRequest, postRequest } from "../../../service/apiService";
 import {
   MAS_OT_TEAM_ROLE_GET_ALL,
   GET_USERS_BY_USER_TYPE,
+  OT_TEAM_MEMBER,
 } from "../../../config/apiConfig";
 import {
   FETCH_OT_TEAM_ROLE,
@@ -24,17 +25,38 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
   const [rolesLoading, setRolesLoading] = useState(true);
   const [usersByUserType, setUsersByUserType] = useState({});
   const [usersLoading, setUsersLoading] = useState(false);
-  const [teamData, setTeamData] = useState({});
+  const [assignedMembers, setAssignedMembers] = useState({});
+  const [savedMembers, setSavedMembers] = useState({});
+  const [otTeamMemberId, setOtTeamMemberId] = useState(
+    bookingRecord?.otTeamMemberId && Number(bookingRecord.otTeamMemberId) > 0
+      ? Number(bookingRecord.otTeamMemberId)
+      : null
+  );
 
-  // ----- Fetch Dynamic Roles & Users from API -----
+  // Helper to extract users for a given role by its userTypeId
+  const getUsersForRole = useCallback(
+    (role) => {
+      if (!role?.userTypeId) return [];
+      const list = usersByUserType[role.userTypeId] || [];
+      return list.filter((u) => !u.status || u.status.toLowerCase() === "y");
+    },
+    [usersByUserType]
+  );
+
+  // ----- Fetch Dynamic Roles, Users & Existing Team Members -----
   useEffect(() => {
-    const fetchRolesAndUsers = async () => {
+    let isMounted = true;
+
+    const initializeData = async () => {
       try {
         setRolesLoading(true);
         const res = await getRequest(MAS_OT_TEAM_ROLE_GET_ALL);
+        if (!isMounted) return;
+
+        let activeRoles = [];
         if (res?.response && Array.isArray(res.response)) {
           // Filter active roles and order by otTeamRoleId (primary surgeon first)
-          const activeRoles = res.response
+          activeRoles = res.response
             .filter((r) => r.status === "Y" || !r.status)
             .sort((a, b) => {
               const codeA = (a.roleCode || "").toUpperCase();
@@ -44,312 +66,379 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
               return (a.otTeamRoleId || 0) - (b.otTeamRoleId || 0);
             });
           setRoles(activeRoles);
+        } else {
+          setRoles([]);
+        }
 
-          // Fetch users for each unique userTypeId
-          const uniqueUserTypeIds = Array.from(
-            new Set(
-              activeRoles
-                .map((r) => r.userTypeId)
-                .filter((id) => id !== null && id !== undefined && id !== "")
-            )
-          );
+        // Fetch users for each unique userTypeId
+        const uniqueUserTypeIds = Array.from(
+          new Set(
+            activeRoles
+              .map((r) => r.userTypeId)
+              .filter((id) => id !== null && id !== undefined && id !== "")
+          )
+        );
 
-          if (uniqueUserTypeIds.length > 0) {
-            setUsersLoading(true);
-            try {
-              const usersMap = {};
-              await Promise.all(
-                uniqueUserTypeIds.map(async (uId) => {
-                  try {
-                    const userRes = await getRequest(
-                      `${GET_USERS_BY_USER_TYPE}?userTypeId=${uId}`
-                    );
-                    if (userRes?.response && Array.isArray(userRes.response)) {
-                      usersMap[uId] = userRes.response;
-                    } else {
-                      usersMap[uId] = [];
-                    }
-                  } catch (err) {
-                    console.error(
-                      `Error fetching users for userTypeId ${uId}:`,
-                      err
-                    );
-                    usersMap[uId] = [];
+        let loadedUsersMap = {};
+        if (uniqueUserTypeIds.length > 0) {
+          setUsersLoading(true);
+          try {
+            await Promise.all(
+              uniqueUserTypeIds.map(async (uId) => {
+                try {
+                  const userRes = await getRequest(
+                    `${GET_USERS_BY_USER_TYPE}?userTypeId=${uId}`
+                  );
+                  if (userRes?.response && Array.isArray(userRes.response)) {
+                    loadedUsersMap[uId] = userRes.response;
+                  } else {
+                    loadedUsersMap[uId] = [];
                   }
-                })
-              );
-              setUsersByUserType(usersMap);
-            } catch (err) {
-              console.error("Error fetching users by userType:", err);
-              showPopup(FETCH_USERS_BY_USER_TYPE_ERR, "error");
-            } finally {
+                } catch (err) {
+                  console.error(
+                    `Error fetching users for userTypeId ${uId}:`,
+                    err
+                  );
+                  loadedUsersMap[uId] = [];
+                }
+              })
+            );
+            if (isMounted) {
+              setUsersByUserType(loadedUsersMap);
+            }
+          } catch (err) {
+            console.error("Error fetching users by userType:", err);
+            showPopup(FETCH_USERS_BY_USER_TYPE_ERR, "error");
+          } finally {
+            if (isMounted) {
               setUsersLoading(false);
             }
           }
-        } else {
-          setRoles([]);
+        }
+
+        // Fetch existing assigned team members from backend
+        const bId = bookingRecord?.otBookingId || bookingRecord?.id;
+        let existingMembers = [];
+        let loadedMemberId = null;
+
+        if (bId) {
+          try {
+            const teamRes = await getRequest(
+              `${OT_TEAM_MEMBER}?otBookingId=${bId}`
+            );
+            if (teamRes?.response) {
+              const resp = teamRes.response;
+              existingMembers = Array.isArray(resp)
+                ? resp
+                : Array.isArray(resp?.teamMembers)
+                ? resp.teamMembers
+                : [];
+              loadedMemberId =
+                resp?.otTeamMemberId ||
+                existingMembers[0]?.otTeamMemberId ||
+                null;
+            }
+          } catch (err) {
+            console.error("Error fetching existing team assignment:", err);
+          }
+        }
+
+        if (isMounted) {
+          if (loadedMemberId && Number(loadedMemberId) > 0) {
+            setOtTeamMemberId(Number(loadedMemberId));
+          }
+
+          const initialMap = {};
+
+          // 1. Populate from backend existing assigned members
+          if (existingMembers.length > 0) {
+            existingMembers.forEach((member) => {
+              if (member.otTeamRoleId) {
+                const roleId = Number(member.otTeamRoleId);
+                initialMap[roleId] = {
+                  otTeamRoleId: roleId,
+                  userId: member.userId ? Number(member.userId) : null,
+                  userFullName:
+                    member.userFullName ||
+                    member.fullName ||
+                    member.memberName ||
+                    "",
+                  isPrimary:
+                    member.isPrimary === "Y" || roleId === 1 ? "Y" : "N",
+                };
+              }
+            });
+          }
+
+          // 2. Populate Primary Surgeon from bookingRecord if not already populated
+          const primaryRole = activeRoles.find(
+            (r) =>
+              (r.roleCode || "").toUpperCase() === "PRIMARY_SURGEON" ||
+              r.otTeamRoleId === 1
+          );
+
+          if (primaryRole) {
+            const primaryRoleId = Number(primaryRole.otTeamRoleId);
+            if (!initialMap[primaryRoleId]) {
+              const primarySurgeonName =
+                bookingRecord.primarySurgeon ||
+                bookingRecord.surgeonName ||
+                bookingRecord.surgeon ||
+                "";
+              let primarySurgeonId =
+                bookingRecord.primarySurgeonId ||
+                bookingRecord.surgeonId ||
+                null;
+
+              // Match by name in loaded users if ID is not available
+              if (!primarySurgeonId && primarySurgeonName) {
+                const usersForRole =
+                  loadedUsersMap[primaryRole.userTypeId] || [];
+                const normalizedName = primarySurgeonName
+                  .replace(/\s+/g, " ")
+                  .trim()
+                  .toLowerCase();
+                const matched = usersForRole.find(
+                  (u) =>
+                    (u.fullName || "")
+                      .replace(/\s+/g, " ")
+                      .trim()
+                      .toLowerCase() === normalizedName
+                );
+                if (matched) {
+                  primarySurgeonId = matched.userId;
+                }
+              }
+
+              initialMap[primaryRoleId] = {
+                otTeamRoleId: primaryRoleId,
+                userId: primarySurgeonId ? Number(primarySurgeonId) : null,
+                userFullName: primarySurgeonName,
+                isPrimary: "Y",
+              };
+            }
+          }
+
+          setAssignedMembers(initialMap);
+          setSavedMembers(initialMap);
         }
       } catch (error) {
         console.error("Error fetching OT team roles:", error);
         showPopup(FETCH_OT_TEAM_ROLE, "error");
-        setRoles([]);
+        if (isMounted) setRoles([]);
       } finally {
-        setRolesLoading(false);
+        if (isMounted) setRolesLoading(false);
       }
     };
 
-    fetchRolesAndUsers();
-  }, []);
-
-  // Helper to extract users for a given role by its userTypeId
-  const getUsersForRole = (role) => {
-    if (!role?.userTypeId) return [];
-    const list = usersByUserType[role.userTypeId] || [];
-    return list.filter((u) => !u.status || u.status.toLowerCase() === "y");
-  };
-
-  // Initialize teamData dynamically from bookingRecord and loaded roles
-  useEffect(() => {
-    if (!bookingRecord) return;
-
-    const initial = {};
-    const primarySurgeonVal =
-      bookingRecord.primarySurgeon ||
-      bookingRecord.surgeonName ||
-      bookingRecord.surgeon ||
-      "";
-    const primarySurgeonIdVal =
-      bookingRecord.primarySurgeonId ||
-      bookingRecord.surgeonId ||
-      "";
-
-    // If bookingRecord has teamMembers array
-    if (Array.isArray(bookingRecord.teamMembers)) {
-      bookingRecord.teamMembers.forEach((member) => {
-        const code = member.roleCode || "";
-        const camelKey = toCamelCase(code);
-        const name = member.memberName || member.fullName || "";
-        const uId = member.userId || "";
-
-        if (code) {
-          initial[code] = name;
-          initial[`${code}_ID`] = uId;
-        }
-        if (camelKey) {
-          initial[camelKey] = name;
-          initial[`${camelKey}Id`] = uId;
-        }
-        if (member.otTeamRoleId) {
-          initial[member.otTeamRoleId] = name;
-          initial[`${member.otTeamRoleId}_ID`] = uId;
-        }
-      });
+    if (bookingRecord) {
+      initializeData();
     }
 
-    // Populate each role from bookingRecord
-    roles.forEach((role) => {
-      const code = role.roleCode || "";
-      const camelKey = toCamelCase(code);
-      const isPrimary = code.toUpperCase() === "PRIMARY_SURGEON";
-
-      if (isPrimary) {
-        if (code) initial[code] = primarySurgeonVal;
-        if (camelKey) initial[camelKey] = primarySurgeonVal;
-        if (role.otTeamRoleId) initial[role.otTeamRoleId] = primarySurgeonVal;
-        if (primarySurgeonIdVal) {
-          if (code) initial[`${code}_ID`] = primarySurgeonIdVal;
-          if (camelKey) initial[`${camelKey}Id`] = primarySurgeonIdVal;
-          if (role.otTeamRoleId) initial[`${role.otTeamRoleId}_ID`] = primarySurgeonIdVal;
-        }
-        return;
-      }
-
-      if (!initial[code]) {
-        const val =
-          bookingRecord[code] ||
-          bookingRecord[role.otTeamRoleId] ||
-          (camelKey ? bookingRecord[camelKey] : "") ||
-          "";
-        const idVal =
-          bookingRecord[`${code}_ID`] ||
-          bookingRecord[`${code}Id`] ||
-          (camelKey ? bookingRecord[`${camelKey}Id`] : "") ||
-          "";
-
-        if (code) initial[code] = val;
-        if (camelKey) initial[camelKey] = val;
-        if (role.otTeamRoleId) initial[role.otTeamRoleId] = val;
-        if (idVal) {
-          if (code) initial[`${code}_ID`] = idVal;
-          if (camelKey) initial[`${camelKey}Id`] = idVal;
-          if (role.otTeamRoleId) initial[`${role.otTeamRoleId}_ID`] = idVal;
-        }
-      }
-    });
-
-    setTeamData(initial);
-  }, [bookingRecord, roles]);
+    return () => {
+      isMounted = false;
+    };
+  }, [bookingRecord]);
 
   // ----- Handlers -----
   const handleUserChange = (role, selectedUserId) => {
+    const roleId = Number(role.otTeamRoleId);
     const userList = getUsersForRole(role);
     const selectedUser = userList.find(
       (u) => String(u.userId) === String(selectedUserId)
     );
 
-    const code = role.roleCode || "";
-    const camelKey = toCamelCase(code);
-    const fullName = selectedUser
-      ? (selectedUser.fullName || "").replace(/\s+/g, " ").trim()
-      : "";
-    const userId = selectedUser ? selectedUser.userId : "";
-
-    setTeamData((prev) => ({
-      ...prev,
-      [code]: fullName,
-      [`${code}_ID`]: userId,
-      ...(camelKey
-        ? {
-            [camelKey]: fullName,
-            [`${camelKey}Id`]: userId,
-          }
-        : {}),
-      [role.otTeamRoleId]: fullName,
-      [`${role.otTeamRoleId}_ID`]: userId,
-    }));
+    setAssignedMembers((prev) => {
+      const updated = { ...prev };
+      if (!selectedUserId) {
+        delete updated[roleId];
+      } else {
+        const fullName = selectedUser
+          ? (selectedUser.fullName || "").replace(/\s+/g, " ").trim()
+          : "";
+        updated[roleId] = {
+          otTeamRoleId: roleId,
+          userId: Number(selectedUserId),
+          userFullName: fullName,
+          isPrimary:
+            (role.roleCode || "").toUpperCase() === "PRIMARY_SURGEON" ||
+            roleId === 1
+              ? "Y"
+              : "N",
+        };
+      }
+      return updated;
+    });
   };
 
   const handleToggleEdit = () => setIsEditing(true);
 
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setIsEditing(false);
-      showPopup("OT Team assigned successfully!", "success", () => {
-        if (onSave) {
-          const teamMembers = roles.map((role) => {
-            const code = role.roleCode || "";
-            const camelKey = toCamelCase(code);
-            const isPrimary = code.toUpperCase() === "PRIMARY_SURGEON";
+  const handleSave = async () => {
+    const otBookingId = Number(
+      bookingRecord.otBookingId || bookingRecord.id || 0
+    );
 
-            const memberName = isPrimary
-              ? bookingRecord.primarySurgeon ||
+    if (!otBookingId) {
+      showPopup("Booking ID not found. Cannot save team assignment.", "error");
+      return;
+    }
+
+    // Build teamMembers list dynamically from roles and assignedMembers
+    const teamMembersList = [];
+
+    roles.forEach((role) => {
+      const roleId = Number(role.otTeamRoleId);
+      const isPrimary =
+        (role.roleCode || "").toUpperCase() === "PRIMARY_SURGEON" ||
+        roleId === 1;
+      const assignment = assignedMembers[roleId];
+
+      let userId = assignment?.userId ? Number(assignment.userId) : null;
+
+      // If primary surgeon and userId not yet resolved, attempt to match by name
+      if (isPrimary && !userId) {
+        const surgeonName = (
+          assignment?.userFullName ||
+          bookingRecord.primarySurgeon ||
+          bookingRecord.surgeonName ||
+          bookingRecord.surgeon ||
+          ""
+        )
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+
+        if (surgeonName) {
+          const userList = getUsersForRole(role);
+          const match = userList.find(
+            (u) =>
+              (u.fullName || "")
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase() === surgeonName
+          );
+          if (match) {
+            userId = Number(match.userId);
+          }
+        }
+      }
+
+      if (userId && userId > 0) {
+        teamMembersList.push({
+          otTeamRoleId: roleId,
+          userId: userId,
+          isPrimary: isPrimary ? "Y" : "N",
+        });
+      }
+    });
+
+    if (teamMembersList.length === 0) {
+      showPopup("Please assign at least one team member.", "error");
+      return;
+    }
+
+    const payload = {
+      otBookingId: otBookingId,
+      teamMembers: teamMembersList,
+    };
+
+    setIsSaving(true);
+    try {
+      const res = await postRequest(OT_TEAM_MEMBER, payload);
+
+      if (
+        res?.status === 200 ||
+        res?.status === 201 ||
+        res?.statuss === "success" ||
+        res?.message === "success"
+      ) {
+        const savedData = res?.response || res;
+        const newTeamMemberId =
+          savedData?.otTeamMemberId ||
+          (Array.isArray(savedData?.teamMembers) &&
+            savedData.teamMembers[0]?.otTeamMemberId) ||
+          otTeamMemberId;
+
+        if (newTeamMemberId && Number(newTeamMemberId) > 0) {
+          setOtTeamMemberId(Number(newTeamMemberId));
+        }
+
+        setSavedMembers(assignedMembers);
+
+        const successMsg =
+          typeof res?.message === "string" && res.message !== "success"
+            ? res.message
+            : "OT Team assigned successfully!";
+
+        showPopup(successMsg, "success", () => {
+          setIsEditing(false);
+          if (onSave) {
+            const enrichedMembers = roles.map((role) => {
+              const roleId = Number(role.otTeamRoleId);
+              const isPrimary =
+                (role.roleCode || "").toUpperCase() === "PRIMARY_SURGEON" ||
+                roleId === 1;
+              const assignment = assignedMembers[roleId];
+
+              return {
+                otTeamRoleId: roleId,
+                roleCode: role.roleCode,
+                roleName: role.roleName,
+                userTypeId: role.userTypeId,
+                userId: assignment?.userId || null,
+                memberName: assignment?.userFullName || "",
+                isPrimary: isPrimary ? "Y" : "N",
+              };
+            });
+
+            const teamDataForHistory = {
+              otTeamMemberId: newTeamMemberId,
+              teamMembers: enrichedMembers,
+              primarySurgeon:
+                bookingRecord.primarySurgeon ||
                 bookingRecord.surgeonName ||
                 bookingRecord.surgeon ||
-                teamData[code] ||
-                ""
-              : teamData[code] ||
-                (camelKey ? teamData[camelKey] : "") ||
-                teamData[role.otTeamRoleId] ||
-                "";
-
-            const userId = isPrimary
-              ? bookingRecord.primarySurgeonId ||
-                bookingRecord.surgeonId ||
-                teamData[`${code}_ID`] ||
-                ""
-              : teamData[`${code}_ID`] ||
-                (camelKey ? teamData[`${camelKey}Id`] : "") ||
-                teamData[`${role.otTeamRoleId}_ID`] ||
-                "";
-
-            return {
-              otTeamRoleId: role.otTeamRoleId,
-              roleCode: role.roleCode,
-              roleName: role.roleName,
-              userTypeId: role.userTypeId,
-              userId: userId || null,
-              memberName: memberName || "",
+                assignedMembers[1]?.userFullName ||
+                "",
             };
-          });
 
-          onSave({
-            ...teamData,
-            teamMembers,
-          });
-        }
-      });
-    }, 500);
+            roles.forEach((r) => {
+              const code = r.roleCode;
+              const camelKey = toCamelCase(code);
+              const assignment = assignedMembers[r.otTeamRoleId];
+              if (assignment) {
+                if (code) teamDataForHistory[code] = assignment.userFullName;
+                if (camelKey)
+                  teamDataForHistory[camelKey] = assignment.userFullName;
+                teamDataForHistory[r.otTeamRoleId] = assignment.userFullName;
+              }
+            });
+
+            onSave(teamDataForHistory);
+          }
+        });
+      } else {
+        showPopup(
+          res?.message || "Failed to save OT Team Assignment.",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error saving OT team members:", error);
+      showPopup(
+        error?.message ||
+          "Failed to save OT Team Assignment. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     if (isEditing) {
-      // Revert changes from bookingRecord
-      const reverted = {};
-      const primarySurgeonVal =
-        bookingRecord.primarySurgeon ||
-        bookingRecord.surgeonName ||
-        bookingRecord.surgeon ||
-        "";
-      const primarySurgeonIdVal =
-        bookingRecord.primarySurgeonId ||
-        bookingRecord.surgeonId ||
-        "";
-
-      if (Array.isArray(bookingRecord.teamMembers)) {
-        bookingRecord.teamMembers.forEach((member) => {
-          const code = member.roleCode || "";
-          const camelKey = toCamelCase(code);
-          const name = member.memberName || member.fullName || "";
-          const uId = member.userId || "";
-
-          if (code) {
-            reverted[code] = name;
-            reverted[`${code}_ID`] = uId;
-          }
-          if (camelKey) {
-            reverted[camelKey] = name;
-            reverted[`${camelKey}Id`] = uId;
-          }
-          if (member.otTeamRoleId) {
-            reverted[member.otTeamRoleId] = name;
-            reverted[`${member.otTeamRoleId}_ID`] = uId;
-          }
-        });
-      }
-
-      roles.forEach((role) => {
-        const code = role.roleCode || "";
-        const camelKey = toCamelCase(code);
-        const isPrimary = code.toUpperCase() === "PRIMARY_SURGEON";
-
-        if (isPrimary) {
-          if (code) reverted[code] = primarySurgeonVal;
-          if (camelKey) reverted[camelKey] = primarySurgeonVal;
-          if (role.otTeamRoleId) reverted[role.otTeamRoleId] = primarySurgeonVal;
-          if (primarySurgeonIdVal) {
-            if (code) reverted[`${code}_ID`] = primarySurgeonIdVal;
-            if (camelKey) reverted[`${camelKey}Id`] = primarySurgeonIdVal;
-            if (role.otTeamRoleId) reverted[`${role.otTeamRoleId}_ID`] = primarySurgeonIdVal;
-          }
-          return;
-        }
-
-        if (!reverted[code]) {
-          const val =
-            bookingRecord[code] ||
-            bookingRecord[role.otTeamRoleId] ||
-            (camelKey ? bookingRecord[camelKey] : "") ||
-            "";
-          const idVal =
-            bookingRecord[`${code}_ID`] ||
-            bookingRecord[`${code}Id`] ||
-            (camelKey ? bookingRecord[`${camelKey}Id`] : "") ||
-            "";
-
-          if (code) reverted[code] = val;
-          if (camelKey) reverted[camelKey] = val;
-          if (role.otTeamRoleId) reverted[role.otTeamRoleId] = val;
-          if (idVal) {
-            if (code) reverted[`${code}_ID`] = idVal;
-            if (camelKey) reverted[`${camelKey}Id`] = idVal;
-            if (role.otTeamRoleId) reverted[`${role.otTeamRoleId}_ID`] = idVal;
-          }
-        }
-      });
-
-      setTeamData(reverted);
+      // Revert to saved snapshot
+      setAssignedMembers(savedMembers);
       setIsEditing(false);
     } else {
       onClose();
@@ -379,7 +468,11 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
               <h4 className="card-title p-2 mb-0">
                 {isEditing ? "Assign OT Team" : "VIEW / Modify OT Team"}
               </h4>
-              <button className="btn btn-secondary" onClick={handleCancel} disabled={isSaving}>
+              <button
+                className="btn btn-secondary"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
                 <i className="mdi mdi-arrow-left"></i> Back
               </button>
             </div>
@@ -401,7 +494,9 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">UHID / IP No.</label>
+                      <label className="form-label fw-bold">
+                        UHID / IP No.
+                      </label>
                       <input
                         type="text"
                         className="form-control"
@@ -425,16 +520,29 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label fw-bold">Scheduled Date / Time</label>
+                      <label className="form-label fw-bold">
+                        Scheduled Date / Time
+                      </label>
                       <input
                         type="text"
                         className="form-control"
                         readOnly
-                        value={`${bookingRecord.date || bookingRecord.preferredDate || "-"} ${
+                        value={`${
+                          bookingRecord.date ||
+                          bookingRecord.preferredDate ||
+                          "-"
+                        } ${
                           bookingRecord.time || bookingRecord.preferredStartTime
-                            ? `(${bookingRecord.time || bookingRecord.preferredStartTime}${
-                                bookingRecord.endTime || bookingRecord.preferredEndTime
-                                  ? ` - ${bookingRecord.endTime || bookingRecord.preferredEndTime}`
+                            ? `(${
+                                bookingRecord.time ||
+                                bookingRecord.preferredStartTime
+                              }${
+                                bookingRecord.endTime ||
+                                bookingRecord.preferredEndTime
+                                  ? ` - ${
+                                      bookingRecord.endTime ||
+                                      bookingRecord.preferredEndTime
+                                    }`
                                   : ""
                               })`
                             : ""
@@ -448,16 +556,21 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                     <div className="col-12">
                       <label className="form-label fw-bold">
                         Surgery List{" "}
-                        {Array.isArray(bookingRecord.surgeries) && bookingRecord.surgeries.length > 0
+                        {Array.isArray(bookingRecord.surgeries) &&
+                        bookingRecord.surgeries.length > 0
                           ? `(${bookingRecord.surgeries.length})`
                           : ""}
                       </label>
-                      {Array.isArray(bookingRecord.surgeries) && bookingRecord.surgeries.length > 0 ? (
+                      {Array.isArray(bookingRecord.surgeries) &&
+                      bookingRecord.surgeries.length > 0 ? (
                         <div className="table-responsive">
                           <table className="table table-bordered table-sm align-middle mb-0">
                             <thead className="table-light">
                               <tr>
-                                <th style={{ width: "50px" }} className="text-center">
+                                <th
+                                  style={{ width: "50px" }}
+                                  className="text-center"
+                                >
                                   #
                                 </th>
                                 <th>Surgery Name</th>
@@ -466,9 +579,17 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                             </thead>
                             <tbody>
                               {bookingRecord.surgeries.map((surg, sIdx) => (
-                                <tr key={surg.otBookingRequestDtId || surg.surgeryId || sIdx}>
+                                <tr
+                                  key={
+                                    surg.otBookingRequestDtId ||
+                                    surg.surgeryId ||
+                                    sIdx
+                                  }
+                                >
                                   <td className="text-center">{sIdx + 1}</td>
-                                  <td className="fw-bold">{surg.surgeryName || "-"}</td>
+                                  <td className="fw-bold">
+                                    {surg.surgeryName || "-"}
+                                  </td>
                                   <td>
                                     <span
                                       className={`badge ${
@@ -477,7 +598,9 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                                           : "bg-secondary"
                                       }`}
                                     >
-                                      {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
+                                      {surg.anesthesiaRequired === "Y"
+                                        ? "Yes"
+                                        : "No"}
                                     </span>
                                   </td>
                                 </tr>
@@ -490,7 +613,11 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                           type="text"
                           className="form-control"
                           readOnly
-                          value={bookingRecord.surgery || bookingRecord.surgeryName || "-"}
+                          value={
+                            bookingRecord.surgery ||
+                            bookingRecord.surgeryName ||
+                            "-"
+                          }
                         />
                       )}
                     </div>
@@ -501,7 +628,9 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
               {/* Team Assignment Form */}
               <div className="card mb-4">
                 <div className="card-header">
-                  <h5 className="mb-0">{isEditing ? "ASSIGN OT TEAM" : "VIEW / MODIFY OT TEAM"}</h5>
+                  <h5 className="mb-0">
+                    {isEditing ? "ASSIGN OT TEAM" : "VIEW / MODIFY OT TEAM"}
+                  </h5>
                 </div>
                 <div className="card-body">
                   <div className="row">
@@ -516,47 +645,24 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                       </div>
                     ) : (
                       roles.map((role) => {
-                        const code = role.roleCode || "";
-                        const camelKey = toCamelCase(code);
-                        const isPrimary = code.toUpperCase() === "PRIMARY_SURGEON";
+                        const roleId = Number(role.otTeamRoleId);
+                        const isPrimary =
+                          (role.roleCode || "").toUpperCase() ===
+                            "PRIMARY_SURGEON" || roleId === 1;
 
                         const userList = getUsersForRole(role);
-
-                        const currentMemberName = isPrimary
-                          ? bookingRecord.primarySurgeon ||
-                            bookingRecord.surgeon ||
-                            bookingRecord.surgeonName ||
-                            teamData[code] ||
-                            "Not Assigned"
-                          : teamData[code] ||
-                            (camelKey ? teamData[camelKey] : "") ||
-                            teamData[role.otTeamRoleId] ||
-                            "";
-
-                        let currentUserId = isPrimary
-                          ? bookingRecord.primarySurgeonId ||
-                            bookingRecord.surgeonId ||
-                            teamData[`${code}_ID`] ||
-                            ""
-                          : teamData[`${code}_ID`] ||
-                            (camelKey ? teamData[`${camelKey}Id`] : "") ||
-                            teamData[`${role.otTeamRoleId}_ID`] ||
-                            "";
-
-                        // Match ID from userList by name if ID was not previously stored
-                        if (!currentUserId && currentMemberName) {
-                          const matchedUser = userList.find(
-                            (u) =>
-                              (u.fullName || "").replace(/\s+/g, " ").trim().toLowerCase() ===
-                              currentMemberName.replace(/\s+/g, " ").trim().toLowerCase()
-                          );
-                          if (matchedUser) {
-                            currentUserId = matchedUser.userId;
-                          }
-                        }
+                        const assignment = assignedMembers[roleId] || {};
+                        const currentMemberName =
+                          assignment.userFullName || "";
+                        const currentUserId = assignment.userId
+                          ? String(assignment.userId)
+                          : "";
 
                         return (
-                          <div className="col-md-4 mb-3" key={role.otTeamRoleId || role.roleCode}>
+                          <div
+                            className="col-md-4 mb-3"
+                            key={roleId || role.roleCode}
+                          >
                             <label className="form-label fw-bold">
                               {role.roleName}
                             </label>
@@ -565,13 +671,15 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                                 type="text"
                                 className="form-control"
                                 readOnly
-                                value={currentMemberName}
+                                value={currentMemberName || "Not Assigned"}
                               />
                             ) : isEditing ? (
                               <select
                                 className="form-select"
-                                value={currentUserId || ""}
-                                onChange={(e) => handleUserChange(role, e.target.value)}
+                                value={currentUserId}
+                                onChange={(e) =>
+                                  handleUserChange(role, e.target.value)
+                                }
                                 disabled={usersLoading}
                               >
                                 <option value="">
@@ -586,16 +694,24 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                                     .replace(/\s+/g, " ")
                                     .trim();
                                   return (
-                                    <option key={user.userId} value={user.userId}>
+                                    <option
+                                      key={user.userId}
+                                      value={user.userId}
+                                    >
                                       {name}
                                     </option>
                                   );
                                 })}
                                 {/* Preserve assigned name if not in the current user list */}
-                                {currentMemberName &&
-                                  !userList.some((u) => String(u.userId) === String(currentUserId)) && (
-                                    <option value={currentUserId || currentMemberName} disabled>
-                                      {currentMemberName} (Current)
+                                {currentUserId &&
+                                  !userList.some(
+                                    (u) =>
+                                      String(u.userId) === String(currentUserId)
+                                  ) && (
+                                    <option value={currentUserId} disabled>
+                                      {currentMemberName ||
+                                        `User #${currentUserId}`}{" "}
+                                      (Current)
                                     </option>
                                   )}
                               </select>
@@ -615,10 +731,18 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
 
                   {isEditing ? (
                     <div className="d-flex justify-content-end mt-4 gap-2">
-                      <button className="btn btn-secondary" onClick={handleCancel} disabled={isSaving}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                      >
                         Cancel
                       </button>
-                      <button className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                      >
                         {isSaving ? (
                           <>
                             <span className="spinner-border spinner-border-sm me-2" />
@@ -631,7 +755,10 @@ const OTTeamAssignment = ({ bookingRecord, onClose, onSave }) => {
                     </div>
                   ) : (
                     <div className="d-flex justify-content-end mt-4">
-                      <button className="btn btn-primary" onClick={handleToggleEdit}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleToggleEdit}
+                      >
                         <i className="fa fa-pencil"></i> Modify Team
                       </button>
                     </div>

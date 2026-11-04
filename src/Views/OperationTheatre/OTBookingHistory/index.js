@@ -311,7 +311,6 @@ const OTBookingHistory = () => {
       setData(updatedData);
       setShowTeamAssignment(false);
       setTeamAssignmentRecord(null);
-      showPopup("OT Team assigned successfully!", "success");
     };
 
     const handleCloseTeamAssignment = () => {
