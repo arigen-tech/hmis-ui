@@ -51,7 +51,7 @@ const OTPreOperativeChecklist = () => {
 
   // ----- Dummy data (OT Pre-Operative Checklist - Patient List) -----
   const dummyData = [
-    
+
     {
       id: 3,
       uhidOrIp: "IPD/26/00138",
@@ -250,10 +250,10 @@ const OTPreOperativeChecklist = () => {
                       <th>Department</th>
                       <th>Surgery</th>
                       <th>Surgeon</th>
-                      <th>OT</th>
+                      <th className="text-center">OT</th>
                       <th>Scheduled Time</th>
                       <th>Received Time</th>
-                      <th>Checklist</th>
+                      <th className="text-center">Checklist</th>
                       <th className="text-center">Actions</th>
                     </tr>
                   </thead>
@@ -266,16 +266,15 @@ const OTPreOperativeChecklist = () => {
                           <td>{item.department}</td>
                           <td>{item.surgery}</td>
                           <td>{item.surgeon}</td>
-                          <td>
+                          <td className="text-center">
                             <span className="badge bg-info">{item.ot}</span>
                           </td>
                           <td>{item.scheduledTime}</td>
                           <td>{item.receivedTime}</td>
-                          <td>
+                          <td className="text-center">
                             <span
-                              className={`badge ${
-                                item.checklistStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
-                              }`}
+                              className={`badge ${item.checklistStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
+                                }`}
                             >
                               {item.checklistStatus}
                             </span>
@@ -318,7 +317,7 @@ const OTPreOperativeChecklist = () => {
       {showChecklistModal && selectedRecord && (
         <>
           {/* Backdrop overlay */}
-          <div
+          {/* <div
             style={{
               position: 'fixed',
               top: 0,
@@ -329,31 +328,17 @@ const OTPreOperativeChecklist = () => {
               zIndex: 1040
             }}
             onClick={closeChecklistModal}
-          />
-          
+          /> */}
+
           {/* Modal container */}
-          <div
-            className="modal show d-block"
-            tabIndex={-1}
-            role="dialog"
-            style={{
-              width: "calc(100vw - 310px)",
-              left: "285px",
-              maxWidth: "none",
-              height: "90vh",
-              margin: "5vh auto",
-              position: "fixed",
-              zIndex: 1050,
-              pointerEvents: 'auto'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal show d-block popupModal" tabIndex={-1} role="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">OT Pre-Operative Checklist</h5>
+                  <h4 className="modal-title fw-semibold">OT Pre-Operative Checklist</h4>
                   <button
                     type="button"
+                    title="Close"
                     className="btn-close"
                     onClick={closeChecklistModal}
                     disabled={isProcessing}
@@ -362,53 +347,70 @@ const OTPreOperativeChecklist = () => {
 
                 <div className="modal-body" style={{ maxHeight: "75vh", overflowY: "auto" }}>
                   {/* Patient / Booking Details */}
-                  <h6 className="fw-bold text-primary mb-3">Patient / Booking Details</h6>
-                  <div className="row mb-2">
-                    <div className="col-md-6 mb-2">
-                      <strong>UHID / IP No.:</strong> {selectedRecord.uhidOrIp}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Patient:</strong> {selectedRecord.patientName}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Age / Gender:</strong> {selectedRecord.ageGender}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Department:</strong> {selectedRecord.department}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Ward / Bed:</strong> {selectedRecord.wardBed}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>OT:</strong> {selectedRecord.ot}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Surgeon:</strong> {selectedRecord.surgeon}
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <strong>Scheduled:</strong> {selectedRecord.scheduledTime}
-                    </div>
-                  </div>
+                  <h6 className="fw-bold text-primary mb-2">Patient / Booking Details</h6>
 
-                  <div className="mb-3">
-                    <strong>Planned Surgeries:</strong>
-                    <ol className="mb-0 mt-1">
+                   <section className="patient-card">
+
+                    <div className="patient-header">
+                        <h4>{selectedRecord.patientName}</h4>
+                        <p>UHID / IP No: <strong> {selectedRecord.uhidOrIp}</strong></p>
+                    </div>
+
+                    <div className="details-grid">
+
+                      <div className="detail-item">
+                        <span className="detail-label">Age / Gender</span>
+                        <span className="detail-value">{selectedRecord.ageGender}</span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Department</span>
+                        <span className="detail-value">{selectedRecord.department}</span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Ward / Bed</span>
+                        <span className="detail-value">{selectedRecord.wardBed}</span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Operation Theatre</span>
+                        <span className="detail-value">{selectedRecord.ot}</span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Surgeon</span>
+                        <span className="detail-value">{selectedRecord.surgeon}</span>
+                      </div>
+
+                      <div className="detail-item">
+                        <span className="detail-label">Scheduled</span>
+                        <span className="detail-value" style={{color:"#059669"}}>{selectedRecord.scheduledTime}</span>
+                      </div>
+                    </div>
+                  </section>
+
+
+                  <div className="surgery-list mb-3">
+                    <h5 className="fw-semibold">Planned Surgeries:</h5>
+                    <ol>
                       {selectedRecord.plannedSurgeries.map((surgery, idx) => (
-                        <li key={idx}>{surgery}</li>
+                        <li key={idx}>
+                        <span class="surgery-number">{idx + 1}</span> 
+                        <span class="surgery-name">{surgery}</span>
+                        </li>
                       ))}
                     </ol>
                   </div>
 
-                  <hr />
-
                   {/* Pre-Operative Verification */}
-                  <h6 className="fw-bold text-primary mb-3">Pre-Operative Verification</h6>
+                  <h6 className="fw-bold text-primary mb-2">Pre-Operative Verification</h6>
                   <div className="table-responsive">
                     <table className="table table-sm table-bordered align-middle">
                       <thead className="table-light">
                         <tr>
                           <th>Checklist Item</th>
-                          <th style={{ width: "160px" }}>Status</th>
+                          <th className="text-center" style={{ width: "160px" }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -419,8 +421,9 @@ const OTPreOperativeChecklist = () => {
                               {item.required && <span className="text-danger"> *</span>}
                             </td>
                             <td>
-                              <select
-                                className="form-select form-select-sm"
+                              <div className="btnCenter">
+                                <select
+                                className="form-select form-select-sm smSelect"
                                 value={checklistAnswers[item.id] || ""}
                                 onChange={(e) => handleChecklistAnswerChange(item.id, e.target.value)}
                                 disabled={isProcessing}
@@ -429,6 +432,7 @@ const OTPreOperativeChecklist = () => {
                                 <option value="No">No</option>
                                 {item.hasNA && <option value="N/A">N/A</option>}
                               </select>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -436,8 +440,7 @@ const OTPreOperativeChecklist = () => {
                     </table>
                   </div>
 
-                  <hr />
-
+                 
                   {/* Remarks + Auto fields */}
                   <div className="mb-3">
                     <label className="form-label fw-bold">Remarks</label>
@@ -448,6 +451,7 @@ const OTPreOperativeChecklist = () => {
                       onChange={(e) => setRemarks(e.target.value)}
                       placeholder="Optional remarks..."
                       disabled={isProcessing}
+                      style={{height: "60px"}}
                     />
                   </div>
 

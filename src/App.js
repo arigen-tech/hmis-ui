@@ -290,7 +290,7 @@ import PendingOTReview from './Views/OperationTheatre/PendingOTReview';
 import OTBookingHistory from './Views/OperationTheatre/OTBookingHistory';
 import OTPatientReceiptPending from './Views/OperationTheatre/OTPatientReceiptPending';
 import OTBookingStatusMaster from './Views/Masters/OTBookingStatusMaster';
-// import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
+import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
 import NISRegister from './Views/Dispensary/NISRegister';
 import PACClearance from './Views/OperationTheatre/PACClearance';
 import OpdPatientQueue from './Views/OPD/OpdPatientQueue';
@@ -618,7 +618,7 @@ function App() {
                 <Route path="/OTBookingHistory" element={<OTBookingHistory/>} />
                 <Route path="/OTBookingStatusMaster" element={<OTBookingStatusMaster/>} />
                 <Route path="/OTPatientReceiptPending" element={<OTPatientReceiptPending/>} />
-                {/* <Route path="/OTPreOperativeChecklist" element={<OTPreOperativeChecklist/>} /> */}
+                <Route path="/OTPreOperativeChecklist" element={<OTPreOperativeChecklist/>} />
                 <Route path="/NISRegister" element={<NISRegister/>} />
                 {/* <Route path="/OTSurgeryExecution" element={<OTSurgeryExecution/>} /> */}
                 <Route path="/PACClearance" element={<PACClearance/>} />
