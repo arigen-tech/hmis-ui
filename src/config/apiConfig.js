@@ -205,6 +205,7 @@ export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 export const CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/cancelOrCompleteInvestigationRadiology`;
 
+export const LAB_INVESTIGATIONS_REPORT_ALL_URL = `${LAB}/investigationsReport/all`;
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
 export const RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID = `${RADIOLOGY}/orderTrackingByInpatientIdOrAccesionNo`;
@@ -517,6 +518,8 @@ export const GENERAL = "/general";
 export const GET_MODALITY_DROPDOWN_WRT_DEPARTMENT = `${GENERAL}/getModalityDetailsByDepartment`;
 export const REQUEST_PARAM_CODE = "code";
 export const RADIOLOGY_DEPARTMENT_CODE = "RAD";
+export const LABORATORY_DEPARTMENT_CODE = "LAB";
+
 
 export const RADIOLOGY_REPORT_END_URL = `${ALL_REPORTS}/radiologyReport`;
 export const REQUEST_PARAM_FLAG = `flag`;
@@ -527,7 +530,7 @@ export const STATUS_S = `S`;
 export const STATUS_P = `P`;
 export const STATUS_D = `D`;
 export const STATUS_X = `x`;
-export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
+export const TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/templateList`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
 export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;
 export const REQUEST_PARAM_STATUS = "status";
@@ -915,6 +918,10 @@ export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600
 
 export const DOCTOR_SUMMARY = "/doctor/summary";
 export const PATIENT_VISIT_QUEUE = "/visit/queue";
+
+export const LABORATORY_TEMPLATE_TYPE = 'L';
+export const RADIOLOGY_TEMPLATE_TYPE = 'R';
+
 
 
 

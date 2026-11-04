@@ -206,6 +206,7 @@ import PendingComponentGeneration from './Views/BloodBank/PendingComponentGenera
 import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
 import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
 import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
+import LaboratoryTemplateMaster from './Views/Laboratory/LaboratoryTemplateMaster';
 import PendignListRadiologyReport from './Views/Radiology/PendingListRadiologyReport';
 import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 import BloodFailureReasonMaster from './Views/Masters/BloodFailureReasonMaster';
@@ -538,6 +539,8 @@ function App() {
                 <Route path="/BloodUnitStatus" element={<BloodUnitStatus />}/>
                 <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
                 <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
+                <Route path="/LaboratoryTemplateMaster" element={<LaboratoryTemplateMaster/>} />
+
                 <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
                 <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
                 <Route path='/BloodFailureReasonMaster' element={<BloodFailureReasonMaster/>}/>

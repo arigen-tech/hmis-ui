@@ -53,6 +53,10 @@ import {
   MAS_OPERATION_THEATRE_GET_ALL,
   MAS_SURGERY_GET_BY_LEVEL,
   CHECK_DAY_AVAILABLE_VALIDITY,
+  LAB_INVESTIGATIONS_REPORT_ALL_URL,
+  PACS_STUDY_LIST_GET_API,
+  ALL_DEPARTMENT,
+  DOCTOR_BY_SPECIALITY,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -69,6 +73,8 @@ import Pagination, {
 import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryPopup";
 import PregnancySection from "../Pregnancy";
 import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
+import Swal from "sweetalert2";
+
 
 const OpdRRecallPatient = () => {
   const currentDoctorId =
@@ -95,8 +101,8 @@ const OpdRRecallPatient = () => {
   const [allFrequencies, setAllFrequencies] = useState([]);
   const today = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false); // Separate loading for search
-  const [resetLoading, setResetLoading] = useState(false); // Separate loading for reset
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [popup, setPopup] = useState("");
   const [masICDData, setMasICDData] = useState([]);
   const [popupMessage, setPopupMessage] = useState("");
@@ -121,12 +127,10 @@ const OpdRRecallPatient = () => {
 
   const formatTimeForInput = (value) => {
     if (!value) return "";
-
     const normalized = String(value);
     const timePart = normalized.includes("T")
       ? normalized.split("T")[1]
       : normalized;
-
     return timePart.slice(0, 5);
   };
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
@@ -139,6 +143,20 @@ const OpdRRecallPatient = () => {
   const [previousVisitsData, setPreviousVisitsData] = useState([]);
   const [previousVitalsData, setPreviousVitalsData] = useState([]);
   const [previousPsychiatristData, setPreviousPsychiatristData] = useState([]);
+
+  // ─── Lab & Radiology history state ─────────────────────────────────────
+  const [labInvestigationsData, setLabInvestigationsData] = useState([]);
+  const [labInvestigationsLoading, setLabInvestigationsLoading] = useState(false);
+  const [labInvestigationsCurrentPage, setLabInvestigationsCurrentPage] = useState(0);
+  const [labInvestigationsTotalElements, setLabInvestigationsTotalElements] = useState(0);
+  const [labInvestigationsPageSize, setLabInvestigationsPageSize] = useState(5);
+
+  const [radiologyHistoryData, setRadiologyHistoryData] = useState([]);
+  const [radiologyHistoryLoading, setRadiologyHistoryLoading] = useState(false);
+  const [radiologyHistoryCurrentPage, setRadiologyHistoryCurrentPage] = useState(0);
+  const [radiologyHistoryTotalElements, setRadiologyHistoryTotalElements] = useState(0);
+  const [radiologyHistoryPageSize, setRadiologyHistoryPageSize] = useState(5);
+  // ────────────────────────────────────────────────────────────────────────
 
   const [psychiatristCurrentPage, setPsychiatristCurrentPage] = useState(0);
   const [psychiatristTotalPages, setPsychiatristTotalPages] = useState(0);
@@ -170,7 +188,6 @@ const OpdRRecallPatient = () => {
   const [radioFlag, setRadioFlag] = useState("");
 
   // Admission state
-
   const [wardCategory, setWardCategory] = useState("");
   const [wardCategories, setWardCategories] = useState([]);
 
@@ -284,11 +301,21 @@ const OpdRRecallPatient = () => {
     },
   ]);
 
-   // added by aanand
-    const [referralAdvised, setReferralAdvised] = useState(false);
-    const [referralType, setReferralType] = useState("");
-    const [isPregnant, setIsPregnant] = useState(false);
-    const [surgeryActionType, setSurgeryActionType] = useState("");
+  // ─── Referral state ─────────────────────────────────────────────────────
+  const [referralAdvised, setReferralAdvised] = useState(false);
+  const [referralType, setReferralType] = useState("");
+  const [referralSpecialties, setReferralSpecialties] = useState([]);
+  const [referralSpecialtyLoading, setReferralSpecialtyLoading] = useState(false);
+  const [referralDepartmentId, setReferralDepartmentId] = useState("");
+  const [referralDoctors, setReferralDoctors] = useState([]);
+  const [referralDoctorLoading, setReferralDoctorLoading] = useState(false);
+  const [internalRefDoctorId, setInternalRefDoctorId] = useState("");
+  const [externalReferralDoctorName, setExternalReferralDoctorName] = useState("");
+  const [externalReferredHospitalName, setExternalReferredHospitalName] = useState("");
+
+  const [isPregnant, setIsPregnant] = useState(false);
+  const [surgeryActionType, setSurgeryActionType] = useState("");
+  const [surgeryAdviseText, setSurgeryAdviseText] = useState("");
 
   const fetchWardCategoryData = async () => {
     try {
@@ -395,13 +422,10 @@ const OpdRRecallPatient = () => {
 
     if (!itemToRemove) return;
 
-    // Check if this is an existing DB treatment with an ID
     const hasExistingTreatmentId =
       itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
 
-    // For existing DB treatments, mark with flag -1 (like investigation section)
     if (hasExistingTreatmentId) {
-      // Only mark if not already marked for deletion
       if (itemToRemove.flag !== -1) {
         setTreatmentItems((prev) => {
           const updated = [...prev];
@@ -410,7 +434,6 @@ const OpdRRecallPatient = () => {
             flag: -1,
           };
 
-          // If marking this row deleted leaves no visible rows, add a blank one
           const remainingVisible = updated.filter((row) => row.flag !== -1);
 
           if (remainingVisible.length === 0) {
@@ -436,7 +459,6 @@ const OpdRRecallPatient = () => {
           return updated;
         });
 
-        // Add to removedTreatmentIds list
         const treatmentIdToRemove =
           itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
         if (treatmentIdToRemove) {
@@ -451,7 +473,6 @@ const OpdRRecallPatient = () => {
       return;
     }
 
-    // NEW ITEM (no DB ID) - unchanged from your existing logic below
     const visibleItems = treatmentItems.filter((row) => row.flag !== -1);
 
     if (
@@ -639,6 +660,73 @@ const OpdRRecallPatient = () => {
       setVitalsTotalElements(0);
     } finally {
       setVitalsLoading(false);
+    }
+  };
+
+  // ---- Lab Investigations History ----
+  const fetchLabInvestigationsHistory = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
+    if (!patientId || !hospitalId) return;
+    try {
+      setLabInvestigationsLoading(true);
+      const params = new URLSearchParams();
+      params.append("hospitalId", hospitalId);
+      params.append("patientId", patientId);
+      params.append("IPD", "false");
+      params.append("page", page);
+      params.append("size", size);
+
+      const url = `${LAB_INVESTIGATIONS_REPORT_ALL_URL}?${params.toString()}`;
+      const response = await getRequest(url);
+
+      if (response?.status === 200 && response?.response) {
+        setLabInvestigationsData(response.response.content || []);
+        setLabInvestigationsTotalElements(response.response.totalElements || 0);
+        setLabInvestigationsCurrentPage(response.response.pageable?.pageNumber ?? page);
+      } else {
+        setLabInvestigationsData([]);
+        setLabInvestigationsTotalElements(0);
+      }
+    } catch (err) {
+      console.error("Error fetching lab investigations history:", err);
+      setLabInvestigationsData([]);
+      setLabInvestigationsTotalElements(0);
+    } finally {
+      setLabInvestigationsLoading(false);
+    }
+  };
+
+  // ---- Radiology / PACS Study List ----
+  const fetchRadiologyHistory = async (patientId, page = 0, size = 5) => {
+    if (!patientId) return;
+    try {
+      setRadiologyHistoryLoading(true);
+      const params = new URLSearchParams();
+      params.append("patientId", patientId);
+      params.append("page", page);
+      params.append("size", size);
+
+      const url = `${PACS_STUDY_LIST_GET_API}?${params.toString()}`;
+      const response = await getRequest(url);
+
+      if (response?.status === 200 && response?.response) {
+        setRadiologyHistoryData(response.response.content || []);
+        setRadiologyHistoryTotalElements(response.response.totalElements || 0);
+        setRadiologyHistoryCurrentPage(response.response.pageable?.pageNumber ?? page);
+      } else {
+        setRadiologyHistoryData([]);
+        setRadiologyHistoryTotalElements(0);
+      }
+    } catch (err) {
+      console.error("Error fetching radiology history:", err);
+      setRadiologyHistoryData([]);
+      setRadiologyHistoryTotalElements(0);
+    } finally {
+      setRadiologyHistoryLoading(false);
     }
   };
 
@@ -1092,6 +1180,29 @@ const OpdRRecallPatient = () => {
     }
   };
 
+  const handleLabInvestigationsPageChange = (newPage) => {
+    if (!selectedPatient) return;
+    const hospitalId =
+      selectedPatient.hospitalId ||
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId");
+    fetchLabInvestigationsHistory(
+      selectedPatient.patientId,
+      hospitalId,
+      newPage,
+      labInvestigationsPageSize,
+    );
+  };
+
+  const handleRadiologyHistoryPageChange = (newPage) => {
+    if (!selectedPatient) return;
+    fetchRadiologyHistory(
+      selectedPatient.patientId,
+      newPage,
+      radiologyHistoryPageSize,
+    );
+  };
+
   const handlePsychiatristPageChange = (newPage) => {
     if (selectedPatient) {
       const hospitalId =
@@ -1155,13 +1266,78 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const handleSurgeryTypeChange = (type) => {
+  // ─── fetchSurgeryMasterData — supports a level override ────────────────
+  const fetchSurgeryMasterData = async (levelOverride) => {
+    const effectiveLevel = (
+      levelOverride || surgeryType || "major"
+    ).toUpperCase();
+
+    if (
+      surgeryMasterLoadedRef.current &&
+      !levelOverride &&
+      surgeryOptions.length > 0
+    ) {
+      return surgeryOptions.length > 0 ? surgeryOptions : null;
+    }
+
+    try {
+      const response = await getRequest(
+        `${MAS_SURGERY_GET_BY_LEVEL}/${effectiveLevel}/${1}`,
+      );
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setSurgeryOptions(response.response);
+        surgeryMasterLoadedRef.current = true;
+        return response.response;
+      } else {
+        setSurgeryOptions([]);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching Surgery Master:", error);
+      setSurgeryOptions([]);
+      return null;
+    }
+  };
+
+  // ─── Surgery Level change with confirm when surgery rows exist ─────────
+  const handleSurgeryTypeChange = async (type) => {
+    // No change — nothing to do
+    if (type === surgeryType) return;
+
+    // Does the surgery add table currently have any filled row?
+    const hasExistingSurgeryRows = surgeryItems.some(
+      (item) =>
+        (item.surgeryId !== null && item.surgeryId !== undefined) ||
+        (item.surgeryName && String(item.surgeryName).trim() !== ""),
+    );
+
+    if (hasExistingSurgeryRows) {
+      const result = await Swal.fire({
+        title: "Change Surgery Level?",
+        text:
+          "If you change the surgery level, the data you entered will be reset. Do you want to continue?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes",
+        cancelButtonText: "No",
+        reverseButtons: false,
+        allowOutsideClick: false,
+      });
+
+      if (!result.isConfirmed) {
+        // User cancelled — leave radio + rows as-is
+        return;
+      }
+    }
+
     setSurgeryType(type);
     surgeryMasterLoadedRef.current = false;
     surgeryDataFetchedRef.current = false;
     setSurgeryOptions([]);
     resetSurgeryFields();
   };
+  // ───────────────────────────────────────────────────────────────────────
 
   const fetchDrugDetailsById = async (itemId) => {
     const hospitalId =
@@ -1678,7 +1854,7 @@ const OpdRRecallPatient = () => {
     }
 
     try {
-      isFetchingRef.current = true; // Add this
+      isFetchingRef.current = true;
       const params = new URLSearchParams();
 
       if (filters.mobileNumber) params.append("mobile", filters.mobileNumber);
@@ -1703,7 +1879,7 @@ const OpdRRecallPatient = () => {
     } catch (error) {
       console.error("Error fetching OPD patient data:", error);
     } finally {
-      isFetchingRef.current = false; // Add this
+      isFetchingRef.current = false;
     }
   };
 
@@ -1830,27 +2006,6 @@ const OpdRRecallPatient = () => {
   const validateSubmitForm = () => {
     const errors = {};
 
-    if (!formData.patientSymptoms) {
-      errors.patientSymptoms = "Chief Complaints is required";
-    }
-
-    const requiredVitals = [
-      "height",
-      "weight",
-      "temperature",
-      "systolicBP",
-      "diastolicBP",
-      "pulse",
-      "rr",
-      "spo2",
-    ];
-    requiredVitals.forEach((field) => {
-      if (!formData[field]) {
-        errors[field] =
-          `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
-      }
-    });
-
     const hasWorkingDiagnosis = workingDiagnosis?.trim();
     const hasIcdDiagnosis = diagnosisItems.some((item) => item.icdDiagId);
 
@@ -1876,27 +2031,64 @@ const OpdRRecallPatient = () => {
       }
     }
 
-    if (referralData.isReferred === "Yes") {
-      if (!referralData.referTo) {
-        errors.referTo = "Refer To field is required";
+    if (referralAdvised) {
+      if (!referralType) {
+        errors.referralType = "Please select Internal or External referral type.";
+      } else if (referralType === "internal") {
+        if (!referralDepartmentId) {
+          errors.referralDepartmentId = "Specialty is required for internal referral.";
+        }
+        if (!internalRefDoctorId) {
+          errors.internalRefDoctorId = "Doctor is required for internal referral.";
+        }
+        if (!referralNotes) {
+          errors.referralNotes = "Referral notes is required.";
+        }
+      } else if (referralType === "external") {
+        if (!referralDepartmentId) {
+          errors.referralDepartmentId = "Specialty is required for external referral.";
+        }
+        if (!externalReferredHospitalName) {
+          errors.referredHospitalName = "Hospital name is required for external referral.";
+        }
+        if (!referralNotes) {
+          errors.referralNotes = "Referral notes is required.";
+        }
       }
-      if (!referralData.referralDate) {
-        errors.referralDate = "Referral date is required";
+    }
+
+    if (surgeryActionType === "advise") {
+      if (!surgeryAdviseText || !surgeryAdviseText.trim()) {
+        errors.surgeryAdvise = "Surgery advice text is required.";
       }
-      if (!referralNotes) {
-        errors.referralNotes = "Referral notes are required";
+    } else if (surgeryActionType === "schedule") {
+      if (!selectedOT) {
+        errors.selectedOT = "OT is required when scheduling surgery.";
+      }
+      if (!surgeryDate) {
+        errors.surgeryDate = "Surgery date is required when scheduling surgery.";
+      }
+      if (!surgeryStartTime) {
+        errors.surgeryStartTime = "Start time is required when scheduling surgery.";
+      }
+      if (!surgeryEndTime) {
+        errors.surgeryEndTime = "End time is required when scheduling surgery.";
+      }
+      const validSurgeryItems = surgeryItems.filter(
+        (item) =>
+          item.surgeryId &&
+          item.surgeryName &&
+          item.surgeryName.trim() !== "",
+      );
+      if (validSurgeryItems.length === 0) {
+        errors.surgeryDetails = "At least one surgery must be selected when scheduling.";
       }
       if (
-        referralData.referTo === "External" &&
-        !referralData.referredHospitalName
+        surgeryStartTime &&
+        surgeryEndTime &&
+        !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)
       ) {
-        errors.referredHospitalName = "Referred hospital name is required";
-      }
-      if (
-        referralData.referTo === "Internal" &&
-        !referralData.currentPriorityNo
-      ) {
-        errors.currentPriorityNo = "Current priority number is required";
+        errors.surgeryEndTime = "End time must be after start time.";
       }
     }
 
@@ -1909,25 +2101,12 @@ const OpdRRecallPatient = () => {
 
     if (isSubmitting) return;
 
-    if (surgeryStartTime || surgeryEndTime) {
-      if (!surgeryStartTime || !surgeryEndTime) {
-        showPopup("Both Start Time and End Time are required when scheduling surgery", "error");
-        return;
-      }
-
-      if (!validateSurgeryTimes(surgeryStartTime, surgeryEndTime)) {
-        showPopup("Surgery end time must be after start time", "error");
-        return;
-      }
-    }
-
     if (!validateSubmitForm()) return;
 
     try {
       setIsSubmitting(true);
       const pregnancyDetails = pregnancyRef.current?.getData?.();
 
-      // Get OBG details from the ref
       let obgDetailsData = null;
       if (isObgynDepartment && obgDetailsRef.current) {
         const obgData = obgDetailsRef.current.getData?.();
@@ -2000,7 +2179,6 @@ const OpdRRecallPatient = () => {
 
       const treatmentList = treatmentItems
         .map((item) => {
-          // Skip completely empty rows with no data and not marked for deletion
           if (!item.drugId && !item.treatmentId && item.flag !== -1)
             return null;
 
@@ -2009,18 +2187,14 @@ const OpdRRecallPatient = () => {
               f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
           );
 
-          // Determine flag based on item state
           let flag = 0;
           if (item.flag === -1) {
             return {
               prescriptionHdId: item.prescriptionHdId ?? null,
-
               prescriptionDtId:
                 item.prescriptionDtId ?? item.treatmentId ?? null,
-
               itemId: item.drugId || "",
               itemName: item.drugName || "",
-
               dosage: 0,
               days: 0,
               frequencyId: null,
@@ -2030,13 +2204,12 @@ const OpdRRecallPatient = () => {
               itemClassId: null,
               adispQty: 1,
               total: "0",
-
               flag: -1,
             };
           } else if (!item.treatmentId) {
-            flag = 1; // New
+            flag = 1;
           } else if (item.flag === 0) {
-            flag = 0; // Existing - no change
+            flag = 0;
           }
 
           return {
@@ -2080,16 +2253,103 @@ const OpdRRecallPatient = () => {
         if (existingOpthalId) {
           ophthalmologyPayload.id = existingOpthalId;
         }
-        if (
-          surgeryStartTime &&
-          surgeryEndTime &&
-          !validateSurgeryTimes(surgeryStartTime, surgeryEndTime)
-        ) {
-          showPopup("Surgery end time must be after start time", "error");
-          return;
-        }
+      }
 
-        if (!validateSubmitForm()) return;
+      // ─── Surgery advice payload (with surgeryLevel) ────────────────
+      const surgeryLevelForPayload = String(
+        surgeryType || "major",
+      ).toUpperCase();
+
+      let surgeryAdvicePayload = null;
+      if (surgeryActionType === "advise") {
+        surgeryAdvicePayload = {
+          surgeryActionType: "a",
+          surgeryAdvise: surgeryAdviseText || null,
+          surgeryLevel: surgeryLevelForPayload,
+          otId: null,
+          otHdId: otBookingRequestHdId ?? null,
+          surgeryDate: null,
+          surgeryStartTime: null,
+          surgeryEndTime: null,
+          surgeryDetails: [],
+        };
+      } else if (surgeryActionType === "schedule") {
+        const validSurgeryItems = surgeryItems.filter(
+          (item) =>
+            item.surgeryId &&
+            item.surgeryName &&
+            item.surgeryName.trim() !== "",
+        );
+        const hasScheduleData =
+          selectedOT ||
+          surgeryDate ||
+          surgeryStartTime ||
+          surgeryEndTime ||
+          validSurgeryItems.length > 0;
+
+        if (hasScheduleData) {
+          surgeryAdvicePayload = {
+            surgeryActionType: "s",
+            surgeryAdvise: null,
+            surgeryLevel: surgeryLevelForPayload,
+            otId: selectedOT || null,
+            otHdId: otBookingRequestHdId ?? null,
+            surgeryDate: surgeryDate || null,
+            surgeryStartTime: surgeryStartTime || null,
+            surgeryEndTime: surgeryEndTime || null,
+            surgeryDetails: validSurgeryItems.map((item) => ({
+              surgeryId: item.surgeryId,
+              otDtId: item.otBookingRequestDtId || null,
+              surgeryName: item.surgeryName,
+            })),
+          };
+        }
+      }
+
+      // ─── Referral payload ────────────────────────────────────────
+      let referralPayload;
+      if (referralAdvised) {
+        if (referralType === "internal") {
+          referralPayload = {
+            referralFlag: "y",
+            referralType: "i",
+            referralDepartmentId: Number(referralDepartmentId) || null,
+            internalRefDoctorId: Number(internalRefDoctorId) || null,
+            referralDoctorName: null,
+            referredHospitalName: null,
+            referralRemarks: referralNotes || null,
+          };
+        } else if (referralType === "external") {
+          referralPayload = {
+            referralFlag: "y",
+            referralType: "e",
+            referralDepartmentId: Number(referralDepartmentId) || null,
+            internalRefDoctorId: null,
+            referralDoctorName: externalReferralDoctorName || null,
+            referredHospitalName: externalReferredHospitalName || null,
+            referralRemarks: referralNotes || null,
+          };
+        } else {
+          referralPayload = {
+            referralFlag: "y",
+            referralType: null,
+            referralDepartmentId: null,
+            internalRefDoctorId: null,
+            referralDoctorName: null,
+            referredHospitalName: null,
+            referralRemarks: null,
+          };
+        }
+      } else {
+        referralPayload = {
+          referralFlag: "n",
+          referralType: null,
+          referralDepartmentId: null,
+          internalRefDoctorId: null,
+          referralDoctorName: null,
+          referredHospitalName: null,
+          referralRemarks: null,
+        };
       }
 
       const payload = {
@@ -2104,6 +2364,7 @@ const OpdRRecallPatient = () => {
         clinicalExamination: formData.clinicalExamination || null,
         pastMedicalHistory: formData.pastMedicalHistory || null,
         presentHistory: formData.presentHistory || null,
+        allergyHistory: formData.allergyHistory || null,
 
         height: formData.height || null,
         weight: formData.weight || null,
@@ -2150,7 +2411,6 @@ const OpdRRecallPatient = () => {
           ophthalmologyExaminationDetails: ophthalmologyPayload,
         }),
 
-        // Include OBG details in the main payload
         ...(isObgynDepartment &&
           obgDetailsData && {
           opdObgDetailsRequest: obgDetailsData,
@@ -2183,51 +2443,19 @@ const OpdRRecallPatient = () => {
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
-        surgeryAdvice:
-          selectedOT ||
-            surgeryDate ||
-            surgeryStartTime || surgeryEndTime ||
-            surgeryItems.some(
-              (item) => item.surgeryName && item.surgeryName.trim() !== "",
-            )
-            ? {
-              otId: selectedOT || null,
-              otHdId: otBookingRequestHdId || null,
-              surgeryDate: surgeryDate || null,
-              surgeryStartTime: surgeryStartTime || null,
-              surgeryEndTime: surgeryEndTime || null,
-              surgeryDetails: surgeryItems
-                .filter(
-                  (item) =>
-                    item.surgeryId &&
-                    item.surgeryName &&
-                    item.surgeryName.trim() !== "",
-                )
-                .map((item) => ({
-                  surgeryId: item.surgeryId,
-                  otDtId: item.otBookingRequestDtId || null,
-                  surgeryName: item.surgeryName,
-                })),
-            }
-            : null,
+        surgeryAdvice: surgeryAdvicePayload,
 
-        referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
-        referralRemarks: referralNotes || null,
+        ...referralPayload,
+
         referralDate:
-          referralData.referralDate && referralData.isReferred === "Yes"
-            ? new Date(referralData.referralDate).toISOString()
+          referralAdvised && referralType
+            ? new Date().toISOString()
             : null,
         referTo:
-          referralData.isReferred === "Yes" ? referralData.referTo : null,
-        referredHospitalName:
-          referralData.isReferred === "Yes" &&
-            referralData.referTo === "External"
-            ? referralData.referredHospitalName
-            : null,
-        currentPriorityNo:
-          referralData.isReferred === "Yes" &&
-            referralData.referTo === "Internal"
-            ? referralData.currentPriorityNo
+          referralAdvised && referralType
+            ? referralType === "internal"
+              ? "Internal"
+              : "External"
             : null,
 
         pregnancyDetails,
@@ -2326,6 +2554,7 @@ const OpdRRecallPatient = () => {
     treatmentAdvice: "",
     pastMedicalHistory: "",
     presentHistory: "",
+    allergyHistory: "",
     mlcCase: false,
   });
 
@@ -2514,32 +2743,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const fetchSurgeryMasterData = async () => {
-    if (surgeryMasterLoadedRef.current) {
-      return surgeryOptions.length > 0 ? surgeryOptions : null;
-    }
-
-    try {
-      const level = surgeryType.toUpperCase();
-      const response = await getRequest(
-        `${MAS_SURGERY_GET_BY_LEVEL}/${level}/${1}`,
-      );
-
-      if (response?.status === 200 && Array.isArray(response.response)) {
-        setSurgeryOptions(response.response);
-        surgeryMasterLoadedRef.current = true;
-        return response.response;
-      } else {
-        setSurgeryOptions([]);
-        return null;
-      }
-    } catch (error) {
-      console.error("Error fetching Surgery Master:", error);
-      setSurgeryOptions([]);
-      return null;
-    }
-  };
-
   const handleSurgeryAdviceOpen = async () => {
     const willOpen = !expandedSections.surgeryAdvice;
     toggleSection("surgeryAdvice");
@@ -2671,9 +2874,8 @@ const OpdRRecallPatient = () => {
   };
 
   const validateSurgeryTimes = (startTime, endTime) => {
-    if (!startTime || !endTime) return true; // Don't validate if either is empty
+    if (!startTime || !endTime) return true;
 
-    // Convert times to comparable format (minutes since midnight)
     const [startHours, startMinutes] = startTime.split(":").map(Number);
     const [endHours, endMinutes] = endTime.split(":").map(Number);
 
@@ -2686,7 +2888,6 @@ const OpdRRecallPatient = () => {
   const handleSurgeryStartTimeChange = async (timeValue) => {
     setSurgeryStartTime(timeValue);
 
-    // Validate that start time is before end time
     if (surgeryEndTime && timeValue) {
       const isValid = validateSurgeryTimes(timeValue, surgeryEndTime);
       if (!isValid) {
@@ -2710,7 +2911,6 @@ const OpdRRecallPatient = () => {
   const handleSurgeryEndTimeChange = async (timeValue) => {
     setSurgeryEndTime(timeValue);
 
-    // Validate that end time is after start time
     if (surgeryStartTime && timeValue) {
       const isValid = validateSurgeryTimes(surgeryStartTime, timeValue);
       if (!isValid) {
@@ -2741,11 +2941,6 @@ const OpdRRecallPatient = () => {
 
       if (!departmentId) return true;
 
-      // const [hours, minutes] = startTime.split(":").map(Number);
-      // const startTimeObj = new Date(0, 0, 0, hours, minutes);
-      // const formattedStartTime = startTimeObj.toTimeString().slice(0, 5);
-
-      // Build URL with all parameters
       let url = `${CHECK_DAY_AVAILABLE_VALIDITY}?departmentId=${departmentId}&otId=${otId}&date=${date}`;
 
       const response = await getRequest(url);
@@ -2934,7 +3129,6 @@ const OpdRRecallPatient = () => {
       const updated = [...prev];
       const existingItem = updated[index];
 
-      // Check if this is a new item or existing
       const isNew =
         !existingItem.id || existingItem.id === null || existingItem.id === "";
 
@@ -2942,7 +3136,7 @@ const OpdRRecallPatient = () => {
         ...updated[index],
         investigationId: selected.investigationId,
         name: selected.investigationName,
-        flag: isNew ? 1 : 0, // New items get flag 1, existing get flag 0
+        flag: isNew ? 1 : 0,
         templateIds: existingItem.templateIds || [],
       };
       return updated;
@@ -3036,7 +3230,6 @@ const OpdRRecallPatient = () => {
     let duplicateItemsBuffer = [];
 
     setInvestigationItems((prev) => {
-      // Check if the current list only has the default empty row
       const hasOnlyEmptyRow =
         prev.length === 1 &&
         !prev[0].investigationId &&
@@ -3045,7 +3238,6 @@ const OpdRRecallPatient = () => {
 
       let updated = [...prev];
 
-      // If only empty row exists, start fresh
       if (hasOnlyEmptyRow) {
         updated = [];
       }
@@ -3328,6 +3520,95 @@ const OpdRRecallPatient = () => {
     }
   };
 
+  const fetchReferralSpecialties = async () => {
+    if (referralSpecialties.length > 0) return;
+    try {
+      setReferralSpecialtyLoading(true);
+      const hospitalId =
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId") ||
+        selectedPatient?.hospitalId ||
+        "1";
+      const response = await getRequest(
+        `${ALL_DEPARTMENT}/1`,
+      );
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        const filtered = response.response.filter(
+          (dept) => Number(dept.departmentTypeId) === 5,
+        );
+        setReferralSpecialties(filtered);
+      } else {
+        setReferralSpecialties([]);
+      }
+    } catch (error) {
+      console.error("Error fetching referral specialties:", error);
+      setReferralSpecialties([]);
+    } finally {
+      setReferralSpecialtyLoading(false);
+    }
+  };
+
+  const fetchReferralDoctors = async (departmentId) => {
+    if (!departmentId) {
+      setReferralDoctors([]);
+      return;
+    }
+    try {
+      setReferralDoctorLoading(true);
+      const response = await getRequest(
+        `${DOCTOR_BY_SPECIALITY}${departmentId}`,
+      );
+
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        setReferralDoctors(response.response);
+      } else {
+        setReferralDoctors([]);
+      }
+    } catch (error) {
+      console.error("Error fetching referral doctors:", error);
+      setReferralDoctors([]);
+    } finally {
+      setReferralDoctorLoading(false);
+    }
+  };
+
+  const handleReferralAdvisedToggle = async (e) => {
+    const checked = e.target.checked;
+    setReferralAdvised(checked);
+
+    if (checked) {
+      await fetchReferralSpecialties();
+    } else {
+      setReferralType("");
+      setReferralDepartmentId("");
+      setReferralDoctors([]);
+      setInternalRefDoctorId("");
+      setExternalReferralDoctorName("");
+      setExternalReferredHospitalName("");
+      setReferralNotes("");
+    }
+  };
+
+  const handleReferralTypeChange = (type) => {
+    setReferralType(type);
+    setReferralDepartmentId("");
+    setReferralDoctors([]);
+    setInternalRefDoctorId("");
+    setExternalReferralDoctorName("");
+    setExternalReferredHospitalName("");
+  };
+
+  const handleReferralSpecialtyChange = async (deptId) => {
+    setReferralDepartmentId(deptId);
+    setInternalRefDoctorId("");
+    setReferralDoctors([]);
+
+    if (deptId && referralType === "internal") {
+      await fetchReferralDoctors(deptId);
+    }
+  };
+
   const handleRowClick = async (patient) => {
     setLoading(true);
 
@@ -3384,6 +3665,7 @@ const OpdRRecallPatient = () => {
           clinicalExamination: patientData.clinicalExamination || "",
           pastMedicalHistory: patientData.pastMedicalHistory || "",
           presentHistory: patientData.presentHistory || patientData.familyHistory || "",
+          allergyHistory: patientData.allergyHistory || "",
           mlcCase: patientData.mlcFlag === "y",
         });
 
@@ -3392,7 +3674,8 @@ const OpdRRecallPatient = () => {
           patientData.clinicalExamination ||
           patientData.pastMedicalHistory ||
           patientData.presentHistory ||
-          patientData.familyHistory;
+          patientData.familyHistory ||
+          patientData.allergyHistory;
         if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
         setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
         setWorkingDiagnosis(patientData?.workingDiag || "");
@@ -3491,7 +3774,7 @@ const OpdRRecallPatient = () => {
                 itemClassId: item.itemClassId ?? null,
                 aDispQty: item.adispQty ?? 1,
                 templateId: "",
-                flag: 0, // Existing treatments should have flag 0
+                flag: 0,
               };
               obj.total = calculateTotal(obj);
               return obj;
@@ -3547,90 +3830,179 @@ const OpdRRecallPatient = () => {
             : "",
         });
 
+        // ─── Referral prefill ────────────────────────────────────────
         const hasReferralData = patientData.referralFlag === "y";
         if (hasReferralData) sectionsToExpand.referral = true;
 
-        setReferralData((prev) => ({
-          ...prev,
-          isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
-          referTo: patientData.referTo || "",
-          referralDate: patientData.referralDate
-            ? patientData.referralDate.split("T")[0]
-            : getToday(),
-          referredHospitalName: patientData.referredHospitalName || "",
-        }));
-        setReferralNotes(patientData.referralRemarks || "");
+        setReferralAdvised(hasReferralData);
 
+        if (hasReferralData) {
+          await fetchReferralSpecialties();
+
+          const typeCode = String(patientData.referralType || "").toLowerCase();
+          const mappedType =
+            typeCode === "e"
+              ? "external"
+              : typeCode === "i"
+                ? "internal"
+                : "";
+
+          setReferralType(mappedType);
+
+          const deptId = patientData.referralDepartmentId
+            ? String(patientData.referralDepartmentId)
+            : "";
+          setReferralDepartmentId(deptId);
+
+          setReferralNotes(patientData.referralRemarks || "");
+
+          if (mappedType === "internal") {
+            if (deptId) {
+              await fetchReferralDoctors(deptId);
+            }
+            setInternalRefDoctorId(
+              patientData.internalRefDoctorId
+                ? String(patientData.internalRefDoctorId)
+                : "",
+            );
+            setExternalReferralDoctorName("");
+            setExternalReferredHospitalName("");
+          } else if (mappedType === "external") {
+            setInternalRefDoctorId("");
+            setReferralDoctors([]);
+            setExternalReferralDoctorName(
+              patientData.referralDoctorName || "",
+            );
+            setExternalReferredHospitalName(
+              patientData.referredHospitalName || "",
+            );
+          } else {
+            setInternalRefDoctorId("");
+            setReferralDoctors([]);
+            setExternalReferralDoctorName("");
+            setExternalReferredHospitalName("");
+          }
+        } else {
+          setReferralType("");
+          setReferralDepartmentId("");
+          setReferralDoctors([]);
+          setInternalRefDoctorId("");
+          setExternalReferralDoctorName("");
+          setExternalReferredHospitalName("");
+          setReferralNotes("");
+        }
+        // ─────────────────────────────────────────────────────────────
+
+        // ─── Surgery Advice prefill (incl. surgeryLevel) ────────────
         const surgeryAdviceData = patientData.surgeryDetails || null;
 
         if (surgeryAdviceData) {
           sectionsToExpand.surgeryAdvice = true;
-          let surgeryMasterData = null;
-          if (!surgeryMasterLoadedRef.current) {
-            surgeryMasterData = await fetchSurgeryMasterData();
+
+          const actionType = String(
+            surgeryAdviceData.surgeryActionType || "",
+          ).toLowerCase();
+
+          if (actionType === "a" || actionType === "advise") {
+            setSurgeryActionType("advise");
+            setSurgeryAdviseText(surgeryAdviceData.surgeryAdvise || "");
+
+            // Prefill surgery level if it comes back even on Advise
+            const recalledLevelAdvise = String(
+              surgeryAdviceData.surgeryLevel || "MAJOR",
+            ).toUpperCase();
+            setSurgeryType(
+              recalledLevelAdvise === "MINOR" ? "minor" : "major",
+            );
+
+            resetSurgeryFields();
+          } else if (actionType === "s" || actionType === "schedule") {
+            setSurgeryActionType("schedule");
+            setSurgeryAdviseText("");
+
+            const recalledLevel = String(
+              surgeryAdviceData.surgeryLevel || "MAJOR",
+            ).toUpperCase();
+            const normalisedLevel =
+              recalledLevel === "MINOR" ? "minor" : "major";
+            setSurgeryType(normalisedLevel);
+
+            let surgeryMasterData = await fetchSurgeryMasterData(
+              recalledLevel,
+            );
+            if (!surgeryMasterData || surgeryMasterData.length === 0) {
+              surgeryMasterData =
+                surgeryOptions.length > 0 ? surgeryOptions : [];
+            }
+
+            if (!otMasterLoadedRef.current) {
+              await fetchOperationTheatres();
+            }
+
+            setOtBookingRequestHdId(
+              surgeryAdviceData.otBookingRequestHdId ?? null,
+            );
+            setSelectedOT(
+              surgeryAdviceData.otId ? String(surgeryAdviceData.otId) : "",
+            );
+            setSurgeryDate(
+              surgeryAdviceData.surgeryDate
+                ? surgeryAdviceData.surgeryDate.split("T")[0]
+                : "",
+            );
+            setSurgeryStartTime(
+              formatTimeForInput(surgeryAdviceData.surgeryStartTime || ""),
+            );
+            setSurgeryEndTime(
+              formatTimeForInput(surgeryAdviceData.surgeryEndTime || ""),
+            );
+
+            const sourceSurgeryDetails = Array.isArray(
+              surgeryAdviceData.surgeryDetails,
+            )
+              ? surgeryAdviceData.surgeryDetails
+              : [];
+
+            const resolvedSurgeryItems =
+              sourceSurgeryDetails.length > 0
+                ? sourceSurgeryDetails.map((item) => {
+                  const matched = (surgeryMasterData || []).find(
+                    (s) => Number(s.surgeryId) === Number(item.surgeryId),
+                  );
+                  const displayName = matched
+                    ? `${matched.surgeryCode} - ${matched.surgeryName}`
+                    : item.surgeryName || "";
+
+                  return {
+                    otBookingRequestDtId:
+                      item.otBookingRequestDtId ??
+                      item.otDtId ??
+                      null,
+                    surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
+                    surgeryName: displayName,
+                  };
+                })
+                : [
+                  {
+                    otBookingRequestDtId: null,
+                    surgeryId: null,
+                    surgeryName: "",
+                  },
+                ];
+
+            setSurgeryItems(resolvedSurgeryItems);
+            surgeryDataFetchedRef.current = true;
           } else {
-            surgeryMasterData =
-              surgeryOptions.length > 0 ? surgeryOptions : null;
+            setSurgeryActionType("");
+            setSurgeryAdviseText("");
+            resetSurgeryFields();
           }
-
-          if (!otMasterLoadedRef.current) {
-            await fetchOperationTheatres();
-          }
-
-          setOtBookingRequestHdId(
-            surgeryAdviceData.otBookingRequestHdId ?? null,
-          );
-
-          setSelectedOT(
-            surgeryAdviceData.otId ? String(surgeryAdviceData.otId) : "",
-          );
-
-          setSurgeryDate(
-            surgeryAdviceData.surgeryDate
-              ? surgeryAdviceData.surgeryDate.split("T")[0]
-              : "",
-          );
-
-          setSurgeryStartTime(
-            formatTimeForInput(surgeryAdviceData.surgeryStartTime || ""),
-          );
-
-          setSurgeryEndTime(
-            formatTimeForInput(surgeryAdviceData.surgeryEndTime || ""),
-          );
-
-          setSurgeryItems(
-            Array.isArray(surgeryAdviceData.surgeryDetails) &&
-              surgeryAdviceData.surgeryDetails.length > 0
-              ? surgeryAdviceData.surgeryDetails.map((item) => ({
-                otBookingRequestDtId: item.otBookingRequestDtId ?? null,
-
-                surgeryId: item.surgeryId ?? item.surgeryItemId ?? null,
-
-                surgeryName:
-                  item.surgeryName ||
-                  (() => {
-                    const surgery = (surgeryMasterData || []).find(
-                      (s) => Number(s.surgeryId) === Number(item.surgeryId),
-                    );
-
-                    return surgery
-                      ? `${surgery.surgeryCode} - ${surgery.surgeryName}`
-                      : "";
-                  })(),
-              }))
-              : [
-                {
-                  otBookingRequestDtId: null,
-                  surgeryId: null,
-                  surgeryName: "",
-                },
-              ],
-          );
-          surgeryDataFetchedRef.current = true;
         } else {
           resetSurgeryFields();
+          setSurgeryActionType("");
+          setSurgeryAdviseText("");
         }
+        // ─────────────────────────────────────────────────────────────
 
         const admissionAdvised = patientData.admissionFlag === "y";
         if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
@@ -3788,6 +4160,7 @@ const OpdRRecallPatient = () => {
       clinicalExamination: "",
       pastMedicalHistory: "",
       presentHistory: "",
+      allergyHistory: "",
       mlcCase: false,
     });
     setDiagnosisItems([
@@ -3880,26 +4253,25 @@ const OpdRRecallPatient = () => {
     setVitalsCurrentPage(0);
     setVitalsTotalPages(0);
     setVitalsTotalElements(0);
-    setExpandedSections({
-      personalDetails: false,
-      clinicalHistory: false,
-      visionExamination: false,
-      obgDetails: false,
-      earExamination: false,
-      dentalExamination: false,
-      vitalDetail: false,
-      diagnosis: false,
-      investigation: false,
-      treatment: false,
-      treatmentAdvice: false,
-      procedureCare: false,
-      surgeryAdvice: false,
-      admissionAdvice: false,
-      referral: false,
-      followUp: false,
-      doctorRemark: false,
-      remarks: false,
-    });
+
+    setLabInvestigationsData([]);
+    setLabInvestigationsTotalElements(0);
+    setLabInvestigationsCurrentPage(0);
+
+    setRadiologyHistoryData([]);
+    setRadiologyHistoryTotalElements(0);
+    setRadiologyHistoryCurrentPage(0);
+
+    setReferralAdvised(false);
+    setReferralType("");
+    setReferralDepartmentId("");
+    setReferralDoctors([]);
+    setInternalRefDoctorId("");
+    setExternalReferralDoctorName("");
+    setExternalReferredHospitalName("");
+
+    setSurgeryActionType("");
+    setSurgeryAdviseText("");
   };
 
   useEffect(() => {
@@ -4147,6 +4519,7 @@ const OpdRRecallPatient = () => {
       mlcCase: false,
       pastMedicalHistory: "",
       presentHistory: "",
+      allergyHistory: "",
     });
 
     setDiagnosisItems([
@@ -4214,6 +4587,17 @@ const OpdRRecallPatient = () => {
     ]);
 
     resetSurgeryFields();
+
+    setReferralAdvised(false);
+    setReferralType("");
+    setReferralDepartmentId("");
+    setReferralDoctors([]);
+    setInternalRefDoctorId("");
+    setExternalReferralDoctorName("");
+    setExternalReferredHospitalName("");
+
+    setSurgeryActionType("");
+    setSurgeryAdviseText("");
 
     setErrors({});
     setExpandedSections({
@@ -4382,12 +4766,9 @@ const OpdRRecallPatient = () => {
 
   const handleAddTreatmentItem = () => {
     setTreatmentItems((prev) => {
-      // Filter out items marked for deletion (flag -1) when checking for empty rows
       const visibleItems = prev.filter((row) => row.flag !== -1);
 
-      // Check if there are any visible items
       if (visibleItems.length === 0) {
-        // If no visible items, add a new empty row
         return [
           ...prev,
           {
@@ -4418,12 +4799,10 @@ const OpdRRecallPatient = () => {
         !lastItem?.frequency &&
         !lastItem?.days;
 
-      // If the last row is empty, don't add a new row
       if (isLastRowEmpty) {
         return prev;
       }
 
-      // Add a new empty row
       return [
         ...prev,
         {
@@ -4501,7 +4880,6 @@ const OpdRRecallPatient = () => {
       );
 
       setTreatmentItems((prevList) => {
-        // Check if we only have the default empty row
         const hasOnlyEmptyRow =
           prevList.length === 1 &&
           !prevList[0].drugId &&
@@ -4512,7 +4890,6 @@ const OpdRRecallPatient = () => {
 
         let updatedList = [...prevList];
 
-        // If only empty row exists, start fresh
         if (hasOnlyEmptyRow) {
           updatedList = [];
         }
@@ -4562,7 +4939,7 @@ const OpdRRecallPatient = () => {
             templateId: String(templateId),
             itemClassId: t?.itemClassId ?? null,
             aDispQty: t?.aDispQty ?? 1,
-            flag: 1, // New treatments from template should have flag 1
+            flag: 1,
           };
 
           newItem.total = calculateTotal(newItem);
@@ -4571,7 +4948,6 @@ const OpdRRecallPatient = () => {
 
         const result = [...updatedList, ...formattedNew];
 
-        // If no items were added, return a default empty row
         if (result.length === 0) {
           return [
             {
@@ -4942,7 +5318,7 @@ const OpdRRecallPatient = () => {
                           <label className="form-label me-2">Height</label>
                           <input
                             type="number"
-                            className={`form-control ${errors.height ? "is-invalid" : ""}`}
+                            className="form-control"
                             min={0}
                             placeholder="Height"
                             name="height"
@@ -4950,11 +5326,6 @@ const OpdRRecallPatient = () => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">cm</span>
-                          {errors.height && (
-                            <div className="invalid-feedback d-block">
-                              {errors.height}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-2 d-flex position-relative">
@@ -4962,18 +5333,13 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.weight ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="Weight"
                             name="weight"
                             value={formData.weight}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">kg</span>
-                          {errors.weight && (
-                            <div className="invalid-feedback d-block">
-                              {errors.weight}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-3 d-flex position-relative">
@@ -4981,18 +5347,13 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="Temperature"
                             name="temperature"
                             value={formData.temperature}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">°F</span>
-                          {errors.temperature && (
-                            <div className="invalid-feedback d-block">
-                              {errors.temperature}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-5 d-flex align-items-center gap-2 position-relative">
@@ -5000,33 +5361,23 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.systolicBP ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="Systolic"
                             name="systolicBP"
                             value={formData.systolicBP}
                             onChange={handleChange}
                           />
                           <span className="input-group-text-">/</span>
-                          {errors.systolicBP && (
-                            <div className="invalid-feedback d-block">
-                              {errors.systolicBP}
-                            </div>
-                          )}
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.diastolicBP ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="Diastolic"
                             name="diastolicBP"
                             value={formData.diastolicBP}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">mmHg</span>
-                          {errors.diastolicBP && (
-                            <div className="invalid-feedback d-block">
-                              {errors.diastolicBP}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-3 d-flex position-relative">
@@ -5034,18 +5385,13 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="Pulse"
                             name="pulse"
                             value={formData.pulse}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">/min</span>
-                          {errors.pulse && (
-                            <div className="invalid-feedback d-block">
-                              {errors.pulse}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-3 d-flex position-relative">
@@ -5053,7 +5399,7 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.bmi ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="BMI"
                             name="bmi"
                             value={formData.bmi}
@@ -5061,11 +5407,6 @@ const OpdRRecallPatient = () => {
                             readOnly
                           />
                           <span className="input-group-text">kg/m²</span>
-                          {errors.bmi && (
-                            <div className="invalid-feedback d-block">
-                              {errors.bmi}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-3 d-flex position-relative">
@@ -5073,18 +5414,13 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.rr ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="RR"
                             name="rr"
                             value={formData.rr}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">/min</span>
-                          {errors.rr && (
-                            <div className="invalid-feedback d-block">
-                              {errors.rr}
-                            </div>
-                          )}
                         </div>
 
                         <div className="col-md-3 d-flex position-relative">
@@ -5092,18 +5428,13 @@ const OpdRRecallPatient = () => {
                           <input
                             type="number"
                             min={0}
-                            className={`form-control ${errors.spo2 ? "is-invalid" : ""}`}
+                            className="form-control"
                             placeholder="SpO2"
                             name="spo2"
                             value={formData.spo2}
                             onChange={handleChange}
                           />
                           <span className="input-group-text">%</span>
-                          {errors.spo2 && (
-                            <div className="invalid-feedback d-block">
-                              {errors.spo2}
-                            </div>
-                          )}
                         </div>
                       </div>
                       <div className="row mt-3">
@@ -5124,16 +5455,9 @@ const OpdRRecallPatient = () => {
                       </div>
                       <hr />
 
-                      {/* Aanand */}
-
                       <div className="mb-4">
                         <h4 class="fw-bold mb-3">Patient History</h4>
                         <div className="patientHistoryBtn">
-                          {/* { id: "audit-history", label: "Audit History" },
-                            {
-                              id: "psychiatrist",
-                              label: "Psychiatrist Assessment",
-                            }, */}
                           {[
                             {
                               id: "previous-visits",
@@ -5151,8 +5475,8 @@ const OpdRRecallPatient = () => {
                               icon: "icofont-laboratory",
                             },
                             {
-                              id: "previous-ecg",
-                              label: "Previous ECG Investigation",
+                              id: "previous-radiology",
+                              label: "Previous Radiology Investigation",
                               icon: "icofont-sound-wave",
                             },
                             {
@@ -5177,6 +5501,33 @@ const OpdRRecallPatient = () => {
                                   await handleHistoryTypeClick(
                                     "previous-vitals",
                                   );
+                                } else if (btn.id === "previous-lab") {
+                                  setClinicalPopupType("lab-investigations");
+                                  setShowClinicalPopup(true);
+                                  handleHistoryTypeClick(btn.id);
+                                  if (selectedPatient) {
+                                    const hospitalId =
+                                      selectedPatient.hospitalId ||
+                                      sessionStorage.getItem("hospitalId") ||
+                                      localStorage.getItem("hospitalId");
+                                    fetchLabInvestigationsHistory(
+                                      selectedPatient.patientId,
+                                      hospitalId,
+                                      0,
+                                      labInvestigationsPageSize,
+                                    );
+                                  }
+                                } else if (btn.id === "previous-radiology") {
+                                  setClinicalPopupType("radiology-history");
+                                  setShowClinicalPopup(true);
+                                  handleHistoryTypeClick(btn.id);
+                                  if (selectedPatient) {
+                                    fetchRadiologyHistory(
+                                      selectedPatient.patientId,
+                                      0,
+                                      radiologyHistoryPageSize,
+                                    );
+                                  }
                                 } else if (
                                   btn.id === "previous-psychiatrist"
                                 ) {
@@ -5200,7 +5551,6 @@ const OpdRRecallPatient = () => {
                       </div>
                       <hr />
 
-                      {/* ************************ */}
                       <div className="">
                         <h4 class="fw-bold mb-3">Clinical History</h4>
                         <div className="row">
@@ -5220,14 +5570,6 @@ const OpdRRecallPatient = () => {
                               placeholder="Enter chief complaints"
                               style={{ height: "60px" }}
                             ></textarea>
-                            {/* <input
-                                type="text"
-                                className="form-control"
-                                name="patientSymptoms"
-                                value={formData.patientSymptoms}
-                                onChange={handleChange}
-                                placeholder="Enter chief complaints"
-                              /> */}
                           </div>
 
                           {/* Present History of Illness */}
@@ -5299,11 +5641,16 @@ const OpdRRecallPatient = () => {
                               style={{ height: "60px" }}
                             ></textarea>
                           </div>
+
+                          {/* Allergy History */}
                           <div className="col-md-6 mb-2">
                             <label className="form-label fw-bold">Allergy History</label>
                             <textarea
                               className="form-control"
                               rows={3}
+                              name="allergyHistory"
+                              value={formData.allergyHistory}
+                              onChange={handleChange}
                               placeholder="No known allergies / Known allergies / Unknown"
                               style={{ height: "60px" }}
                             ></textarea>
@@ -5369,7 +5716,6 @@ const OpdRRecallPatient = () => {
 
                         <div className="">
                           <div class="row mb-3">
-                            {/* Diagnosis Section (merged, no header, no border) */}
                             <div className="col-md-6">
                               <label className="form-label fw-bold">Working Diagnosis</label>
                               <input
@@ -5544,7 +5890,6 @@ const OpdRRecallPatient = () => {
                             selectedPatient?.gender || "",
                           ).toLowerCase() === "female" && (
                               <div className="">
-
                                 <div className="d-flex align-items-center gap-3">
                                   <h4 className="fw-bold mb-0">Pregnancy Details</h4>
                                   <div className="form-check mb-0">
@@ -5576,9 +5921,7 @@ const OpdRRecallPatient = () => {
                             )}
 
                         </div>
-
                       </div>
-
                     </div>
                   )}
                 </div>
@@ -5719,7 +6062,6 @@ const OpdRRecallPatient = () => {
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body" style={{ overflow: "visible" }}>
-                      {/* Selected Templates Display - FIXED */}
                       {selectedTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -6038,7 +6380,6 @@ const OpdRRecallPatient = () => {
 
                   {expandedSections.treatment && (
                     <div className="card-body" style={{ overflow: "visible" }}>
-                      {/* Selected Templates Display */}
                       {selectedTreatmentTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -6092,7 +6433,6 @@ const OpdRRecallPatient = () => {
                         </div>
                       )}
 
-                      {/* Template Dropdown + Buttons */}
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
                           <label className="form-label fw-bold m-0">Template</label>
@@ -6157,7 +6497,6 @@ const OpdRRecallPatient = () => {
                         </div>
                       )}
 
-                      {/* Treatment Table */}
                       <div
                         className="table-responsive"
                         ref={tableContainerRef}
@@ -6220,7 +6559,7 @@ const OpdRRecallPatient = () => {
                           </thead>
                           <tbody>
                             {treatmentItems
-                              .filter((row) => row.flag !== -1) // ✅ Hide items marked for deletion
+                              .filter((row) => row.flag !== -1)
                               .map((row, index) => {
                                 const stockQuantity = Number(
                                   row.requestedDeptStocks ?? row.stock ?? 0,
@@ -6438,7 +6777,6 @@ const OpdRRecallPatient = () => {
                                           handleRemoveTreatmentItem(index)
                                         }
                                           disabled={
-                                            // Only disable if it's the last row AND it's already empty AND not an existing record
                                             treatmentItems.filter(
                                               (r) => r.flag !== -1,
                                             ).length === 1 &&
@@ -6460,8 +6798,7 @@ const OpdRRecallPatient = () => {
                         </table>
                       </div>
 
-                      {/* Treatment Advice Subsection */}
-                      <div className="card mt-3">
+                      {/* <div className="card mt-3">
                         <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
                         <div className="card-body pt-0">
                           <div className="d-flex align-items-center gap-2">
@@ -6484,7 +6821,7 @@ const OpdRRecallPatient = () => {
                             ><i class="icofont-plus"></i></button>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   )}
                 </div>
@@ -6831,7 +7168,6 @@ const OpdRRecallPatient = () => {
                         <>
                           <div className="subTitle mt-3">
                             <h4>Physiotherapy Advice</h4>
-                            {/* <span>OPD</span> */}
                           </div>
 
                           <div className="adviceWrapper">
@@ -7023,10 +7359,8 @@ const OpdRRecallPatient = () => {
                     <div className="card-body">
 
                       <div className="d-flex align-items-center gap-4">
-                        {/* Referral Advised checkbox */}
                         <h4 class="fw-bold mb-0">Surgery Action <span className="text-danger">*</span></h4>
 
-                        {/* Internal / External radio buttons */}
                         <div className="radio-options">
                           <label class="radioLabel">
                             <input
@@ -7055,7 +7389,19 @@ const OpdRRecallPatient = () => {
                           <div class="row mt-3">
                             <div class="col-md-12">
                               <label class="form-label fw-bold">Surgery Advice</label>
-                              <textarea class="form-control" rows="6" placeholder="Enter surgery advice / recommendations..." style={{ height: "60px" }}></textarea>
+                              <textarea
+                                class={`form-control ${errors.surgeryAdvise ? "is-invalid" : ""}`}
+                                rows="6"
+                                placeholder="Enter surgery advice / recommendations..."
+                                style={{ height: "60px" }}
+                                value={surgeryAdviseText}
+                                onChange={(e) => setSurgeryAdviseText(e.target.value)}
+                              ></textarea>
+                              {errors.surgeryAdvise && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.surgeryAdvise}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </>
@@ -7114,7 +7460,7 @@ const OpdRRecallPatient = () => {
                                 OT <span className="text-danger">*</span>
                               </label>
                               <select
-                                className="form-select form-select-sm"
+                                className={`form-select form-select-sm ${errors.selectedOT ? "is-invalid" : ""}`}
                                 value={selectedOT}
                                 onChange={(e) => handleOTChange(e.target.value)}
                               >
@@ -7125,6 +7471,11 @@ const OpdRRecallPatient = () => {
                                   </option>
                                 ))}
                               </select>
+                              {errors.selectedOT && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.selectedOT}
+                                </div>
+                              )}
                             </div>
 
                             <div className="col-auto">
@@ -7133,28 +7484,32 @@ const OpdRRecallPatient = () => {
                               </label>
                               <input
                                 type="date"
-                                className="form-control form-control-sm"
+                                className={`form-control form-control-sm ${errors.surgeryDate ? "is-invalid" : ""}`}
                                 value={surgeryDate}
                                 onChange={(e) =>
                                   handleSurgeryDateChange(e.target.value)
                                 }
                                 min={getToday()}
                               />
+                              {errors.surgeryDate && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.surgeryDate}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Start Time Input */}
                             <div className="col-auto">
                               <label className="form-label small fw-bold mb-1">
                                 Start Time <span className="text-danger">*</span>
                               </label>
                               <input
                                 type="time"
-                                className={`form-control form-control-sm ${surgeryStartTime &&
+                                className={`form-control form-control-sm ${(errors.surgeryStartTime || (surgeryStartTime &&
                                   surgeryEndTime &&
                                   !validateSurgeryTimes(
                                     surgeryStartTime,
                                     surgeryEndTime,
-                                  )
+                                  )))
                                   ? "is-invalid"
                                   : ""
                                   }`}
@@ -7163,31 +7518,25 @@ const OpdRRecallPatient = () => {
                                   handleSurgeryStartTimeChange(e.target.value)
                                 }
                               />
-                              {surgeryStartTime &&
-                                surgeryEndTime &&
-                                !validateSurgeryTimes(
-                                  surgeryStartTime,
-                                  surgeryEndTime,
-                                ) && (
-                                  <div className="invalid-feedback d-block">
-                                    End time must be after start time
-                                  </div>
-                                )}
+                              {errors.surgeryStartTime && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.surgeryStartTime}
+                                </div>
+                              )}
                             </div>
 
-                            {/* End Time Input */}
                             <div className="col-auto">
                               <label className="form-label small fw-bold mb-1">
                                 End Time <span className="text-danger">*</span>
                               </label>
                               <input
                                 type="time"
-                                className={`form-control form-control-sm ${surgeryStartTime &&
+                                className={`form-control form-control-sm ${(errors.surgeryEndTime || (surgeryStartTime &&
                                   surgeryEndTime &&
                                   !validateSurgeryTimes(
                                     surgeryStartTime,
                                     surgeryEndTime,
-                                  )
+                                  )))
                                   ? "is-invalid"
                                   : ""
                                   }`}
@@ -7196,16 +7545,11 @@ const OpdRRecallPatient = () => {
                                   handleSurgeryEndTimeChange(e.target.value)
                                 }
                               />
-                              {surgeryStartTime &&
-                                surgeryEndTime &&
-                                !validateSurgeryTimes(
-                                  surgeryStartTime,
-                                  surgeryEndTime,
-                                ) && (
-                                  <div className="invalid-feedback d-block">
-                                    End time must be after start time
-                                  </div>
-                                )}
+                              {errors.surgeryEndTime && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.surgeryEndTime}
+                                </div>
+                              )}
                             </div>
 
                             <div className="col-auto">
@@ -7240,7 +7584,6 @@ const OpdRRecallPatient = () => {
                                   <tr key={index}>
                                     <td className="text-center">{index + 1}</td>
                                     <td>
-                                      {/* Surgery input with dropdown */}
                                       <div
                                         className="position-relative"
                                         style={{ width: "100%" }}
@@ -7270,7 +7613,6 @@ const OpdRRecallPatient = () => {
                                             if (!surgeryMasterLoadedRef.current) {
                                               await fetchSurgeryMasterData();
                                             }
-                                            // Close other dropdowns and open this one
                                             setIsSurgeryDropdownVisible(true);
                                             setSelectedSurgeryIndex(index);
                                           }}
@@ -7375,6 +7717,11 @@ const OpdRRecallPatient = () => {
                               </tbody>
                             </table>
                           </div>
+                          {errors.surgeryDetails && (
+                            <div className="text-danger small mb-2">
+                              {errors.surgeryDetails}
+                            </div>
+                          )}
                         </>
                       )}
 
@@ -7585,100 +7932,220 @@ const OpdRRecallPatient = () => {
                     <div className="card-body">
 
                       <div className="d-flex align-items-center gap-4">
-                        {/* Referral Advised checkbox */}
                         <label class="form-check-label">
-                          <input class="form-check-input" type="checkbox" checked={referralAdvised} onChange={(e) => setReferralAdvised(e.target.checked)} />
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            checked={referralAdvised}
+                            onChange={handleReferralAdvisedToggle}
+                          />
                           <span>Referral Advised</span>
                         </label>
 
-                        {/* Internal / External radio buttons */}
-                        {referralAdvised && <div className="radio-options">
-                          <label class="radioLabel">
-                            <input
-                              type="radio"
-                              name="referralType"
-                              value="internal"
-                              checked={referralType === "internal"}
-                              onChange={() => setReferralType("internal")} />
-                            <span>Internal</span>
-                          </label>
-                          <label class="radioLabel">
-                            <input
-                              type="radio"
-                              name="referralType"
-                              value="external"
-                              checked={referralType === "external"}
-                              onChange={() => setReferralType("external")} />
-                            <span>External</span>
-                          </label>
-                        </div>
-                        }
+                        {referralAdvised && (
+                          <div className="radio-options">
+                            <label class="radioLabel">
+                              <input
+                                type="radio"
+                                name="referralType"
+                                value="internal"
+                                checked={referralType === "internal"}
+                                onChange={() => handleReferralTypeChange("internal")}
+                              />
+                              <span>Internal</span>
+                            </label>
+                            <label class="radioLabel">
+                              <input
+                                type="radio"
+                                name="referralType"
+                                value="external"
+                                checked={referralType === "external"}
+                                onChange={() => handleReferralTypeChange("external")}
+                              />
+                              <span>External</span>
+                            </label>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Internal data */}
                       {referralAdvised && referralType === "internal" && (
                         <div className="internal-data mt-3">
                           <h4 className="fw-bold mb-3">Internal Referral</h4>
                           <div class="row">
-
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Specialty <span>*</span></label>
-                              <select class="form-select ">
-                                <option value="">Select Specialty</option>
-                                <option value=""></option>
+                              <select
+                                class={`form-select ${errors.referralDepartmentId ? "is-invalid" : ""}`}
+                                value={referralDepartmentId}
+                                onChange={(e) => handleReferralSpecialtyChange(e.target.value)}
+                                disabled={referralSpecialtyLoading}
+                              >
+                                <option value="">
+                                  {referralSpecialtyLoading ? "Loading..." : "Select Specialty"}
+                                </option>
+                                {referralSpecialties.map((dept) => (
+                                  <option key={dept.id} value={dept.id}>
+                                    {dept.departmentName}
+                                  </option>
+                                ))}
                               </select>
+                              {errors.referralDepartmentId && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralDepartmentId}
+                                </div>
+                              )}
                             </div>
 
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Doctor Name <span>*</span></label>
-                              <select class="form-select ">
-                                <option value="">Select Doctor</option>
-                                <option value=""></option>
+                              <select
+                                class={`form-select ${errors.internalRefDoctorId ? "is-invalid" : ""}`}
+                                value={internalRefDoctorId}
+                                onChange={(e) => setInternalRefDoctorId(e.target.value)}
+                                disabled={!referralDepartmentId || referralDoctorLoading}
+                              >
+                                <option value="">
+                                  {referralDoctorLoading
+                                    ? "Loading..."
+                                    : !referralDepartmentId
+                                      ? "Select Specialty first"
+                                      : "Select Doctor"}
+                                </option>
+                                {referralDoctors.map((doc) => (
+                                  <option key={doc.userId} value={doc.userId}>
+                                    {[doc.firstName, doc.middleName, doc.lastName]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                  </option>
+                                ))}
                               </select>
+                              {errors.internalRefDoctorId && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.internalRefDoctorId}
+                                </div>
+                              )}
                             </div>
 
                             <div class="col-md-6">
                               <label class="form-label fw-bold">Referral Notes <span>*</span></label>
-                              <textarea class="form-control" rows="6" placeholder="Enter Referral Notes" style={{ height: "60px" }}></textarea>
+                              <textarea
+                                class={`form-control ${errors.referralNotes ? "is-invalid" : ""}`}
+                                rows="6"
+                                placeholder="Enter Referral Notes"
+                                style={{ height: "60px" }}
+                                value={referralNotes}
+                                onChange={(e) => {
+                                  setReferralNotes(e.target.value);
+                                  if (errors.referralNotes) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      referralNotes: "",
+                                    }));
+                                  }
+                                }}
+                              ></textarea>
+                              {errors.referralNotes && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralNotes}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {/* External data */}
                       {referralAdvised && referralType === "external" && (
                         <div className="external-data mt-3">
                           <h4 className="fw-bold mb-3">External Referral</h4>
                           <div class="row">
-
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Specialty <span>*</span></label>
-                              <select class="form-select ">
-                                <option value="">Select Specialty</option>
-                                <option value=""></option>
+                              <select
+                                class={`form-select ${errors.referralDepartmentId ? "is-invalid" : ""}`}
+                                value={referralDepartmentId}
+                                onChange={(e) => setReferralDepartmentId(e.target.value)}
+                                disabled={referralSpecialtyLoading}
+                              >
+                                <option value="">
+                                  {referralSpecialtyLoading ? "Loading..." : "Select Specialty"}
+                                </option>
+                                {referralSpecialties.map((dept) => (
+                                  <option key={dept.id} value={dept.id}>
+                                    {dept.departmentName}
+                                  </option>
+                                ))}
                               </select>
+                              {errors.referralDepartmentId && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralDepartmentId}
+                                </div>
+                              )}
                             </div>
 
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Doctor Name</label>
-                              <input type="text" class="form-control " placeholder="Enter Doctor Name" />
+                              <input
+                                type="text"
+                                class="form-control"
+                                placeholder="Enter Doctor Name"
+                                value={externalReferralDoctorName}
+                                onChange={(e) => setExternalReferralDoctorName(e.target.value)}
+                              />
                             </div>
 
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Hospital Name <span>*</span></label>
-                              <input type="text" class="form-control " placeholder="Enter Hospital Name" value="" />
+                              <input
+                                type="text"
+                                class={`form-control ${errors.referredHospitalName ? "is-invalid" : ""}`}
+                                placeholder="Enter Hospital Name"
+                                value={externalReferredHospitalName}
+                                onChange={(e) => {
+                                  setExternalReferredHospitalName(e.target.value);
+                                  if (errors.referredHospitalName) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      referredHospitalName: "",
+                                    }));
+                                  }
+                                }}
+                              />
+                              {errors.referredHospitalName && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referredHospitalName}
+                                </div>
+                              )}
                             </div>
 
                             <div class="col-md-3">
                               <label class="form-label fw-bold">Referral Notes</label>
-                              <textarea class="form-control" rows="6" placeholder="Enter Referral Notes" style={{ height: "60px" }}></textarea>
+                              <textarea
+                                class={`form-control ${errors.referralNotes ? "is-invalid" : ""}`}
+                                rows="6"
+                                placeholder="Enter Referral Notes"
+                                style={{ height: "60px" }}
+                                value={referralNotes}
+                                onChange={(e) => {
+                                  setReferralNotes(e.target.value);
+                                  if (errors.referralNotes) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      referralNotes: "",
+                                    }));
+                                  }
+                                }}
+                              ></textarea>
+                              {errors.referralNotes && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralNotes}
+                                </div>
+                              )}
                             </div>
-
                           </div>
                         </div>
                       )}
 
-
+                      {/* Hidden legacy referral block */}
                       <div className="row mb-3" style={{ display: "none" }}>
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Referral</label>
@@ -7729,249 +8196,7 @@ const OpdRRecallPatient = () => {
                             </div>
                           </div>
                         </div>
-
-                        {referralData.isReferred === "Yes" && (
-                          <>
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">
-                                Refer To
-                              </label>
-                              <select
-                                className={`form-select ${errors.referTo ? "is-invalid" : ""}`}
-                                value={referralData.referTo}
-                                onChange={(e) =>
-                                  handleReferralChange(
-                                    "referTo",
-                                    e.target.value,
-                                  )
-                                }
-                              >
-                                <option value="">Select...</option>
-                                <option value="Internal">Internal</option>
-                                <option value="External">External</option>
-                              </select>
-                              {errors.referTo && (
-                                <div className="invalid-feedback d-block">
-                                  {errors.referTo}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="col-md-2">
-                              <label className="form-label fw-bold">
-                                Refer Date:
-                              </label>
-                              <input
-                                type="date"
-                                className={`form-control ${errors.referralDate ? "is-invalid" : ""}`}
-                                value={referralData.referralDate}
-                                onChange={(e) =>
-                                  handleReferralChange(
-                                    "referralDate",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              {errors.referralDate && (
-                                <div className="invalid-feedback d-block">
-                                  {errors.referralDate}
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
                       </div>
-
-                      {referralData.isReferred === "Yes" && (
-                        <>
-                          {referralData.referTo === "Internal" && (
-                            <>
-                              <div className="row mb-3">
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Current Priority No.
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className={`form-control ${errors.currentPriorityNo ? "is-invalid" : ""}`}
-                                    value={referralData.currentPriorityNo}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "currentPriorityNo",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Enter priority no"
-                                  />
-                                  {errors.currentPriorityNo && (
-                                    <div className="invalid-feedback d-block">
-                                      {errors.currentPriorityNo}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <hr className="my-4" />
-
-                              <div className="row mb-3">
-                                <div className="col-12">
-                                  <h6 className="fw-bold mb-3">Department</h6>
-                                  <div className="table-responsive">
-                                    <table className="table table-bordered">
-                                      <thead
-                                        style={{ backgroundColor: "#b0c4de" }}
-                                      >
-                                        <tr>
-                                          <th style={{ width: "10%" }}>
-                                            Select
-                                          </th>
-                                          <th style={{ width: "70%" }}>
-                                            Doctor
-                                          </th>
-                                          <th style={{ width: "10%" }}>Add</th>
-                                          <th style={{ width: "10%" }}>
-                                            Delete
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {departmentData.map((item, index) => (
-                                          <tr key={index}>
-                                            <td className="text-center">
-                                              <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={item.selected}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "selected",
-                                                    e.target.checked,
-                                                  )
-                                                }
-                                              />
-                                            </td>
-                                            <td>
-                                              <select
-                                                className={`form-select ${errors.departmentData ? "is-invalid" : ""}`}
-                                                value={item.doctor}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "doctor",
-                                                    e.target.value,
-                                                  )
-                                                }
-                                              >
-                                                <option value="Select">
-                                                  Select
-                                                </option>
-                                                <option value="Dr. Smith">
-                                                  Dr. Smith
-                                                </option>
-                                                <option value="Dr. Johnson">
-                                                  Dr. Johnson
-                                                </option>
-                                                <option value="Dr. Williams">
-                                                  Dr. Williams
-                                                </option>
-                                                <option value="Dr. Brown">
-                                                  Dr. Brown
-                                                </option>
-                                              </select>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-success"
-                                                onClick={handleAddDepartment}
-                                              >
-                                                +
-                                              </button>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() =>
-                                                  handleRemoveDepartment(index)
-                                                }
-                                                disabled={
-                                                  departmentData.length === 1
-                                                }
-                                              >
-                                                −
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                    {errors.departmentData && (
-                                      <div className="text-danger small">
-                                        {errors.departmentData}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {referralData.referTo === "External" && (
-                            <>
-                              <div className="row mb-3">
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Referred Hospital Name
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className={`form-control ${errors.referredHospitalName ? "is-invalid" : ""}`}
-                                    value={referralData.referredHospitalName}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "referredHospitalName",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Enter hospital name"
-                                  />
-                                  {errors.referredHospitalName && (
-                                    <div className="invalid-feedback d-block">
-                                      {errors.referredHospitalName}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          <div className="row">
-                            <div className="col-12">
-                              <h6 className="fw-bold mb-3">Referral Notes</h6>
-                              <textarea
-                                className={`form-control ${errors.referralNotes ? "is-invalid" : ""}`}
-                                rows={4}
-                                value={referralNotes}
-                                onChange={(e) => {
-                                  setReferralNotes(e.target.value);
-                                  if (errors.referralNotes) {
-                                    setErrors((prev) => ({
-                                      ...prev,
-                                      referralNotes: "",
-                                    }));
-                                  }
-                                }}
-                                placeholder="Enter referral notes"
-                              ></textarea>
-                              {errors.referralNotes && (
-                                <div className="invalid-feedback d-block">
-                                  {errors.referralNotes}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
                     </div>
                   )}
                 </div>
@@ -8050,7 +8275,7 @@ const OpdRRecallPatient = () => {
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("remarks")}
                   >
-                    <h6 className="mb-0 fw-bold">Final Medicine Advice</h6>
+                    <h6 className="mb-0 fw-bold">Doctor's Advice</h6>
                     <span>
                       {expandedSections.remarks ? (<i class="icofont-minus"></i>) : (<i class="icofont-plus"></i>)}
                     </span>
@@ -8080,34 +8305,32 @@ const OpdRRecallPatient = () => {
                   )}
                 </div>
 
-
-
                 <div className="d-flex justify-content-between align-items-center mt-4">
-                <div className="">
-                <button className="btn btnOutline" onClick={handleBackToList}>
-                    <i class="icofont-arrow-left"></i> <span>Back</span>
-                  </button>
-                </div>
-                <div className="">
-                  <button className="btn btnOutline me-3" onClick={handleResetForm}>Reset</button>
-                  <button
-                    type="button"
-                    className="btn btn-primary me-3"
-                    onClick={handleUpdateRecallPatient}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <i className="mdi mdi-loading mdi-spin"></i>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        Submit
-                      </>
-                    )}
-                  </button>
-                </div>                  
+                  <div className="">
+                    <button className="btn btnOutline" onClick={handleBackToList}>
+                      <i class="icofont-arrow-left"></i> <span>Back</span>
+                    </button>
+                  </div>
+                  <div className="">
+                    <button className="btn btnOutline me-3" onClick={handleResetForm}>Reset</button>
+                    <button
+                      type="button"
+                      className="btn btn-primary me-3"
+                      onClick={handleUpdateRecallPatient}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <i className="mdi mdi-loading mdi-spin"></i>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          Submit
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -8138,7 +8361,6 @@ const OpdRRecallPatient = () => {
           onTemplateSaved={handleTreatmentTemplateSaved}
         />
 
-        {/* OT Calendar Modal */}
         {showOtCalendarModal && (
           <div
             className="modal fade show"
@@ -8262,14 +8484,7 @@ const OpdRRecallPatient = () => {
                           <th className="text-center" style={{ minWidth: 70 }}>
                             Total
                           </th>
-                          {/* <th className="text-center" style={{ minWidth: 70 }}>
-                            Stock
-                          </th> */}
-                          {/* <th style={{ minWidth: 130 }}>Prescribed By</th> */}
                           <th style={{ minWidth: 130 }}>Department</th>
-                          {/* <th className="text-center" style={{ minWidth: 110 }}>
-                            Prescribed Date
-                          </th> */}
                           <th className="text-center" style={{ minWidth: 50 }}>
                             Stop
                           </th>
@@ -8294,16 +8509,7 @@ const OpdRRecallPatient = () => {
                               <td className="text-center">
                                 {medication.total}
                               </td>
-                              {/* <td className="text-center">
-                                {medication.stock || 0}
-                              </td> */}
-                              {/* <td>{medication.prescribedBy}</td> */}
                               <td>{medication.department}</td>
-                              {/* <td className="text-center">
-                                {formatDateForDisplay(
-                                  medication.prescribedDate,
-                                )}
-                              </td> */}
                               <td className="text-center">
                                 <input
                                   type="checkbox"
@@ -8423,50 +8629,83 @@ const OpdRRecallPatient = () => {
                 ? visitsCurrentPage
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristCurrentPage
-                  : vitalsCurrentPage
+                  : clinicalPopupType === "lab-investigations"
+                    ? labInvestigationsCurrentPage
+                    : clinicalPopupType === "radiology-history"
+                      ? radiologyHistoryCurrentPage
+                      : vitalsCurrentPage
             }
             totalPages={
               clinicalPopupType === "visits"
                 ? visitsTotalPages
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristTotalPages
-                  : vitalsTotalPages
+                  : clinicalPopupType === "lab-investigations"
+                    ? 0
+                    : clinicalPopupType === "radiology-history"
+                      ? 0
+                      : vitalsTotalPages
             }
             totalElements={
               clinicalPopupType === "visits"
                 ? visitsTotalElements
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristTotalElements
-                  : vitalsTotalElements
+                  : clinicalPopupType === "lab-investigations"
+                    ? labInvestigationsTotalElements
+                    : clinicalPopupType === "radiology-history"
+                      ? radiologyHistoryTotalElements
+                      : vitalsTotalElements
             }
             pageSize={
               clinicalPopupType === "visits"
                 ? visitsPageSize
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristPageSize
-                  : vitalsPageSize
+                  : clinicalPopupType === "lab-investigations"
+                    ? labInvestigationsPageSize
+                    : clinicalPopupType === "radiology-history"
+                      ? radiologyHistoryPageSize
+                      : vitalsPageSize
             }
             onPageChange={
               clinicalPopupType === "visits"
                 ? handleVisitsPageChange
                 : clinicalPopupType === "psychiatrist-history"
                   ? handlePsychiatristPageChange
-                  : handleVitalsPageChange
-            }
-            onPageSizeChange={
-              clinicalPopupType === "visits"
-                ? handleVisitsPageSizeChange
-                : clinicalPopupType === "psychiatrist-history"
-                  ? () => { }
-                  : handleVitalsPageSizeChange
+                  : clinicalPopupType === "lab-investigations"
+                    ? handleLabInvestigationsPageChange
+                    : clinicalPopupType === "radiology-history"
+                      ? handleRadiologyHistoryPageChange
+                      : handleVitalsPageChange
             }
             isLoading={
               clinicalPopupType === "visits"
                 ? visitsLoading
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristLoading
-                  : vitalsLoading
+                  : clinicalPopupType === "lab-investigations"
+                    ? false
+                    : clinicalPopupType === "radiology-history"
+                      ? false
+                      : vitalsLoading
             }
+            patientId={selectedPatient?.patientId}
+            visitId={selectedPatient?.visitId}
+
+            labInvestigationsData={labInvestigationsData}
+            labInvestigationsLoading={labInvestigationsLoading}
+            labInvestigationsCurrentPage={labInvestigationsCurrentPage}
+            labInvestigationsTotalElements={labInvestigationsTotalElements}
+            labInvestigationsPageSize={labInvestigationsPageSize}
+            onLabInvestigationsPageChange={handleLabInvestigationsPageChange}
+
+            radiologyHistoryData={radiologyHistoryData}
+            radiologyHistoryLoading={radiologyHistoryLoading}
+            radiologyHistoryCurrentPage={radiologyHistoryCurrentPage}
+            radiologyHistoryTotalElements={radiologyHistoryTotalElements}
+            radiologyHistoryPageSize={radiologyHistoryPageSize}
+            onRadiologyHistoryPageChange={handleRadiologyHistoryPageChange}
           />
         )}
 
@@ -8549,7 +8788,6 @@ const OpdRRecallPatient = () => {
                 <h4 className="card-title p-2 mb-0">OPD Recall List</h4>
               </div>
             </div>
-            {/* Show loading spinner during search or reset */}
             {loading && <LoadingScreen />}{" "}
             <div className="card-body">
               <div className="card mb-3">

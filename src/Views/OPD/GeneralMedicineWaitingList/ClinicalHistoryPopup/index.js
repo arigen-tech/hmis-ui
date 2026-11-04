@@ -4,6 +4,8 @@ import axios from "axios";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
 import Pagination from "../../../../Components/Pagination";
 import Psychiatrist from "../../Psychiatrist";
+import LabInvestigationsHistoryTable from "../../GeneralMedicineWaitingList/LabInvestigationsHistoryTable";
+import RadiologyHistoryTable from "../../GeneralMedicineWaitingList/RadiologyHistoryTable";
 
 const ClinicalHistoryPopup = ({
   show,
@@ -33,6 +35,18 @@ const ClinicalHistoryPopup = ({
   setSelectedPsychiatristHistory,
   showPsychiatristDetailModal,
   setShowPsychiatristDetailModal,
+  labInvestigationsData = [],
+  labInvestigationsLoading = false,
+  labInvestigationsCurrentPage = 0,
+  labInvestigationsTotalElements = 0,
+  labInvestigationsPageSize = 5,
+  onLabInvestigationsPageChange,
+  radiologyHistoryData = [],
+  radiologyHistoryLoading = false,
+  radiologyHistoryCurrentPage = 0,
+  radiologyHistoryTotalElements = 0,
+  radiologyHistoryPageSize = 5,
+  onRadiologyHistoryPageChange,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -191,30 +205,22 @@ const ClinicalHistoryPopup = ({
   };
 
   const getTitle = () => {
-    if (popupType === "vitals") {
-      return "PREVIOUS VITALS HISTORY";
-    }
-    if (popupType === "psychiatrist-history") {
-      return "Assessment History";
-    }
-    if (popupType === "psychiatrist") {
-      return "PSYCHIATRIST ASSESSMENT";
-    }
-    return "PREVIOUS VISITS HISTORY";
-  };
+  if (popupType === "vitals") return "PREVIOUS VITALS HISTORY";
+  if (popupType === "psychiatrist-history") return "Assessment History";
+  if (popupType === "psychiatrist") return "PSYCHIATRIST ASSESSMENT";
+  if (popupType === "lab-investigations") return "PREVIOUS LAB INVESTIGATIONS";
+  if (popupType === "radiology-history") return "PREVIOUS RADIOLOGY INVESTIGATIONS";
+  return "PREVIOUS VISITS HISTORY";
+};
 
   const getIcon = () => {
-    if (popupType === "vitals") {
-      return "mdi mdi-heart-pulse me-2";
-    }
-    if (popupType === "psychiatrist-history") {
-      return "mdi mdi-brain me-2";
-    }
-    if (popupType === "psychiatrist") {
-      return "mdi mdi-brain me-2";
-    }
-    return "mdi mdi-clock-history me-2";
-  };
+  if (popupType === "vitals") return "mdi mdi-heart-pulse me-2";
+  if (popupType === "psychiatrist-history") return "mdi mdi-brain me-2";
+  if (popupType === "psychiatrist") return "mdi mdi-brain me-2";
+  if (popupType === "lab-investigations") return "mdi mdi-flask me-2";
+  if (popupType === "radiology-history") return "mdi mdi-radiology-box me-2";
+  return "mdi mdi-clock-history me-2";
+};
 
   const isGenerating = (visitId) => loadingStates.generating === visitId;
   const isPrinting = (visitId) => loadingStates.printing === visitId;
@@ -226,9 +232,13 @@ const ClinicalHistoryPopup = ({
   };
 
   const totalRecords =
-    popupType === "psychiatrist-history"
-      ? psychiatristHistoryTotalElements
-      : totalElements || 0;
+  popupType === "psychiatrist-history"
+    ? psychiatristHistoryTotalElements
+    : popupType === "lab-investigations"
+      ? labInvestigationsTotalElements
+      : popupType === "radiology-history"
+        ? radiologyHistoryTotalElements
+        : totalElements || 0;
 
   const selectedPsychiatristAssessments = Array.isArray(
     selectedPsychiatristHistory?.assessment?.assessments,
@@ -771,6 +781,27 @@ const ClinicalHistoryPopup = ({
                   )}
                 </>
               )}
+              {!isLoading && popupType === "lab-investigations" && (
+  <LabInvestigationsHistoryTable
+    data={labInvestigationsData}
+    loading={labInvestigationsLoading}
+    currentPage={labInvestigationsCurrentPage}
+    totalElements={labInvestigationsTotalElements}
+    pageSize={labInvestigationsPageSize}
+    onPageChange={onLabInvestigationsPageChange}
+  />
+)}
+
+{!isLoading && popupType === "radiology-history" && (
+  <RadiologyHistoryTable
+    data={radiologyHistoryData}
+    loading={radiologyHistoryLoading}
+    currentPage={radiologyHistoryCurrentPage}
+    totalElements={radiologyHistoryTotalElements}
+    pageSize={radiologyHistoryPageSize}
+    onPageChange={onRadiologyHistoryPageChange}
+  />
+)}
               {/* Psychiatrist History Table */}
               {!isLoading && popupType === "psychiatrist-history" && (
                 <>
