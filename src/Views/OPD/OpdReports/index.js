@@ -6,7 +6,9 @@ import Pagination from "../../../Components/Pagination";
 import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 import {
   GET_OPD_REPORTS_LIST,
-  GET_OPD_REPORT_DEPARTMENT_LIST,
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
+  REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  FILTER_OPD_DEPT,
   OPD_CASE_SHEET_REPORT,
   OPD_PRESCRIPTION_SLIP_REPORT,
   NIS_MEDICINE_REPORT_URL,
@@ -62,9 +64,8 @@ const OPDReports = () => {
   const fetchSpecialties = useCallback(async () => {
     try {
       setIsSpecialtyLoading(true);
-      const hospitalId = getHospitalId();
       const res = await getRequest(
-        `${GET_OPD_REPORT_DEPARTMENT_LIST}?hospitalId=${encodeURIComponent(hospitalId)}`,
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`
       );
 
       if (res?.response && Array.isArray(res.response)) {
@@ -73,7 +74,7 @@ const OPDReports = () => {
         setSpecialtyList([]);
       }
     } catch (error) {
-      console.error("Error fetching OPD report department list:", error);
+      console.error("Error fetching department dropdown list:", error);
       setSpecialtyList([]);
     } finally {
       setIsSpecialtyLoading(false);
@@ -454,14 +455,17 @@ const OPDReports = () => {
                                 ? "Loading specialties..."
                                 : "All Specialties"}
                             </option>
-                            {specialtyList.map((dept) => (
-                              <option
-                                key={dept.departmentId}
-                                value={dept.departmentId}
-                              >
-                                {dept.departmentName}
-                              </option>
-                            ))}
+                            {specialtyList.map((dept) => {
+                              const deptId = dept.id ?? dept.departmentId;
+                              return (
+                                <option
+                                  key={deptId}
+                                  value={deptId}
+                                >
+                                  {dept.departmentName}
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
                         <div className="col-md-2">

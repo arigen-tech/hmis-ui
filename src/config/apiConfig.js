@@ -462,7 +462,6 @@ export const GET_WAITING_LIST = `/opd/getOpdWaitingList`;
 export const OPD_CREATE_PATIENT_DETAILS = `/opd/createOpdPatientDetails`;
 export const OPD_CASE_SHEET_REPORT = `${ALL_REPORTS}/opdCaseSheetReport`
 export const GET_OPD_REPORTS_LIST = "/opd/getOpdReportsList"
-export const GET_OPD_REPORT_DEPARTMENT_LIST = "/opd/getOpdReportDepartmentList"
 export const OPD_PRESCRIPTION_SLIP_REPORT = `${ALL_REPORTS}/opdPrescriptionSlip`
 export const PRESCRIPTION_INVOICE_REPORT = `${ALL_REPORTS}/prescriptionInvoice`
 
