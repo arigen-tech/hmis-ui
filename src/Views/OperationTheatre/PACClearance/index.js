@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { Link } from "react-router-dom";
 
 // Current logged-in user for the auto-filled "Cleared By" field (dummy - no auth wiring)
 const CURRENT_USER = "Nurse Priya";
@@ -22,6 +23,16 @@ const PACClearance = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [clearRemarks, setClearRemarks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [editPACClearance, setEditPACClearance] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("lab");
+
+  const tabs = [
+    { id: "lab", label: "LAB" },
+    { id: "radiology", label: "Radiology" },
+    { id: "previous", label: "Previous Visits" }
+  ];
 
   // ----- Dummy data (PAC Pending List - Updated Grid) -----
   // Both OPD and IPD requests appear together; OPD shows UHID with no
@@ -155,6 +166,589 @@ const PACClearance = () => {
   };
 
   // ============================================================
+  // PAC Assessment / Clearance
+  // ============================================================
+
+  if (editPACClearance) {
+    return (
+      <>
+        <div className="content-wrapper">
+
+          <div className="card form-card">
+            <div className="card-header">
+              <div className="d-flex align-items-center gap-1">
+                <button className="btn-back" title="Back to PAC Pending List" onClick={() => setEditPACClearance(false)}><i className="icofont-arrow-left"></i></button>
+                <h4 className="card-title p-2 mb-0">PAC Assessment / Clearance</h4>
+              </div>
+            </div>
+
+            <div className="card-body">
+
+              {/* Patient & Surgery Details */}
+              <div className="mb-2">
+
+                <h4 className="fw-bold mb-2">Patient & Surgery Details</h4>
+                <div className="row g-3 mb-4">
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="PatientName">Patient Name</label>
+                    <input type="text" id="PatientName" name="PatientName" className="form-control" value="Rajesh Kumar" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="ipdNo">IPD No.</label>
+                    <input type="text" id="ipdNo" name="ipdNo" className="form-control" value="IPD/26/00125" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="uhidNo">UHID/10025</label>
+                    <input type="text" id="uhidNo" name="uhidNo" className="form-control" value="UHID/10025" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="ageSex">Age / Sex</label>
+                    <input type="text" id="ageSex" name="ageSex" className="form-control" value="58 / Male" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="wardBed">Ward / Bed</label>
+                    <input type="text" id="wardBed" name="wardBed" className="form-control" value="Ortho / B-12" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="surgeonName">Surgeon</label>
+                    <input type="text" id="surgeonName" name="surgeonName" className="form-control" value="Dr. Sharma" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="surgeryId">Surgery</label>
+                    <input type="text" id="surgeryId" name="surgeryId" className="form-control" value="Total Knee Replacement" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="OtId">OT</label>
+                    <input type="text" id="OtId" name="OtId" className="form-control" value="Main OT-01" readOnly />
+                  </div>
+
+                  <div className="col-md-3">
+                    <label className="form-label mb-1" htmlFor="surgeryDate">Surgery Date</label>
+                    <input type="text" id="surgeryDate" name="surgeryDate" className="form-control" value="06 Nov 2026" readOnly />
+                  </div>
+
+                </div>
+
+                <div className="card card-body mb-4">
+                  <h4 className="fw-bold">Medical & Anaesthesia History</h4>
+
+                  <div className="adviceWrapper">
+                    <div className="cardProcedure">
+                      <div className="row g-3 mb-2">
+                        <div className="col-md-7">
+                          <label className="form-label fw-bold">Disease</label>
+                          <input type="text" className="form-control" placeholder="Disease" />
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-bold">Status</label>
+                          <select className="form-select ">
+                            <option value="">Select</option>
+                            <option value=""></option>
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-bold">Duration</label>
+                          <input type="text" className="form-control" placeholder="Years" />
+                        </div>
+                        <div className="col-md-1">
+                          <label className="form-label fw-bold text-center">Action</label>
+                          <div className="">
+                            <button className="btn btn-primary btnAdd" title="Add Disease"><i className="icofont-plus"></i></button>
+                            <button className="btn btn-outline-danger btnDel" title="Delete"><i className="icofont-trash"></i></button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="row g-3 mb-2">
+                    <div className="col-md-6">
+                      <label className="form-label fw-bold">Current Medications</label>
+                      <textarea className="form-control" rows="6" placeholder="" defaultValue="Medication details from IPD chart / reconciliation notes"></textarea>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Allergy History</label>
+                      <select className="form-select ">
+                        <option value="">No Known Allergies</option>
+                        <option value=""></option>
+                      </select>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Previous Anaesthesia</label>
+                      <select className="form-select ">
+                        <option value="">No</option>
+                        <option value=""></option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="card card-body mb-4">
+                  <div className="">
+                    <h4 className="fw-bold">Vitals & General Examination</h4>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-2">
+                        <label className="form-label">Weight (kg)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">BP (mmHg)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Pulse (/min)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">RR (/min)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">SpO2 (%)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Temperature (°C)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="">
+                    <h5 className="fw-bold">General Examination</h5>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-2">
+                        <label className="form-label">Pallor</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Icterus</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Cyanosis</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Koilonychia</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Oedema</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label">Lymphadenopathy</label>
+                        <select className="form-select ">
+                          <option value="">No</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="card card-body mb-4">
+                  <div className="">
+                    <h4 className="fw-bold">Airway & Systemic Examination</h4>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-3">
+                        <label className="form-label">Mallampati Class (MPC)</label>
+                        <select className="form-select ">
+                          <option value="">Select</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Thyromental Distance (TMD)</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Mouth Opening</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">TMJ</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Teeth / Dentures</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Neck Movement</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">IV Access</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Spine</label>
+                        <input type="text" className="form-control" placeholder="Findings" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="">
+                    <h5 className="fw-bold">Systemic Examination</h5>
+                    <div className="row g-3 mb-2">
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">CVS</label>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings"></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">RS</label>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">CNS</label>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">Abdomen</label>
+                        <textarea className="form-control" rows="6" placeholder="Clinical findings" ></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="card card-body mb-4">
+                  <h4 className="fw-bold">Airway Examination</h4>
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Field</th>
+                          <th>Example Value to Save</th>
+                          <th>Recommended Input</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Mallampati Class (MPC)</td>
+                          <td>II</td>
+                          <td>Dropdown: I, II, III, IV</td>
+                        </tr>
+                        <tr>
+                          <td>Thyromental Distance (TMD)</td>
+                          <td>7 cm</td>
+                          <td>Numeric (cm)</td>
+                        </tr>
+                        <tr>
+                          <td>Mouth Opening</td>
+                          <td>4 cm</td>
+                          <td>Numeric (cm)</td>
+                        </tr>
+                        <tr>
+                          <td>TM</td>
+                          <td>Normal</td>
+                          <td>Dropdown: Normal, Restricted, Abnormal</td>
+                        </tr>
+                        <tr>
+                          <td>Teeth / Dentures</td>
+                          <td>Natural teeth, no loose teeth</td>
+                          <td>Text</td>
+                        </tr>
+                        <tr>
+                          <td>Neck Movement</td>
+                          <td>Normal</td>
+                          <td>Dropdown: Normal, Restricted</td>
+                        </tr>
+                        <tr>
+                          <td>IV Access</td>
+                          <td>Peripheral IV access available</td>
+                          <td>Text</td>
+                        </tr>
+                        <tr>
+                          <td>Spine</td>
+                          <td>Normal</td>
+                          <td>Dropdown: Normal, Abnormal, with remarks</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+
+                <div className="card card-body mb-4">
+                  <div className="">
+                    <h4 className="fw-bold">Airway & Systemic Examination</h4>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-3">
+                        <label className="form-label">Mallampati Class (MPC)</label>
+                        <select className="form-select ">
+                          <option value="">II</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Thyromental Distance (cm)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" value="7" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Mouth Opening (cm)</label>
+                        <input type="text" className="form-control" placeholder="Enter value" value="4" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">TMJ</label>
+                        <select className="form-select ">
+                          <option value="">Normal</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Teeth / Dentures</label>
+                        <input type="text" className="form-control" placeholder="Enter value" value="Natural teeth, no loose teeth" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Neck Movement</label>
+                        <select className="form-select ">
+                          <option value="">Normal</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">IV Access</label>
+                        <input type="text" className="form-control" placeholder="Enter value" value="Peripheral IV access available" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-bold">Spine</label>
+                        <input type="text" className="form-control" placeholder="Normal" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="">
+                    <h5 className="fw-bold">Systemic Examination</h5>
+                    <div className="row g-3 mb-2">
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">CVS</label>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="S1, S2 heard; no murmur"></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">RS</label>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Bilateral air entry equal; no added sounds"></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">CNS</label>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Conscious, oriented; no focal neurological deficit"></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-bold">Abdomen</label>
+                        <textarea className="form-control" rows="6" placeholder=""  defaultValue="Soft, non-tender; no palpable organomegaly"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card card-body mb-4">
+                  <h4 className="fw-bold">Previous Investigations / Review</h4>
+
+                  {/* Tabs beginning here ------ */}
+                  <div className="tabs-container">
+                    <div className="tabs-header">
+                      {tabs.map((tab) => (
+                        <button key={tab.id} className={`tab-button ${activeTab === tab.id ? "active" : ""}`} onClick={() => setActiveTab(tab.id)}>
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {activeTab === "lab" && <div className="tab-content">
+                      <div className="row g-3 mb-4">
+                        <div className="col-md-12">
+                          <label className="form-label fw-bold">Previous LAB Investigations</label>
+                          <textarea className="form-control" rows="6" readOnly  defaultValue="Show investigation, result, date, abnormal flag and report preview."></textarea>
+                        </div>
+                      </div>
+                      <div className="row g-3 mb-3">
+                        <div className="col-md-12">
+                          <label className="form-label fw-bold">Investigation Review Status</label>
+                          <label className="radioLabel">
+                            <input type="radio" name="reviewStatusType" value="Reviewed" />
+                            <span>Reviewed</span>
+                          </label>
+                          <label className="radioLabel mt-2">
+                            <input type="radio" name="reviewStatusType" value="Additional Investigation Required" />
+                            <span>Additional Investigation Required</span>
+                          </label>
+                          <label className="radioLabel mt-2">
+                            <input type="radio" name="reviewStatusType" value="Not Indicated" />
+                            <span>Not Indicated</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="row g-3 mb-1">
+                        <div className="col-md-12">
+                          <label className="form-label fw-bold">Investigation Findings / Additional Tests</label>
+                          <textarea className="form-control" rows="6" placeholder=""  defaultValue="ECG, Echo, Chest X-Ray, laboratory findings or further tests"></textarea>
+                        </div>
+                      </div>
+
+                    </div>
+                    }
+
+                    {activeTab === "radiology" && <div className="tab-content">
+                      <h4 className="fw-bold">Radiology Data here...</h4>
+                    </div>
+                    }
+
+                    {activeTab === "previous" && <div className="tab-content">
+                      <h4 className="fw-bold">Previous Visits Data here.....</h4>
+                    </div>
+                    }
+
+                  </div>
+                  {/* Tabs end here---- */}
+
+                </div>
+
+                <div className="card card-body mb-4">
+                  <div className="">
+                    <h4 className="fw-bold">Anaesthesia Plan</h4>
+                    <div className="row g-3 mb-3">
+                      <div className="col-md-6">
+                        <div className="infoStatus mb-1">
+                          <label className="form-label mb-0">ASA Physical Status <span className="text-danger">*</span></label>
+                          <Link><i className="icofont-info"></i></Link>
+                        </div>
+                        <select className="form-select ">
+                          <option value="">Select ASA Grade</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Planned Anaesthesia <span className="text-danger">*</span></label>
+                        <select className="form-select ">
+                          <option value="">General Anaesthesia (GA)</option>
+                          <option value=""></option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="">
+                    <h5 className="fw-bold">Pre-Anaesthesia Instructions</h5>
+                    <div className="mb-3">
+                      <label className="radioLabel">
+                        <input type="radio" name="instructionsType" value="" />
+                        <span>Review allergies and current medications</span>
+                      </label>
+                      <label className="radioLabel mt-2">
+                        <input type="radio" name="instructionsType" value="" />
+                        <span>Verify required consent</span>
+                      </label>
+                      <label className="radioLabel mt-2">
+                        <input type="radio" name="instructionsType" value="" />
+                        <span>Confirm fasting instructions and status</span>
+                      </label>
+                      <label className="radioLabel mt-2">
+                        <input type="radio" name="instructionsType" value="" />
+                        <span>Review airway assessment and anaesthesia plan</span>
+                      </label>
+                    </div>
+                    <button className="btn btn-sm btn-outline-primary addBtn"><i className="icofont-plus"></i><span>Add Instruction</span></button>
+                  </div>
+
+                </div>
+
+
+                <div className="card card-body mb-4">
+                  <h4 className="fw-bold">Supporting Documents / Scanned PAC Copy</h4>
+                  <div className="row mb-1">
+                    <div className="col-md-6">
+                      <label className="form-label fw-bold">Document Name</label>
+                      <input type="text" className="form-control" placeholder="Enter document name" />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-bold">Upload Document</label>
+                      <input type="file" className="form-control" />
+                      <small>PDF, JPG, PNG</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card card-body mb-3">
+                  <h4 className="fw-bold">PAC Clearance</h4>
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-12">
+                      <label className="form-label fw-bold">Clearance Status <span className="text-danger">*</span></label>
+                      <div className="radio-options">
+                        <label className="radioLabel">
+                          <input type="radio" name="pacClearanceType" value="Cleared" />
+                          <span>Cleared</span>
+                        </label>
+                        <label className="radioLabel">
+                          <input type="radio" name="pacClearanceType" value="Pending" />
+                          <span>Pending</span>
+                        </label>
+                        <label className="radioLabel">
+                          <input type="radio" name="pacClearanceType" value="Not Cleared" />
+                          <span>Not Cleared</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="row mb-1">
+                    <div className="col-md-12">
+                      <label className="form-label fw-bold">PAC Remarks</label>
+                      <textarea className="form-control" rows="6" placeholder="Enter PAC remarks" ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="">
+                    <button className="btn btnOutline" onClick={() => setEditPACClearance(false)}><i className="icofont-arrow-left"></i> <span>Back</span></button>
+                  </div>
+                  <div className="">
+                    <button className="btn btn btn-secondary me-3">Save Draft</button>
+                    <button type="button" className="btn btn-primary me-3">Save PAC Assessment</button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </>
+    );
+  }
+
+
+
+  // ============================================================
   // RENDER: MAIN LIST VIEW
   // ============================================================
   return (
@@ -166,6 +760,7 @@ const PACClearance = () => {
             <div className="card-header">
               <h4 className="card-title p-2 mb-0">PAC Pending List</h4>
             </div>
+
             <div className="card-body">
               {/* Search / Filter Section */}
               <div className="mb-4">
@@ -227,7 +822,7 @@ const PACClearance = () => {
                           <td>{item.uhidOrIp}</td>
                           <td>{item.patientName}</td>
                           <td>
-                              {item.type}
+                            {item.type}
                           </td>
                           <td>{item.department}</td>
                           <td>{item.surgery}</td>
@@ -238,13 +833,10 @@ const PACClearance = () => {
                           <td>{item.scheduledDateTime}</td>
                           <td>{item.wardBed || "—"}</td>
                           <td className="text-center">
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => openClearModal(item)}
-                              title="Clear PAC"
-                            >
-                              Clear PAC
-                            </button>
+                            <div className="btnCenter">
+                              <button className="btn btn-sm btn-success" onClick={() => openClearModal(item)} title="Clear PAC">Clear PAC</button>
+                              <button className="btn btn-sm btn-primary" onClick={() => setEditPACClearance(true)}>PAC Assessment</button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -292,7 +884,7 @@ const PACClearance = () => {
               <div className="modal-body">
                 <p>
                   <strong>Patient:</strong> {selectedRecord.patientName} ({selectedRecord.uhidOrIp})
-                    {selectedRecord.type}
+                  {selectedRecord.type}
                 </p>
                 <p>
                   <strong>Department:</strong> {selectedRecord.department}

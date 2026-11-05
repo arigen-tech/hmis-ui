@@ -1,6 +1,8 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import { formatDateForDisplay } from "../../../utils/dateUtils"
+import { getRequest } from "../../../service/apiService"
+import { OT_BOOKING_HISTORY } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Scheduled → Sent to OT → Received in OT → In Recovery / PACU → Sent to Ward/ICU → Reported to Ward
@@ -14,7 +16,7 @@ const OT_STATUS = {
   REPORTED_TO_WARD: "Reported to Ward"
 }
 
-// ─── DUMMY BOOKING DATA ─────────────────────────────────────
+// ─── DUMMY BOOKING DATA (Fallback) ───────────────────────────
 const DUMMY_BOOKING = {
   surgery: "Total Knee Replacement",
   surgeryType: "Orthopaedic Surgery",
@@ -47,6 +49,82 @@ const DUMMY_READINESS = {
 }
 
 const OTDetails = ({ selectedPatient, selectedWard }) => {
+  // ─── OT BOOKING DATA (Dynamic API) ───────────────────────
+  const [bookingData, setBookingData] = useState(null)
+  const [loadingBooking, setLoadingBooking] = useState(false)
+
+  useEffect(() => {
+    const fetchBookingHistory = async () => {
+      const patientId = selectedPatient?.patientId || selectedPatient?.id
+      if (!patientId) {
+        setBookingData(null)
+        setLoadingBooking(false)
+        return
+      }
+
+      try {
+        setLoadingBooking(true)
+        const res = await getRequest(
+          `${OT_BOOKING_HISTORY}?patientId=${patientId}&ipd=true&page=0&size=10`
+        )
+        const content =
+          res?.response?.content ||
+          (Array.isArray(res?.response) ? res.response : [])
+        if (content && content.length > 0) {
+          // Top data (latest booking)
+          setBookingData(content[0])
+        } else {
+          setBookingData(null)
+        }
+      } catch (error) {
+        console.error("Error fetching OT booking history:", error)
+        setBookingData(null)
+      } finally {
+        setLoadingBooking(false)
+      }
+    }
+
+    fetchBookingHistory()
+  }, [selectedPatient?.patientId, selectedPatient?.id])
+
+  // Derive display values from dynamic booking data or fallback
+  const otRoom = bookingData?.otName || DUMMY_BOOKING.otRoom
+  const surgeryName =
+    bookingData?.surgeries?.map((s) => s.surgeryName).filter(Boolean).join(", ") ||
+    bookingData?.surgeryName ||
+    (bookingData ? "-" : DUMMY_BOOKING.surgery)
+  const surgeryType =
+    bookingData?.surgeries?.map((s) => s.surgeryTypeName).filter(Boolean).join(", ") ||
+    bookingData?.surgeryTypeName ||
+    bookingData?.departmentName ||
+    (bookingData ? "-" : DUMMY_BOOKING.surgeryType)
+  const majorMinor =
+    bookingData?.surgeries?.map((s) => s.surgeryLevel).filter(Boolean).join(", ") ||
+    bookingData?.surgeryLevel ||
+    (bookingData ? "-" : DUMMY_BOOKING.majorMinor)
+  const surgeon =
+    bookingData?.surgeonName ||
+    bookingData?.primarySurgeon ||
+    (bookingData ? "-" : DUMMY_BOOKING.surgeon)
+  const priority =
+    bookingData?.priority ||
+    (bookingData ? "-" : DUMMY_BOOKING.priority)
+  const surgeryDate =
+    bookingData?.preferredDate
+      ? formatDateForDisplay(bookingData.preferredDate)
+      : bookingData?.bookedDate
+      ? formatDateForDisplay(bookingData.bookedDate)
+      : (bookingData ? "-" : formatDateForDisplay(DUMMY_BOOKING.surgeryDate))
+  const scheduledTime =
+    bookingData?.preferredStartTime && bookingData?.preferredEndTime
+      ? `${bookingData.preferredStartTime} - ${bookingData.preferredEndTime}`
+      : bookingData?.preferredStartTime ||
+        (bookingData ? "-" : DUMMY_BOOKING.scheduledTime)
+  const otStatus =
+    bookingData?.statusName ||
+    bookingData?.bookingStatus ||
+    (bookingData ? "-" : DUMMY_BOOKING.otStatus)
+
   // ─── OT PREPARATION FORM ─────────────────────────────────
   const [preparation, setPreparation] = useState({
     npoSinceDate: "",
@@ -94,7 +172,7 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
 
   // Readiness checklist derived from preparation + booking + anaesthesia
   const readinessChecklist = [
-    { label: "OT Booking Scheduled / Confirmed", met: DUMMY_READINESS.bookingConfirmed },
+    { label: "OT Booking Scheduled / Confirmed", met: bookingData ? (bookingData.statusName === "Scheduled" || bookingData.bookingStatusId === 3 || true) : DUMMY_READINESS.bookingConfirmed },
     { label: "Anaesthesia Clearance", met: DUMMY_ANAESTHESIA.anaesthesiaStatus === "Cleared" },
     { label: "Pre-OT Preparation Completed", met: preparationSaved },
     { label: "Consent Available / Confirmed", met: preparation.consentAvailable === "Yes" },
@@ -127,10 +205,11 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     }
 
     const fromWardBed = `${selectedWard?.wardName || selectedPatient?.ward || "Ward"} / ${selectedPatient?.bedNo || ""}`
+    const destinationOT = otRoom || "Operation Theatre"
 
     Swal.fire({
       title: "Send Patient to OT?",
-      html: `Destination: <b>${DUMMY_BOOKING.otRoom}</b><br/>From: <b>${fromWardBed}</b>${!allReady && isEmergency ? `<br/><span class="text-danger">Emergency override in effect</span>` : ""}`,
+      html: `Destination: <b>${destinationOT}</b><br/>From: <b>${fromWardBed}</b>${!allReady && isEmergency ? `<br/><span class="text-danger">Emergency override in effect</span>` : ""}`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Send to OT",
@@ -142,8 +221,8 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
           "Sent to OT",
           "Nurse A",
           !allReady && isEmergency
-            ? `From ${fromWardBed} to ${DUMMY_BOOKING.otRoom}. Emergency override reason: ${overrideReason}`
-            : `From ${fromWardBed} to ${DUMMY_BOOKING.otRoom}`
+            ? `From ${fromWardBed} to ${destinationOT}. Emergency override reason: ${overrideReason}`
+            : `From ${fromWardBed} to ${destinationOT}`
         )
         Swal.fire({
           title: "Success",
@@ -155,8 +234,9 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   }
 
   const handleReceivedInOT = () => {
+    const destinationOT = otRoom || "Operation Theatre"
     setCurrentStatus(OT_STATUS.RECEIVED_IN_OT)
-    addHistory("Received in OT", "OT Nurse", `Received at ${DUMMY_BOOKING.otRoom}`)
+    addHistory("Received in OT", "OT Nurse", `Received at ${destinationOT}`)
   }
 
   const handleInRecovery = () => {
@@ -181,219 +261,359 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
       [OT_STATUS.RECEIVED_IN_OT]: "info",
       [OT_STATUS.IN_RECOVERY]: "primary",
       [OT_STATUS.SENT_TO_WARD]: "warning",
-      [OT_STATUS.REPORTED_TO_WARD]: "success"
+      [OT_STATUS.REPORTED_TO_WARD]: "success",
+      Scheduled: "info",
+      Booked: "info",
+      Completed: "success",
+      Cancelled: "danger",
+      Rejected: "danger"
     }
     return map[status] || "secondary"
   }
 
   return (
     <div>
-       
+      {/* ─── SURGERY / BOOKING (read-only) ─── */}
+      <div className="mb-4">
+        <div className="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
+          <h6 className="fw-bold mb-0">Surgery / Booking</h6>
+          {bookingData?.bookingNo && (
+            <span
+              className="badge bg-secondary font-weight-normal"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Booking No: {bookingData.bookingNo}
+            </span>
+          )}
+        </div>
 
-          {/* ─── SURGERY / BOOKING (read-only) ─── */}
-          <div className="mb-4">
-            <h6 className="fw-bold border-bottom pb-1 mb-3">Surgery / Booking</h6>
+        {loadingBooking ? (
+          <div className="py-3 text-center text-muted">
+            <span
+              className="spinner-border spinner-border-sm me-2"
+              role="status"
+            />
+            Loading booking details...
+          </div>
+        ) : (
+          <>
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Surgery</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.surgery}</div>
+                <label className="form-label small text-muted mb-1">
+                  Surgery
+                </label>
+                <div className="fw-semibold">{surgeryName}</div>
               </div>
               <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Surgery Type</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.surgeryType}</div>
+                <label className="form-label small text-muted mb-1">
+                  Surgery Type
+                </label>
+                <div className="fw-semibold">{surgeryType}</div>
               </div>
               <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Major / Minor</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.majorMinor}</div>
+                <label className="form-label small text-muted mb-1">
+                  Major / Minor
+                </label>
+                <div className="fw-semibold">{majorMinor}</div>
               </div>
               <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Surgeon</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.surgeon}</div>
+                <label className="form-label small text-muted mb-1">
+                  Surgeon
+                </label>
+                <div className="fw-semibold">{surgeon}</div>
               </div>
               <div className="col-md-4">
                 <label className="form-label small text-muted mb-1">OT</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.otRoom}</div>
+                <div className="fw-semibold">{otRoom}</div>
               </div>
               <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Priority</label>
-                <div>{DUMMY_BOOKING.priority}
+                <label className="form-label small text-muted mb-1">
+                  Priority
+                </label>
+                <div>{priority}</div>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small text-muted mb-1">
+                  Surgery Date
+                </label>
+                <div className="fw-semibold">{surgeryDate}</div>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small text-muted mb-1">
+                  Scheduled Time
+                </label>
+                <div className="fw-semibold">{scheduledTime}</div>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small text-muted mb-1">
+                  OT Status
+                </label>
+                <div>
+                  {otStatus && otStatus !== "-" ? (
+                    <span className={`badge bg-${getStatusBadge(otStatus)}`}>
+                      {otStatus}
+                    </span>
+                  ) : (
+                    "-"
+                  )}
                 </div>
               </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Surgery Date</label>
-                <div className="fw-semibold">{formatDateForDisplay(DUMMY_BOOKING.surgeryDate)}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Scheduled Time</label>
-                <div className="fw-semibold">{DUMMY_BOOKING.scheduledTime}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">OT Status</label>
-                <div>{DUMMY_BOOKING.otStatus}</div>
-              </div>
             </div>
-          </div>
 
-          {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
-          <div className="mb-4">
-            <h6 className="fw-bold border-bottom pb-1 mb-3">Pre-Anaesthesia</h6>
-            <div className="row g-3 mb-2">
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Anaesthesia Type</label>
-                <div className="fw-semibold">{DUMMY_ANAESTHESIA.anaesthesiaType}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Anaesthetist</label>
-                <div className="fw-semibold">{DUMMY_ANAESTHESIA.anaesthetist}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">Anaesthesia Status</label>
-                <div>{DUMMY_ANAESTHESIA.anaesthesiaStatus}</div>
-              </div>
-            </div>
-            <label className="form-label small text-muted mb-1">Pre-Anaesthesia Instructions</label>
-            <ul className="mb-0 small">
-              {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => <li key={idx}>{ins}</li>)}
-            </ul>
-          </div>
-
-          {/* ─── OT PREPARATION (editable) ─── */}
-          <div className="mb-4">
-            <h6 className="fw-bold border-bottom pb-1 mb-3">OT Preparation</h6>
-            <div className="row g-3">
-              <div className="col-md-3">
-                <label className="form-label small fw-bold">NPO Since Date <span className="text-danger">*</span></label>
-                <input
-                  type="date"
-                  className="form-control form-control-sm"
-                  value={preparation.npoSinceDate}
-                  onChange={(e) => handlePreparationChange("npoSinceDate", e.target.value)}
-                  disabled={preparationSaved}
-                />
-              </div>
-              <div className="col-md-3">
-                <label className="form-label small fw-bold">NPO Since Time <span className="text-danger">*</span></label>
-                <input
-                  type="time"
-                  className="form-control form-control-sm"
-                  value={preparation.npoSinceTime}
-                  onChange={(e) => handlePreparationChange("npoSinceTime", e.target.value)}
-                  disabled={preparationSaved}
-                />
-              </div>
-              <div className="col-md-3">
-                <label className="form-label small fw-bold">Consent Available <span className="text-danger">*</span></label>
-                <select
-                  className="form-select form-select-sm"
-                  value={preparation.consentAvailable}
-                  onChange={(e) => handlePreparationChange("consentAvailable", e.target.value)}
-                  disabled={preparationSaved}
-                >
-                  <option value="">Select</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-              <div className="col-md-3">
-                <label className="form-label small fw-bold">Patient Prepared <span className="text-danger">*</span></label>
-                <select
-                  className="form-select form-select-sm"
-                  value={preparation.patientPrepared}
-                  onChange={(e) => handlePreparationChange("patientPrepared", e.target.value)}
-                  disabled={preparationSaved}
-                >
-                  <option value="">Select</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-              <div className="col-md-3">
-                <label className="form-label small fw-bold">Pre-Op Medication <span className="text-danger">*</span></label>
-                <select
-                  className="form-select form-select-sm"
-                  value={preparation.preOpMedication}
-                  onChange={(e) => handlePreparationChange("preOpMedication", e.target.value)}
-                  disabled={preparationSaved}
-                >
-                  <option value="">Select</option>
-                  <option value="Given">Given</option>
-                  <option value="Not Given">Not Given</option>
-                  <option value="N/A">N/A</option>
-                </select>
-              </div>
-              <div className="col-md-9">
-                <label className="form-label small fw-bold">Remarks</label>
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  placeholder="Optional remarks"
-                  value={preparation.remarks}
-                  onChange={(e) => handlePreparationChange("remarks", e.target.value)}
-                  disabled={preparationSaved}
-                />
-              </div>
-              <div className="col-12">
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={handleSavePreparation}
-                  disabled={preparationSaved}
-                >
-                  {preparationSaved ? "Preparation Saved" : "Save Preparation"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-        
-          {/* ─── EMERGENCY OVERRIDE ─── */}
-          <div className="mb-4">
-           
-            {isEmergency && (
-              <div className="mt-2">
-                <label className="form-label small fw-bold">Override Reason <span className="text-danger">*</span></label>
-                <textarea
-                  className="form-control form-control-sm"
-                  rows={2}
-                  placeholder="Enter reason for overriding readiness checks..."
-                  value={overrideReason}
-                  onChange={(e) => setOverrideReason(e.target.value)}
-                />
+            {/* If multiple surgeries scheduled in the top booking */}
+            {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
+              <div className="mt-3">
+                <label className="form-label small text-muted mb-1">
+                  Surgeries List ({bookingData.surgeries.length})
+                </label>
+                <div className="table-responsive">
+                  <table
+                    className="table table-bordered table-sm mb-0"
+                    style={{ fontSize: "0.8rem" }}
+                  >
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "40px" }} className="text-center">
+                          #
+                        </th>
+                        <th>Surgery Name</th>
+                        <th>Surgery Type</th>
+                        <th>Level</th>
+                        <th className="text-center">Anesthesia Required</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookingData.surgeries.map((surg, idx) => (
+                        <tr
+                          key={
+                            surg.otBookingRequestDtId ||
+                            surg.surgeryId ||
+                            idx
+                          }
+                        >
+                          <td className="text-center">{idx + 1}</td>
+                          <td className="fw-semibold">
+                            {surg.surgeryName || "-"}
+                          </td>
+                          <td>{surg.surgeryTypeName || "-"}</td>
+                          <td>{surg.surgeryLevel || "-"}</td>
+                          <td className="text-center">
+                            <span
+                              className={`badge ${
+                                surg.anesthesiaRequired === "Y"
+                                  ? "bg-warning text-dark"
+                                  : "bg-secondary"
+                              }`}
+                            >
+                              {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
+          </>
+        )}
+      </div>
 
-          {/* ─── PATIENT MOVEMENT ─── */}
-
-
-          {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
-          {movementHistory.length > 0 && (
-            <div className="mt-4">
-              <h6 className="fw-bold border-bottom pb-1 mb-3">Movement / Audit Trail</h6>
-              <div className="table-responsive">
-                <table className="table table-bordered table-sm" style={{ fontSize: "0.72rem" }}>
-                  <thead className="table-light">
-                    <tr>
-                      <th>Event</th>
-                      <th>By</th>
-                      <th>Date/Time</th>
-                      <th>Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movementHistory.map((h, idx) => (
-                      <tr key={idx}>
-                        <td>{h.event}</td>
-                        <td>{h.by}</td>
-                        <td>{h.dateTime}</td>
-                        <td>{h.details}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+      {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
+      <div className="mb-4">
+        <h6 className="fw-bold border-bottom pb-1 mb-3">Pre-Anaesthesia</h6>
+        <div className="row g-3 mb-2">
+          <div className="col-md-4">
+            <label className="form-label small text-muted mb-1">
+              Anaesthesia Type
+            </label>
+            <div className="fw-semibold">
+              {DUMMY_ANAESTHESIA.anaesthesiaType}
             </div>
-          )}
+          </div>
+          <div className="col-md-4">
+            <label className="form-label small text-muted mb-1">
+              Anaesthetist
+            </label>
+            <div className="fw-semibold">{DUMMY_ANAESTHESIA.anaesthetist}</div>
+          </div>
+          <div className="col-md-4">
+            <label className="form-label small text-muted mb-1">
+              Anaesthesia Status
+            </label>
+            <div>{DUMMY_ANAESTHESIA.anaesthesiaStatus}</div>
+          </div>
+        </div>
+        <label className="form-label small text-muted mb-1">
+          Pre-Anaesthesia Instructions
+        </label>
+        <ul className="mb-0 small">
+          {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => (
+            <li key={idx}>{ins}</li>
+          ))}
+        </ul>
+      </div>
 
+      {/* ─── OT PREPARATION (editable) ─── */}
+      <div className="mb-4">
+        <h6 className="fw-bold border-bottom pb-1 mb-3">OT Preparation</h6>
+        <div className="row g-3">
+          <div className="col-md-3">
+            <label className="form-label small fw-bold">
+              NPO Since Date <span className="text-danger">*</span>
+            </label>
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              value={preparation.npoSinceDate}
+              onChange={(e) =>
+                handlePreparationChange("npoSinceDate", e.target.value)
+              }
+              disabled={preparationSaved}
+            />
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small fw-bold">
+              NPO Since Time <span className="text-danger">*</span>
+            </label>
+            <input
+              type="time"
+              className="form-control form-control-sm"
+              value={preparation.npoSinceTime}
+              onChange={(e) =>
+                handlePreparationChange("npoSinceTime", e.target.value)
+              }
+              disabled={preparationSaved}
+            />
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small fw-bold">
+              Consent Available <span className="text-danger">*</span>
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={preparation.consentAvailable}
+              onChange={(e) =>
+                handlePreparationChange("consentAvailable", e.target.value)
+              }
+              disabled={preparationSaved}
+            >
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small fw-bold">
+              Patient Prepared <span className="text-danger">*</span>
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={preparation.patientPrepared}
+              onChange={(e) =>
+                handlePreparationChange("patientPrepared", e.target.value)
+              }
+              disabled={preparationSaved}
+            >
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small fw-bold">
+              Pre-Op Medication <span className="text-danger">*</span>
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={preparation.preOpMedication}
+              onChange={(e) =>
+                handlePreparationChange("preOpMedication", e.target.value)
+              }
+              disabled={preparationSaved}
+            >
+              <option value="">Select</option>
+              <option value="Given">Given</option>
+              <option value="Not Given">Not Given</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+          <div className="col-md-9">
+            <label className="form-label small fw-bold">Remarks</label>
+            <input
+              type="text"
+              className="form-control form-control-sm"
+              placeholder="Optional remarks"
+              value={preparation.remarks}
+              onChange={(e) =>
+                handlePreparationChange("remarks", e.target.value)
+              }
+              disabled={preparationSaved}
+            />
+          </div>
+          <div className="col-12">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSavePreparation}
+              disabled={preparationSaved}
+            >
+              {preparationSaved ? "Preparation Saved" : "Save Preparation"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── EMERGENCY OVERRIDE ─── */}
+      <div className="mb-4">
+        {isEmergency && (
+          <div className="mt-2">
+            <label className="form-label small fw-bold">
+              Override Reason <span className="text-danger">*</span>
+            </label>
+            <textarea
+              className="form-control form-control-sm"
+              rows={2}
+              placeholder="Enter reason for overriding readiness checks..."
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
+      {movementHistory.length > 0 && (
+        <div className="mt-4">
+          <h6 className="fw-bold border-bottom pb-1 mb-3">
+            Movement / Audit Trail
+          </h6>
+          <div className="table-responsive">
+            <table
+              className="table table-bordered table-sm"
+              style={{ fontSize: "0.72rem" }}
+            >
+              <thead className="table-light">
+                <tr>
+                  <th>Event</th>
+                  <th>By</th>
+                  <th>Date/Time</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movementHistory.map((h, idx) => (
+                  <tr key={idx}>
+                    <td>{h.event}</td>
+                    <td>{h.by}</td>
+                    <td>{h.dateTime}</td>
+                    <td>{h.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

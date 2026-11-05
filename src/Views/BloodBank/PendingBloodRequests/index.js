@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest } from "../../../service/apiService";
@@ -21,6 +22,7 @@ const PendingBloodRequests = () => {
   const [showUnitSelection, setShowUnitSelection] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [selectedUnits, setSelectedUnits] = useState([]);
+  const [failedInventoryIds, setFailedInventoryIds] = useState([]); // Track failed units for the current modal
   const [modalLoading, setModalLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -387,6 +389,9 @@ const PendingBloodRequests = () => {
     // Pre-populate if this component was already allocated
     const previouslyAllocated = allocatedComponents[component.id] || [];
     setSelectedUnits(previouslyAllocated);
+    
+    // Reset failed units for this screen session
+    setFailedInventoryIds([]);
     setShowUnitSelection(true);
 
     const cached = componentAvailability[component.id];
@@ -439,6 +444,12 @@ const PendingBloodRequests = () => {
 
   const handleUnitSelection = (unit) => {
     const unitKey = unit.inventoryId || unit.id;
+    
+    // Prevent selection if unit is in failed list
+    if (failedInventoryIds.includes(unitKey)) {
+      return;
+    }
+
     const maxUnits = getPendingUnits(selectedComponent) || Number(selectedComponent?.units || 0);
     setSelectedUnits(prev => {
       const isSelected = prev.some(u => (u.inventoryId || u.id) === unitKey);
@@ -455,7 +466,9 @@ const PendingBloodRequests = () => {
     });
   };
 
-  const handleConfirmAllocation = () => {
+  const handleConfirmAllocation = async () => {
+    if (isSubmitting) return;
+
     const maxUnits = getPendingUnits(selectedComponent) || Number(selectedComponent?.units || 0);
     if (selectedUnits.length === 0) {
       showPopup("Please select at least one unit", "warning");
@@ -466,13 +479,58 @@ const PendingBloodRequests = () => {
       return;
     }
 
-    setAllocatedComponents(prev => ({
-      ...prev,
-      [selectedComponent.id]: selectedUnits
-    }));
+    setIsSubmitting(true);
+    try {
+      const patientId = selectedRequest?.patientId;
+      if (!patientId) {
+        showPopup("Patient ID is missing, cannot validate cross-match.", "error");
+        setIsSubmitting(false);
+        return;
+      }
 
-    showPopup(`${selectedUnits.length} unit(s) allocated successfully for ${selectedComponent.componentType}!`, "success");
-    setShowUnitSelection(false);
+      // Loop through selected units to validate cross-match
+      for (const unit of selectedUnits) {
+        const inventoryId = unit.inventoryId || unit.id;
+        const res = await getRequest(`/bloodBank/validate/cross-match/${patientId}/${inventoryId}`);
+        
+        if (res?.status !== 200) {
+          showPopup(res?.message || "Failed to validate cross-match", "error");
+          setIsSubmitting(false);
+          return; // stay on screen
+        }
+        
+        if (res?.response === true) {
+          // Add to failed list
+          setFailedInventoryIds(prev => [...prev, inventoryId]);
+          // Remove from selected units so it's unchecked
+          setSelectedUnits(prev => prev.filter(u => (u.inventoryId || u.id) !== inventoryId));
+          
+          showPopup(
+            "This unit has previously failed a cross-match for this patient. Please choose a different unit.", 
+            "warning"
+          );
+          setIsSubmitting(false);
+          return; // stay on screen
+        }
+      }
+
+      // If all validations pass (response === false for all)
+      setAllocatedComponents(prev => ({
+        ...prev,
+        [selectedComponent.id]: selectedUnits
+      }));
+
+      showPopup(`${selectedUnits.length} unit(s) allocated successfully for ${selectedComponent.componentType}!`, "success");
+      setShowUnitSelection(false);
+    } catch (error) {
+      console.error("Error validating cross-match:", error);
+      showPopup(
+        error?.response?.data?.message || error?.message || "An error occurred during cross-match validation", 
+        "error"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const totalAllocatedUnits = Object.values(allocatedComponents).reduce(
@@ -605,8 +663,6 @@ const PendingBloodRequests = () => {
     }
   };
 
-
-
   const getCompatibilityBadge = (compatibility) => {
     if (compatibility === "Compatible") {
       return <span className="badge bg-success">Compatible</span>;
@@ -617,28 +673,31 @@ const PendingBloodRequests = () => {
     }
   };
 
-
-
   // Detail View (Review Screen) with Unit Selection
   if (currentView === "detail" && selectedRequest) {
     return (
       <div className="content-wrapper">
-        {popupMessage && (
-          <Popup
-            message={popupMessage.message}
-            type={popupMessage.type}
-            onClose={popupMessage.onClose}
-          />
-        )}
+        {/* RENDER POPUP VIA PORTAL SO IT APPEARS ABOVE THE MODAL */}
+        {popupMessage &&
+          createPortal(
+            <div style={{ position: "relative", zIndex: 99999 }}>
+              <Popup
+                message={popupMessage.message}
+                type={popupMessage.type}
+                onClose={popupMessage.onClose}
+              />
+            </div>,
+            document.body
+          )}
 
-        {/* Unit Selection Modal - Fixed positioning from GeneralMedicineWaitingList */}
+        {/* Unit Selection Modal - Lowered zIndex to 1050 so Popup can sit on top */}
         {showUnitSelection && selectedComponent && (
           <div
             className="modal fade show"
             style={{
               display: "block",
               backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 9999,
+              zIndex: 1050,
               position: 'fixed',
               top: 0,
               left: 0,
@@ -647,8 +706,10 @@ const PendingBloodRequests = () => {
             }}
             tabIndex="-1"
             onClick={() => {
-              setShowUnitSelection(false);
-              setSelectedUnits([]);
+              if (!isSubmitting) {
+                setShowUnitSelection(false);
+                setSelectedUnits([]);
+              }
             }}
           >
             <div
@@ -675,6 +736,7 @@ const PendingBloodRequests = () => {
                       setShowUnitSelection(false);
                       setSelectedUnits([]);
                     }}
+                    disabled={isSubmitting}
                   ></button>
                 </div>
                 <div
@@ -720,7 +782,6 @@ const PendingBloodRequests = () => {
                           <th>Volume (ml)</th>
                           <th>Expiry Date</th>
                           <th>Compatibility</th>
-                          {/* <th>Status</th> */}
                           <th>Preference</th>
                         </tr>
                       </thead>
@@ -742,6 +803,7 @@ const PendingBloodRequests = () => {
                         ) : (
                           availableUnits.map((unit) => {
                             const unitKey = unit.inventoryId || unit.id;
+                            const isFailed = failedInventoryIds.includes(unitKey);
                             const isSelected = selectedUnits.some((u) => (u.inventoryId || u.id) === unitKey);
                             const bgName =
                               bloodGroupMap[unit.bloodGroupId] ||
@@ -751,7 +813,7 @@ const PendingBloodRequests = () => {
                             const isAvailable = (unit.status || "").toLowerCase() === "available";
 
                             return (
-                              <tr key={unitKey} className={isSelected ? "table-success" : ""}>
+                              <tr key={unitKey} className={isSelected ? "table-success" : isFailed ? "table-danger" : ""}>
                                 <td className="text-center">
                                   <input
                                     type="checkbox"
@@ -760,6 +822,7 @@ const PendingBloodRequests = () => {
                                     onChange={() => handleUnitSelection(unit)}
                                     disabled={
                                       !isAvailable ||
+                                      isFailed ||
                                       (!isSelected && selectedUnits.length >= (getPendingUnits(selectedComponent) || selectedComponent.units))
                                     }
                                   />
@@ -770,8 +833,13 @@ const PendingBloodRequests = () => {
                                 </td>
                                 <td>{unit.volumeMl ?? unit.volume ?? "N/A"}</td>
                                 <td>{formatDate(unit.expiryDate)}</td>
-                                <td>{getCompatibilityBadge(unit.compatibility)}</td>
-                                {/* <td>{getStatusBadge(unit.status)}</td> */}
+                                <td>
+                                  {isFailed ? (
+                                    <span className="badge bg-danger">Cross-match Failed</span>
+                                  ) : (
+                                    getCompatibilityBadge(unit.compatibility)
+                                  )}
+                                </td>
                                 <td>
                                   {unit.preferred ? (
                                     <span className="badge bg-success">
@@ -797,6 +865,7 @@ const PendingBloodRequests = () => {
                       setShowUnitSelection(false);
                       setSelectedUnits([]);
                     }}
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </button>
@@ -804,9 +873,16 @@ const PendingBloodRequests = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleConfirmAllocation}
-                    disabled={selectedUnits.length === 0 || selectedUnits.length > (getPendingUnits(selectedComponent) || selectedComponent.units)}
+                    disabled={selectedUnits.length === 0 || selectedUnits.length > (getPendingUnits(selectedComponent) || selectedComponent.units) || isSubmitting}
                   >
-                    Allocate Selected Units ({selectedUnits.length})
+                    {isSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Validating...
+                      </>
+                    ) : (
+                      `Allocate Selected Units (${selectedUnits.length})`
+                    )}
                   </button>
                 </div>
               </div>

@@ -207,6 +207,7 @@ const validRoutes = [
   "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
   "/RadiologyTemplateMaster",
+  "/LaboratoryTemplateMaster",
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",
   "/OPDReports",
@@ -291,6 +292,7 @@ const validRoutes = [
   "/NISRegister",
   "/OTSurgeryExecution",
   "/PACClearance",
+  "/opd-patient-queue",
 ];
 
 // Routes that should bypass authorization

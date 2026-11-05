@@ -5,8 +5,8 @@ import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { RADIOLOGY_REPORT_SAVE_URL, RADIOLOGY_TEMPLATE_LIST_GET_BY_ID, RADIOLOGY_REPORT_GET_URL, REQUEST_PARAM_STATUS, STATUS_Y ,STATUS_S} from "../../../config/apiConfig";
-import { FETCH_RADIOLOGY_TEMPLATE_ERR_MSG,REPORT_SAVE_FAILED_ERR_MSG,REPORT_SAVED_SUCC_MSG, REPORT_SUBMIT_FAILED_ERR_MSG, REPORT_SUBMITTED_SUCC_MSG } from "../../../config/constants";
+import { RADIOLOGY_REPORT_SAVE_URL,TEMPLATE_LIST_GET_BY_ID, RADIOLOGY_REPORT_GET_URL, REQUEST_PARAM_STATUS, STATUS_Y ,STATUS_S, RADIOLOGY_TEMPLATE_TYPE} from "../../../config/apiConfig";
+import { FETCH_PACS_TEMPLATE_ERR_MSG,REPORT_SAVE_FAILED_ERR_MSG,REPORT_SAVED_SUCC_MSG, REPORT_SUBMIT_FAILED_ERR_MSG, REPORT_SUBMITTED_SUCC_MSG } from "../../../config/constants";
 
 const DetailedRadiologyReportPage = () => {
   const location = useLocation();
@@ -65,7 +65,7 @@ const DetailedRadiologyReportPage = () => {
     
     try {
       setTemplateLoading(true);
-      const response = await getRequest(`${RADIOLOGY_TEMPLATE_LIST_GET_BY_ID}/${formData.modalityId}`);
+      const response = await getRequest(`${TEMPLATE_LIST_GET_BY_ID}/${formData.modalityId}/${RADIOLOGY_TEMPLATE_TYPE}`);
       
       if (response?.status === 200 && response?.response) {
         setTemplateData(response.response);
@@ -74,7 +74,7 @@ const DetailedRadiologyReportPage = () => {
       }
     } catch (error) {
       console.error("Error fetching template data:", error);
-      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+      showPopup(FETCH_PACS_TEMPLATE_ERR_MSG, "error");
       setTemplateData([]);
     } finally {
       setTemplateLoading(false);

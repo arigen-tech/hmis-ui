@@ -1,5 +1,11 @@
-.footer-content{
+.footer {
+    margin-left: -12px;
+    margin-right: -12px;
+    margin-top: 20px;
+}
+
+.footer-content {
     padding: 10px;
     background: #e7e7e7;
-    border-radius: 6px;
+    border-radius: 0px;
 }
