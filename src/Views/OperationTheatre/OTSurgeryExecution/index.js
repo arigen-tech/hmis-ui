@@ -19,9 +19,9 @@ const TABS = [
   { key: "consumables", label: "Consumables" },
   { key: "implants", label: "Implants" },
   { key: "operative", label: "Operative Details" },
-  { key: "specimen", label: "Specimen" },
-  { key: "complications", label: "Complications" },
-  { key: "signout", label: "Sign-Out" },
+  // { key: "specimen", label: "Specimen" },
+  // { key: "complications", label: "Complications" },
+  // { key: "signout", label: "Sign-Out" },
 ];
 
 const OTSurgeryExecution = () => {
@@ -350,7 +350,7 @@ const OTSurgeryExecution = () => {
                 <th>Scheduled Time</th>
                 <th>PAC</th>
                 <th>Pre-Op Checklist</th>
-                <th>Status</th>
+                <th className="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -378,7 +378,7 @@ const OTSurgeryExecution = () => {
                     <td>
                       {item.preOpChecklist}
                     </td>
-                    <td>
+                    <td className="text-center">
                       <span className={`badge ${item.status === "Ready" ? "bg-success" : "bg-warning text-dark"}`}>
                         {item.status}
                       </span>
@@ -412,9 +412,9 @@ const OTSurgeryExecution = () => {
 
   const renderAnaesthesiaTab = () => (
     <div>
-      <h6 className="fw-bold text-primary mb-3">Anaesthesia Details</h6>
+      <h5 className="fw-bold mb-2">Anaesthesia Details</h5>
       <div className="row">
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">
             Anaesthesia Type <span className="text-danger">*</span>
           </label>
@@ -428,7 +428,7 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Anaesthetist</label>
           <input
             type="text"
@@ -437,7 +437,7 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleAnaesthesiaChange("anaesthetist", e.target.value)}
           />
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Assistant Anaesthetist</label>
           <input
             type="text"
@@ -447,7 +447,7 @@ const OTSurgeryExecution = () => {
           />
         </div>
 
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">
             Anaesthesia Start <span className="text-danger">*</span>
           </label>
@@ -458,7 +458,7 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleAnaesthesiaChange("anaesthesiaStart", e.target.value)}
           />
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Anaesthesia End</label>
           <input
             type="datetime-local"
@@ -467,7 +467,7 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleAnaesthesiaChange("anaesthesiaEnd", e.target.value)}
           />
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Airway Management</label>
           <input
             type="text"
@@ -478,7 +478,7 @@ const OTSurgeryExecution = () => {
           />
         </div>
 
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">ASA Grade</label>
           <select
             className="form-select"
@@ -494,7 +494,7 @@ const OTSurgeryExecution = () => {
 
       <h6 className="fw-bold text-primary mb-3 mt-2">Pre-Induction Vitals</h6>
       <div className="row">
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">BP</label>
           <input
             type="text"
@@ -504,7 +504,7 @@ const OTSurgeryExecution = () => {
             placeholder="e.g. 130/80"
           />
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Pulse</label>
           <input
             type="text"
@@ -513,7 +513,7 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleAnaesthesiaChange("preInductionPulse", e.target.value)}
           />
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">SpO2</label>
           <input
             type="text"
@@ -524,7 +524,8 @@ const OTSurgeryExecution = () => {
         </div>
       </div>
 
-      <div className="mb-3">
+      <div className="row">
+      <div className="col-md-6 mb-3">
         <label className="form-label fw-bold">Anaesthesia Notes</label>
         <textarea
           className="form-control"
@@ -533,9 +534,7 @@ const OTSurgeryExecution = () => {
           onChange={(e) => handleAnaesthesiaChange("anaesthesiaNotes", e.target.value)}
         />
       </div>
-
-      <div className="row">
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Complication</label>
           <select
             className="form-select"
@@ -548,15 +547,15 @@ const OTSurgeryExecution = () => {
           </select>
         </div>
         {anaesthesia.complication === "Yes" && (
-          <div className="col-md-8 mb-3">
+          <div className="col-md-6 mb-3">
             <label className="form-label fw-bold">If Yes</label>
-            <input
-              type="text"
-              className="form-control"
-              value={anaesthesia.complicationDetails}
+            <textarea
+          className="form-control"
+          rows="2"
+          value={anaesthesia.complicationDetails}
               onChange={(e) => handleAnaesthesiaChange("complicationDetails", e.target.value)}
               placeholder="Describe the complication"
-            />
+        />
           </div>
         )}
       </div>
@@ -572,7 +571,7 @@ const OTSurgeryExecution = () => {
   const renderDrugsTab = () => (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h6 className="fw-bold text-primary mb-0">Drugs Used During Surgery</h6>
+        <h6 className="fw-bold mb-0">Drugs Used During Surgery</h6>
         <button className="btn btn-success btn-sm" onClick={handleAddDrugRow}>
           <i className="fa fa-plus me-1"></i> Add Drug
         </button>
@@ -639,13 +638,8 @@ const OTSurgeryExecution = () => {
                   />
                 </td>
                 <td className="text-center">
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleRemoveDrugRow(row.id)}
-                    disabled={drugRows.length === 1}
-                  >
-                    ✕
-                  </button>
+                <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleRemoveDrugRow(row.id)}
+                    disabled={drugRows.length === 1}><i class="icofont-trash"></i></button>
                 </td>
               </tr>
             ))}
@@ -664,12 +658,12 @@ const OTSurgeryExecution = () => {
   const renderConsumablesTab = () => (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h6 className="fw-bold text-primary mb-0">Medical Consumables Used</h6>
+        <h6 className="fw-bold mb-0">Medical Consumables Used</h6>
         <button className="btn btn-success btn-sm" onClick={handleAddConsumableRow}>
           <i className="fa fa-plus me-1"></i> Add Consumable
         </button>
       </div>
-     
+
 
       <div className="table-responsive">
         <table className="table table-bordered table-sm align-middle">
@@ -733,13 +727,8 @@ const OTSurgeryExecution = () => {
                   />
                 </td>
                 <td className="text-center">
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleRemoveConsumableRow(row.id)}
-                    disabled={consumableRows.length === 1}
-                  >
-                    ✕
-                  </button>
+                <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleRemoveConsumableRow(row.id)}
+                    disabled={consumableRows.length === 1}><i class="icofont-trash"></i></button>
                 </td>
               </tr>
             ))}
@@ -758,7 +747,7 @@ const OTSurgeryExecution = () => {
   const renderImplantsTab = () => (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h6 className="fw-bold text-primary mb-0">Implants Used</h6>
+        <h6 className="fw-bold mb-0">Implants Used</h6>
         <button className="btn btn-success btn-sm" onClick={handleAddImplantRow}>
           <i className="fa fa-plus me-1"></i> Add Implant
         </button>
@@ -821,13 +810,8 @@ const OTSurgeryExecution = () => {
                   />
                 </td>
                 <td className="text-center">
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleRemoveImplantRow(row.id)}
-                    disabled={implantRows.length === 1}
-                  >
-                    ✕
-                  </button>
+                <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleRemoveImplantRow(row.id)}
+                    disabled={implantRows.length === 1}><i class="icofont-trash"></i></button>
                 </td>
               </tr>
             ))}
@@ -845,10 +829,10 @@ const OTSurgeryExecution = () => {
 
   const renderOperativeTab = () => (
     <div>
-      <h6 className="fw-bold text-primary mb-3">Operative Details</h6>
+      <h6 className="fw-bold mb-2">Operative Details</h6>
       <div className="row">
-        <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Surgery Start Time</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Surgery Start Time</label>
           <input
             type="datetime-local"
             className="form-control"
@@ -856,8 +840,8 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleOperativeChange("surgeryStartTime", e.target.value)}
           />
         </div>
-        <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Surgery End Time</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Surgery End Time</label>
           <input
             type="datetime-local"
             className="form-control"
@@ -866,8 +850,8 @@ const OTSurgeryExecution = () => {
           />
         </div>
 
-        <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Primary Surgeon</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Primary Surgeon</label>
           <input
             type="text"
             className="form-control"
@@ -875,8 +859,8 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleOperativeChange("primarySurgeon", e.target.value)}
           />
         </div>
-        <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Assistant Surgeon</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Assistant Surgeon</label>
           <input
             type="text"
             className="form-control"
@@ -886,7 +870,7 @@ const OTSurgeryExecution = () => {
         </div>
 
         <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Pre Op Diagnosis</label>
+          <label className="form-label">Pre Op Diagnosis</label>
           <textarea
             className="form-control"
             rows="2"
@@ -895,7 +879,7 @@ const OTSurgeryExecution = () => {
           />
         </div>
         <div className="col-md-6 mb-3">
-          <label className="form-label fw-bold">Post Op Diagnosis</label>
+          <label className="form-label">Post Op Diagnosis</label>
           <textarea
             className="form-control"
             rows="2"
@@ -903,10 +887,8 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleOperativeChange("postOpDiagnosis", e.target.value)}
           />
         </div>
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label fw-bold">Procedure Performed</label>
+        <div className="col-md-6 mb-3">
+          <label className="form-label">Procedure Performed</label>
         <textarea
           className="form-control"
           rows="3"
@@ -914,31 +896,27 @@ const OTSurgeryExecution = () => {
           onChange={(e) => handleOperativeChange("procedurePerformed", e.target.value)}
           placeholder="Describe the procedure performed"
         />
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label fw-bold">Operative Notes</label>
+        </div>
+        <div className="col-md-6 mb-3">
+          <label className="form-label">Operative Notes</label>
         <textarea
           className="form-control"
           rows="3"
           value={operativeDetails.operativeNotes}
           onChange={(e) => handleOperativeChange("operativeNotes", e.target.value)}
         />
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label fw-bold">Surgical Findings</label>
+        </div>
+        <div className="col-md-6 mb-3">
+          <label className="form-label">Surgical Findings</label>
         <textarea
           className="form-control"
           rows="3"
           value={operativeDetails.surgicalFindings}
           onChange={(e) => handleOperativeChange("surgicalFindings", e.target.value)}
         />
-      </div>
-
-      <div className="row">
-        <div className="col-md-4 mb-3">
-          <label className="form-label fw-bold">Estimated Blood Loss (ml)</label>
+        </div>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Estimated Blood Loss (ml)</label>
           <input
             type="text"
             className="form-control"
@@ -946,8 +924,8 @@ const OTSurgeryExecution = () => {
             onChange={(e) => handleOperativeChange("estimatedBloodLoss", e.target.value)}
           />
         </div>
-        <div className="col-md-4 mb-3">
-          <label className="form-label fw-bold">Drain Placed</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Drain Placed</label>
           <select
             className="form-select"
             value={operativeDetails.drainPlaced}
@@ -958,8 +936,8 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-        <div className="col-md-4 mb-3">
-          <label className="form-label fw-bold">Complication</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Complication</label>
           <select
             className="form-select"
             value={operativeDetails.complication}
@@ -970,8 +948,8 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-        <div className="col-md-4 mb-3">
-          <label className="form-label fw-bold">Specimen Collected</label>
+        <div className="col-md-3 mb-3">
+          <label className="form-label">Specimen Collected</label>
           <select
             className="form-select"
             value={operativeDetails.specimenCollected}
@@ -982,17 +960,18 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-      </div>
-
-      <div className="mb-3">
-        <label className="form-label fw-bold">Additional Notes</label>
+        <div className="col-md-6 mb-3">
+          <label className="form-label">Additional Notes</label>
         <textarea
           className="form-control"
           rows="2"
           value={operativeDetails.additionalNotes}
           onChange={(e) => handleOperativeChange("additionalNotes", e.target.value)}
         />
+        </div>
+
       </div>
+
 
       <div className="d-flex justify-content-end">
         <button className="btn btn-primary" onClick={() => handleSaveTab("Operative details")}>
@@ -1005,7 +984,7 @@ const OTSurgeryExecution = () => {
   const renderSpecimenTab = () => (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <h6 className="fw-bold text-primary mb-0">Specimens Sent</h6>
+        <h6 className="fw-bold mb-0">Specimens Sent</h6>
         <button className="btn btn-success btn-sm" onClick={handleAddSpecimenRow}>
           <i className="fa fa-plus me-1"></i> Add Specimen
         </button>
@@ -1074,13 +1053,8 @@ const OTSurgeryExecution = () => {
                   />
                 </td>
                 <td className="text-center">
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleRemoveSpecimenRow(row.id)}
-                    disabled={specimenRows.length === 1}
-                  >
-                    ✕
-                  </button>
+                <button className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleRemoveSpecimenRow(row.id)}
+                    disabled={specimenRows.length === 1}><i class="icofont-trash"></i></button>
                 </td>
               </tr>
             ))}
@@ -1098,9 +1072,9 @@ const OTSurgeryExecution = () => {
 
   const renderComplicationsTab = () => (
     <div>
-      <h6 className="fw-bold text-primary mb-3">Complications</h6>
+      <h6 className="fw-bold mb-2">Complications</h6>
       <div className="row">
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Any Complications</label>
           <select
             className="form-select"
@@ -1113,7 +1087,7 @@ const OTSurgeryExecution = () => {
           </select>
         </div>
         {complications.anyComplications === "Yes" && (
-          <div className="col-md-4 mb-3">
+          <div className="col-md-3 mb-3">
             <label className="form-label fw-bold">Severity</label>
             <select
               className="form-select"
@@ -1126,11 +1100,11 @@ const OTSurgeryExecution = () => {
             </select>
           </div>
         )}
-      </div>
+      
 
       {complications.anyComplications === "Yes" && (
         <>
-          <div className="mb-3">
+          <div className="col-md-3 mb-3">
             <label className="form-label fw-bold">Description</label>
             <textarea
               className="form-control"
@@ -1139,7 +1113,7 @@ const OTSurgeryExecution = () => {
               onChange={(e) => handleComplicationsChange("description", e.target.value)}
             />
           </div>
-          <div className="mb-3">
+          <div className="col-md-3 mb-3">
             <label className="form-label fw-bold">Action Taken</label>
             <textarea
               className="form-control"
@@ -1151,6 +1125,8 @@ const OTSurgeryExecution = () => {
         </>
       )}
 
+      </div>
+
       <div className="d-flex justify-content-end">
         <button className="btn btn-primary" onClick={() => handleSaveTab("Complications")}>
           Save Complications
@@ -1161,9 +1137,9 @@ const OTSurgeryExecution = () => {
 
   const renderSignOutTab = () => (
     <div>
-      <h6 className="fw-bold text-primary mb-3">Sign-Out</h6>
+      <h6 className="fw-bold mb-2">Sign-Out</h6>
       <div className="row">
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Instrument Count Confirmed</label>
           <select
             className="form-select"
@@ -1175,7 +1151,7 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Sponge Count Confirmed</label>
           <select
             className="form-select"
@@ -1187,7 +1163,7 @@ const OTSurgeryExecution = () => {
             ))}
           </select>
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Specimen Labeled</label>
           <select
             className="form-select"
@@ -1200,7 +1176,7 @@ const OTSurgeryExecution = () => {
           </select>
         </div>
 
-        <div className="col-md-4 mb-3">
+        <div className="col-md-3 mb-3">
           <label className="form-label fw-bold">Equipment Issues</label>
           <select
             className="form-select"
@@ -1213,7 +1189,7 @@ const OTSurgeryExecution = () => {
           </select>
         </div>
         {signOut.equipmentIssues === "Yes" && (
-          <div className="col-md-8 mb-3">
+          <div className="col-md-3 mb-3">
             <label className="form-label fw-bold">Equipment Issue Notes</label>
             <input
               type="text"
@@ -1223,9 +1199,8 @@ const OTSurgeryExecution = () => {
             />
           </div>
         )}
-      </div>
 
-      <div className="mb-3">
+        <div className="col-md-6 mb-3">
         <label className="form-label fw-bold">Key Concerns for Recovery</label>
         <textarea
           className="form-control"
@@ -1235,8 +1210,7 @@ const OTSurgeryExecution = () => {
         />
       </div>
 
-      <div className="row">
-        <div className="col-md-6 mb-2">
+      <div className="col-md-3 mb-2">
           <label className="form-label fw-bold small mb-1">Confirmed By</label>
           <input
             type="text"
@@ -1246,7 +1220,7 @@ const OTSurgeryExecution = () => {
             style={{ backgroundColor: "#e9ecef" }}
           />
         </div>
-        <div className="col-md-6 mb-2">
+        <div className="col-md-3 mb-2">
           <label className="form-label fw-bold small mb-1">Date / Time</label>
           <input
             type="text"
@@ -1256,7 +1230,10 @@ const OTSurgeryExecution = () => {
             style={{ backgroundColor: "#e9ecef" }}
           />
         </div>
+
       </div>
+
+  
 
       <div className="d-flex justify-content-end">
         <button className="btn btn-success" onClick={() => handleSaveTab("Sign-Out")}>
@@ -1273,9 +1250,9 @@ const OTSurgeryExecution = () => {
       case "consumables": return renderConsumablesTab();
       case "implants": return renderImplantsTab();
       case "operative": return renderOperativeTab();
-    //   case "specimen": return renderSpecimenTab();
-    //   case "complications": return renderComplicationsTab();
-    //   case "signout": return renderSignOutTab();
+      case "specimen": return renderSpecimenTab();
+      case "complications": return renderComplicationsTab();
+      case "signout": return renderSignOutTab();
       default: return null;
     }
   };
@@ -1285,58 +1262,78 @@ const OTSurgeryExecution = () => {
   // ============================================================
   const renderExecution = () => (
     <div className="card form-card">
-      <div className="card-header d-flex justify-content-between align-items-center">
-        <h4 className="card-title p-2 mb-0">OT Surgery Execution</h4>
-        <button type="button" className="btn btn-secondary" onClick={backToWorklist}>
-          <i className="mdi mdi-arrow-left"></i> Back to Worklist
-        </button>
+
+      <div className="card-header">
+        <div className="d-flex align-items-center gap-1">
+          <button className="btn-back" title="Back to PAC Pending List" onClick={backToWorklist}>
+            <i className="icofont-arrow-left"></i>
+          </button>
+          <h4 className="card-title p-2 mb-0">OT Surgery Execution</h4>
+        </div>
       </div>
+
+
       <div className="card-body">
         {/* Patient / Booking Details */}
-        <div className="card mb-3">
-          <div className="card-header bg-light py-2">
-            <strong>Patient / Booking Details</strong>
+        <h5 className="fw-bold mb-2">Patient / Booking Details</h5>
+        <section className="patient-card mb-4">
+          <div className="patient-header">
+            <h4>{selectedPatient.patientName}</h4>
+            <p>IP No.: <strong> {selectedPatient.uhidOrIp}</strong></p>
           </div>
-          <div className="card-body py-2">
-            <div className="row">
-              <div className="col-md-4 mb-2"><strong>Patient:</strong> {selectedPatient.patientName}</div>
-              <div className="col-md-4 mb-2"><strong>IP No.:</strong> {selectedPatient.uhidOrIp}</div>
-              <div className="col-md-4 mb-2"><strong>Age / Gender:</strong> {selectedPatient.ageGender}</div>
-
-              <div className="col-md-4 mb-2"><strong>Department:</strong> {selectedPatient.department}</div>
-              <div className="col-md-4 mb-2"><strong>OT:</strong> {selectedPatient.ot}</div>
-              <div className="col-md-4 mb-2"><strong>Surgeon:</strong> {selectedPatient.surgeon}</div>
-
-              <div className="col-md-8 mb-2"><strong>Surgery:</strong> {selectedPatient.surgery}</div>
-              <div className="col-md-4 mb-2"><strong>Scheduled:</strong> {selectedPatient.scheduledTime}</div>
-
-              <div className="col-md-4 mb-2">
-                <strong>PAC:</strong> <span className="badge bg-success">{selectedPatient.pac}</span>
-              </div>
-              <div className="col-md-4 mb-2">
-                <strong>Pre-Op Checklist:</strong> <span className="badge bg-success">{selectedPatient.preOpChecklist}</span>
-              </div>
+          <div className="details-grid grid-col-4">
+            <div className="detail-item">
+              <span className="detail-label">Age / Gender: </span>
+              <span className="detail-value">{selectedPatient.ageGender}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Department:</span>
+              <span className="detail-value">{selectedPatient.department}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Operation Theatre</span>
+              <span className="detail-value">{selectedPatient.ot}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Surgeon: </span>
+              <span className="detail-value">{selectedPatient.surgeon}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Surgery:</span>
+              <span className="detail-value">{selectedPatient.surgery}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Scheduled: </span>
+              <span className="detail-value" style={{ color: "#059669" }}>{selectedPatient.scheduledTime}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">PAC: </span>
+              <span className="detail-value badge bg-success forBadge">{selectedPatient.pac}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Pre-Op Checklist:  </span>
+              <span className="detail-value badge bg-success forBadge">{selectedPatient.preOpChecklist}</span>
             </div>
           </div>
+        </section>
+
+
+        <div className="tab-container">
+
+          {/* Tab Navigation */}
+          <ul className="nav nav-tabs">
+            {TABS.map((tab) => (
+              <li className="nav-item" key={tab.key}>
+                <button type="button" className={`nav-link ${activeTab === tab.key ? "active" : ""}`} onClick={() => setActiveTab(tab.key)}>{tab.label}</button>
+              </li>
+            ))}
+          </ul>
+          {/* Tab Content */}
+          <div className="tab-content-panel" >{renderTabContent()}</div>
         </div>
 
-        {/* Tab Navigation */}
-        <ul className="nav nav-tabs mb-3">
-          {TABS.map((tab) => (
-            <li className="nav-item" key={tab.key}>
-              <button
-                type="button"
-                className={`nav-link ${activeTab === tab.key ? "active" : ""}`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            </li>
-          ))}
-        </ul>
 
-        {/* Tab Content */}
-        <div className="tab-content-panel">{renderTabContent()}</div>
+
       </div>
     </div>
   );

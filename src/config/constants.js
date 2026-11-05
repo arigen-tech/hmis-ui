@@ -1136,11 +1136,11 @@ export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do
 export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) => `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;
 export const INDENT_ID_NOT_FOUND = "Indent ID not found";
 
-//Radiology template master
-export const FETCH_RADIOLOGY_TEMPLATE_ERR_MSG = "Failed to fetch radiology template data";
-export const ADD_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template added successfully!";
-export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated successfully!";
-export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
+//PACS template master
+export const FETCH_PACS_TEMPLATE_ERR_MSG = "Failed to fetch template data";
+export const ADD_PACS_TEMPLATE_SUCC_MSG = "PACS template added successfully!";
+export const UPDATE_PACS_TEMPLATE_SUCC_MSG = "PACS template updated successfully!";
+export const DUPLICATE_PACS_TEMPLATE = "A template with this code or name already exists";
 export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
 
 //Blood Test Master

@@ -85,7 +85,7 @@ const OpdPatientQueue = () => {
                                 }}
                             >
                                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                    <h4 className="card-title p-2 mb-0 text-white">
+                                    <h4 className="card-title p-1 ps-0 mb-0 text-white">
                                         OPD Patient Queue
                                     </h4>  
 
