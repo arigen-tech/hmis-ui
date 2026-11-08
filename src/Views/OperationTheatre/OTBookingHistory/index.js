@@ -3,9 +3,39 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import OTTeamAssignment from "../OTTeamAssignment";
-import { getRequest } from "../../../service/apiService";
-import { MAS_OT_BOOKING_STATUS_GET_ALL, OT_BOOKING_HISTORY } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
+import {
+  MAS_OT_BOOKING_STATUS_GET_ALL,
+  OT_BOOKING_HISTORY,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  MAS_OT_SCHEDULE_CHANGE_REASON,
+  RESCHEDULE_OT_BOOKING,
+  CANCEL_OT_BOOKING,
+} from "../../../config/apiConfig";
 import { FETCH_OT_BOOKING_STATUS, FETCH_OT_BOOKING_HISTORY } from "../../../config/constants";
+
+// Helper to format "HH:mm:ss" to "HH:mm" for <input type="time" />
+const formatTimeForInput = (t = "") => {
+  if (!t || t === "-") return "";
+  const parts = t.trim().split(":");
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+  }
+  return "";
+};
+
+// Helper to format "HH:mm" to "HH:mm:ss" for LocalTime backend API
+const formatTimeForApi = (t = "") => {
+  if (!t) return "";
+  const parts = t.trim().split(":");
+  if (parts.length === 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:00`;
+  }
+  if (parts.length >= 3) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:${parts[2].padStart(2, "0")}`;
+  }
+  return t.trim();
+};
 
 const OTBookingHistory = () => {
   // ----- State -----
@@ -28,28 +58,56 @@ const OTBookingHistory = () => {
   const [modalAction, setModalAction] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [remarks, setRemarks] = useState("");
-  const [newOT, setNewOT] = useState("");
+  const [selectedOtId, setSelectedOtId] = useState("");
+  const [selectedReasonId, setSelectedReasonId] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Dynamic dropdowns for modal
+  const [otList, setOtList] = useState([]);
+  const [changeReasons, setChangeReasons] = useState([]);
 
   // Team Assignment view
   const [showTeamAssignment, setShowTeamAssignment] = useState(false);
   const [teamAssignmentRecord, setTeamAssignmentRecord] = useState(null);
 
-  const otOptions = ["Operation Theatre 1", "Main OT-01", "Main OT-02", "Main OT-03", "Cardio OT"];
-  const timeOptions = [
-    "08:00 AM",
-    "09:00 AM",
-    "10:00 AM",
-    "11:00 AM",
-    "12:00 PM",
-    "01:00 PM",
-    "02:00 PM",
-    "03:00 PM",
-    "04:00 PM",
-    "16:00:00",
-  ];
+  // ----- Fetch OT list for dropdown -----
+  const fetchOtList = async () => {
+    try {
+      const res = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+      if (res?.response && Array.isArray(res.response)) {
+        const active = res.response.filter(
+          (item) => !item.status || item.status.toLowerCase() === "y"
+        );
+        setOtList(active);
+      } else {
+        setOtList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching OT list:", error);
+      setOtList([]);
+    }
+  };
+
+  // ----- Fetch Change Reasons for dropdown -----
+  const fetchChangeReasons = async () => {
+    try {
+      const res = await getRequest(`${MAS_OT_SCHEDULE_CHANGE_REASON}/getAll/1`);
+      if (res?.response && Array.isArray(res.response)) {
+        const active = res.response.filter(
+          (item) => item.status === "Y" || !item.status
+        );
+        setChangeReasons(active);
+      } else {
+        setChangeReasons([]);
+      }
+    } catch (error) {
+      console.error("Error fetching OT schedule change reasons:", error);
+      setChangeReasons([]);
+    }
+  };
 
   // ----- Fetch Dropdown Statuses -----
   const fetchStatusOptions = async () => {
@@ -161,6 +219,8 @@ const OTBookingHistory = () => {
     // ----- Effects -----
     useEffect(() => {
       fetchStatusOptions();
+      fetchOtList();
+      fetchChangeReasons();
       fetchBookingHistory(0, "", "");
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -228,9 +288,26 @@ const OTBookingHistory = () => {
       setSelectedRecord(record);
       setModalAction(action);
       setRemarks("");
-      setNewOT(record.otName || otOptions[0]);
-      setNewDate(record.preferredDate || record.date || "");
-      setNewTime(record.preferredStartTime || record.time || timeOptions[0]);
+      setSelectedReasonId("");
+
+      const matchedOt = otList.find(
+        (o) => o.otId === record.otId || o.otName === record.otName
+      );
+      setSelectedOtId(matchedOt ? String(matchedOt.otId) : (record.otId ? String(record.otId) : ""));
+
+      setNewDate(
+        record.preferredDate && record.preferredDate !== "-"
+          ? record.preferredDate
+          : record.date && record.date !== "-"
+          ? record.date
+          : ""
+      );
+
+      const rawStart = record.preferredStartTime || record.time || "";
+      const rawEnd = record.preferredEndTime || record.endTime || "";
+      setNewStartTime(formatTimeForInput(rawStart));
+      setNewEndTime(formatTimeForInput(rawEnd));
+
       setShowModal(true);
     };
 
@@ -239,53 +316,113 @@ const OTBookingHistory = () => {
       setSelectedRecord(null);
       setModalAction(null);
       setRemarks("");
-      setNewOT("");
+      setSelectedOtId("");
+      setSelectedReasonId("");
       setNewDate("");
-      setNewTime("");
+      setNewStartTime("");
+      setNewEndTime("");
     };
 
-    const handleConfirm = () => {
-      if (!remarks.trim()) {
-        showPopup("Please enter remarks.", "error");
+    const handleConfirm = async () => {
+      if (!selectedReasonId) {
+        showPopup(
+          modalAction === "reschedule"
+            ? "Please select a change reason."
+            : "Please select a cancellation reason.",
+          "error"
+        );
         return;
       }
-      if (modalAction === "reschedule" && (!newOT || !newDate || !newTime)) {
-        showPopup("Please select new OT, date and time.", "error");
+
+      if (modalAction === "reschedule") {
+        if (!selectedOtId) {
+          showPopup("Please select a new OT.", "error");
+          return;
+        }
+        if (!newDate) {
+          showPopup("Please select a new date.", "error");
+          return;
+        }
+        if (!newStartTime) {
+          showPopup("Please select a new start time.", "error");
+          return;
+        }
+        if (!newEndTime) {
+          showPopup("Please select a new end time.", "error");
+          return;
+        }
+      }
+
+      const otBookingId = selectedRecord?.otBookingId || selectedRecord?.id;
+      if (!otBookingId) {
+        showPopup("OT Booking ID not found.", "error");
         return;
       }
 
       setIsProcessing(true);
-      setTimeout(() => {
-        const updatedData = data.map((item) => {
-          const isMatch = selectedRecord.otBookingId
-            ? item.otBookingId === selectedRecord.otBookingId
-            : item.id === selectedRecord.id;
-          if (isMatch) {
-            if (modalAction === "reschedule") {
-              return {
-                ...item,
-                otName: newOT,
-                date: newDate,
-                preferredDate: newDate,
-                time: newTime,
-                preferredStartTime: newTime,
-                status: "RESCHEDULED",
-                statusName: "Rescheduled",
-              };
-            } else {
-              return { ...item, status: "CANCELLED", statusName: "Cancelled" };
-            }
+      try {
+        if (modalAction === "reschedule") {
+          const payload = {
+            otBookingId: Number(otBookingId),
+            newOtId: Number(selectedOtId),
+            newScheduledDate: newDate,
+            newStartTime: formatTimeForApi(newStartTime),
+            newEndTime: formatTimeForApi(newEndTime),
+            reasonId: Number(selectedReasonId),
+            remarks: remarks.trim() || undefined,
+          };
+
+          const res = await postRequest(RESCHEDULE_OT_BOOKING, payload);
+          if (
+            res?.status === 200 ||
+            res?.status === 201 ||
+            res?.statuss === "success" ||
+            res?.message === "success" ||
+            res?.response
+          ) {
+            closeModal();
+            showPopup("OT booking rescheduled successfully!", "success");
+            fetchBookingHistory(currentPage - 1, appliedFilters.patient, appliedFilters.statusId);
+          } else {
+            showPopup(
+              res?.message || "Failed to reschedule OT booking.",
+              "error"
+            );
           }
-          return item;
-        });
-        setData(updatedData);
-        setIsProcessing(false);
-        closeModal();
+        } else {
+          const payload = {
+            otBookingId: Number(otBookingId),
+            reasonId: Number(selectedReasonId),
+            remarks: remarks.trim() || undefined,
+          };
+
+          const res = await postRequest(CANCEL_OT_BOOKING, payload);
+          if (
+            res?.status === 200 ||
+            res?.status === 201 ||
+            res?.statuss === "success" ||
+            res?.message === "success" ||
+            res?.response
+          ) {
+            closeModal();
+            showPopup("OT booking cancelled successfully.", "success");
+            fetchBookingHistory(currentPage - 1, appliedFilters.patient, appliedFilters.statusId);
+          } else {
+            showPopup(
+              res?.message || "Failed to cancel OT booking.",
+              "error"
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error processing modal action:", error);
         showPopup(
-          modalAction === "reschedule" ? "OT booking rescheduled successfully!" : "OT booking cancelled successfully.",
-          "success"
+          error?.message || "Failed to process request. Please try again.",
+          "error"
         );
-      }, 500);
+      } finally {
+        setIsProcessing(false);
+      }
     };
 
     // ----- Team Assignment -----
@@ -502,7 +639,7 @@ const OTBookingHistory = () => {
             role="dialog"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           >
-            <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">
@@ -516,40 +653,74 @@ const OTBookingHistory = () => {
                   ></button>
                 </div>
                 <div className="modal-body">
-                  <p>
-                    <strong>Patient:</strong> {selectedRecord.patientName} (
-                    {selectedRecord.uhidNo || selectedRecord.uhid || selectedRecord.ipNo || "-"}
-                    )
-                  </p>
-                  <p>
-                    <strong>Surgery:</strong> {selectedRecord.surgeryName || selectedRecord.surgery || "-"}
-                  </p>
-                  <p>
-                    <strong>Current OT:</strong> {selectedRecord.otName || "-"}
-                  </p>
-                  <p>
-                    <strong>Current Date/Time:</strong> {formatDateTime(selectedRecord)}
-                  </p>
+                  <div className="row mb-2">
+                    <div className="col-md-6">
+                      <p className="mb-1">
+                        <strong>Patient:</strong> {selectedRecord.patientName} (
+                        {selectedRecord.uhidNo || selectedRecord.uhid || selectedRecord.ipNo || "-"}
+                        )
+                      </p>
+                      <p className="mb-1">
+                        <strong>Surgery:</strong> {selectedRecord.surgeryName || selectedRecord.surgery || "-"}
+                      </p>
+                    </div>
+                    <div className="col-md-6">
+                      <p className="mb-1">
+                        <strong>Current OT:</strong> {selectedRecord.otName || "-"}
+                      </p>
+                      <p className="mb-1">
+                        <strong>Current Date/Time:</strong> {formatDateTime(selectedRecord)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <hr className="my-2" />
 
                   {modalAction === "reschedule" && (
                     <>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold">New OT *</label>
-                        <select
-                          className="form-select"
-                          value={newOT}
-                          onChange={(e) => setNewOT(e.target.value)}
-                          disabled={isProcessing}
-                        >
-                          {otOptions.map((ot) => (
-                            <option key={ot} value={ot}>
-                              {ot}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                       <div className="row">
                         <div className="col-md-6 mb-3">
+                          <label className="form-label fw-bold">New OT *</label>
+                          <select
+                            className="form-select"
+                            value={selectedOtId}
+                            onChange={(e) => setSelectedOtId(e.target.value)}
+                            disabled={isProcessing}
+                          >
+                            <option value="">Select Operation Theatre</option>
+                            {otList.map((ot) => (
+                              <option key={ot.otId} value={ot.otId}>
+                                {ot.otName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-6 mb-3">
+                          <label className="form-label fw-bold">Change Reason *</label>
+                          <select
+                            className="form-select"
+                            value={selectedReasonId}
+                            onChange={(e) => setSelectedReasonId(e.target.value)}
+                            disabled={isProcessing}
+                          >
+                            <option value="">Select Change Reason</option>
+                            {changeReasons
+                              .filter((r) => {
+                                const app = (r.applicableFor || "BOTH").toUpperCase();
+                                return app === "BOTH" || app === "RESCHEDULE";
+                              })
+                              .map((r) => (
+                                <option key={r.reasonId} value={r.reasonId}>
+                                  {r.reason}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="row">
+                        <div className="col-md-4 mb-3">
                           <label className="form-label fw-bold">New Date *</label>
                           <input
                             type="date"
@@ -559,28 +730,57 @@ const OTBookingHistory = () => {
                             disabled={isProcessing}
                           />
                         </div>
-                        <div className="col-md-6 mb-3">
-                          <label className="form-label fw-bold">New Time *</label>
-                          <select
-                            className="form-select"
-                            value={newTime}
-                            onChange={(e) => setNewTime(e.target.value)}
+                        <div className="col-md-4 mb-3">
+                          <label className="form-label fw-bold">New Start Time *</label>
+                          <input
+                            type="time"
+                            className="form-control"
+                            value={newStartTime}
+                            onChange={(e) => setNewStartTime(e.target.value)}
                             disabled={isProcessing}
-                          >
-                            {timeOptions.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                        </div>
+                        <div className="col-md-4 mb-3">
+                          <label className="form-label fw-bold">New End Time *</label>
+                          <input
+                            type="time"
+                            className="form-control"
+                            value={newEndTime}
+                            onChange={(e) => setNewEndTime(e.target.value)}
+                            disabled={isProcessing}
+                          />
                         </div>
                       </div>
                     </>
                   )}
 
+                  {modalAction === "cancel" && (
+                    <div className="mb-3">
+                      <label className="form-label fw-bold">Cancellation Reason *</label>
+                      <select
+                        className="form-select"
+                        value={selectedReasonId}
+                        onChange={(e) => setSelectedReasonId(e.target.value)}
+                        disabled={isProcessing}
+                      >
+                        <option value="">Select Cancellation Reason</option>
+                        {changeReasons
+                          .filter((r) => {
+                            const app = (r.applicableFor || "BOTH").toUpperCase();
+                            return app === "BOTH" || app === "CANCEL";
+                          })
+                          .map((r) => (
+                            <option key={r.reasonId} value={r.reasonId}>
+                              {r.reason}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="mb-3">
                     <label className="form-label fw-bold">
-                      {modalAction === "reschedule" ? "Reschedule Remarks" : "Cancellation Reason"} *
+                      {modalAction === "reschedule" ? "Reschedule Remarks" : "Remarks"}
                     </label>
                     <textarea
                       className="form-control"
@@ -589,8 +789,8 @@ const OTBookingHistory = () => {
                       onChange={(e) => setRemarks(e.target.value)}
                       placeholder={
                         modalAction === "reschedule"
-                          ? "Enter reason for reschedule..."
-                          : "Enter reason for cancellation..."
+                          ? "Enter additional reschedule remarks (optional)..."
+                          : "Enter additional cancellation remarks (optional)..."
                       }
                       disabled={isProcessing}
                     />
