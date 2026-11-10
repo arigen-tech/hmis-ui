@@ -9,6 +9,23 @@ import {
   SENT_TO_OT,
 } from "../../../config/apiConfig";
 
+// Helper to get logged in user's name from sessionStorage / localStorage
+const getLoggedInUserName = () => {
+  try {
+    return (
+      sessionStorage.getItem("loggedInUserName") ||
+      localStorage.getItem("loggedInUserName") ||
+      sessionStorage.getItem("name") ||
+      localStorage.getItem("name") ||
+      sessionStorage.getItem("userName") ||
+      localStorage.getItem("userName") ||
+      ""
+    );
+  } catch (e) {
+    return "";
+  }
+};
+
 // Helper to format scheduled date and start/end time
 const formatScheduleDateTime = (item) => {
   const date = item.preferredDate || item.date || "";
@@ -47,7 +64,7 @@ const OTPatientReceiptPending = () => {
   // Modal
   const [showModal, setShowModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [receivedBy, setReceivedBy] = useState("");
+  const [receivedBy, setReceivedBy] = useState(getLoggedInUserName);
   const [remarks, setRemarks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -96,8 +113,8 @@ const OTPatientReceiptPending = () => {
             Array.isArray(item.surgeries) && item.surgeries.length > 0
               ? item.surgeries.map((s) => s.surgeryName).filter(Boolean)
               : item.surgeryName
-              ? [item.surgeryName]
-              : [];
+                ? [item.surgeryName]
+                : [];
           const surgeryString =
             surgeryNames.length > 0 ? surgeryNames.join(", ") : (item.surgery || "-");
 
@@ -176,7 +193,7 @@ const OTPatientReceiptPending = () => {
 
   const openModal = (record) => {
     setSelectedRecord(record);
-    setReceivedBy("");
+    setReceivedBy(getLoggedInUserName());
     setRemarks("");
     setShowModal(true);
   };
@@ -184,16 +201,11 @@ const OTPatientReceiptPending = () => {
   const closeModal = () => {
     setShowModal(false);
     setSelectedRecord(null);
-    setReceivedBy("");
+    setReceivedBy(getLoggedInUserName());
     setRemarks("");
   };
 
   const handleConfirm = async () => {
-    if (!receivedBy.trim()) {
-      showPopup("Please enter the Received By name.", "error");
-      return;
-    }
-
     const otBookingId = selectedRecord?.otBookingId || selectedRecord?.id;
     if (!otBookingId) {
       showPopup("OT Booking ID not found.", "error");
@@ -202,9 +214,14 @@ const OTPatientReceiptPending = () => {
 
     setIsProcessing(true);
     try {
-      const res = await putRequest(
-        `${SENT_TO_OT}?otBookingId=${encodeURIComponent(otBookingId)}&status=RECEIVED_IN_OT`
-      );
+      const remarkParam = remarks?.trim() || "Received";
+      const params = new URLSearchParams({
+        otBookingId: otBookingId,
+        status: "RECEIVED_IN_OT",
+        remark: remarkParam,
+      });
+
+      const res = await putRequest(`${SENT_TO_OT}?${params.toString()}`);
 
       if (
         res?.status === 200 ||
@@ -408,16 +425,14 @@ const OTPatientReceiptPending = () => {
                 </p>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold">
-                    Received By <span className="text-danger">*</span>
-                  </label>
+                  <label className="form-label fw-bold">Received By</label>
                   <input
                     type="text"
-                    className="form-control"
-                    value={receivedBy}
-                    onChange={(e) => setReceivedBy(e.target.value)}
-                    placeholder="Enter receiving nurse/staff name"
-                    disabled={isProcessing}
+                    className="form-control fw-semibold"
+                    value={receivedBy || getLoggedInUserName()}
+                    readOnly
+                    disabled
+                    style={{ backgroundColor: "#e9ecef", cursor: "not-allowed" }}
                   />
                 </div>
 
