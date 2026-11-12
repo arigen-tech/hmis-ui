@@ -313,6 +313,7 @@ export const GET_OT_DASHBOARD = `/otController/dashboard`;
 export const GET_OT_DEPARTMENTS = `/otController/departments`;
 export const SENT_TO_OT = `/otController/otPatientTransaction`;
 export const OT_PATIENT_RECEIPT_LIST = `/otController/patientReceiptList`;
+export const PAC_PENDING_LIST = `/otController/pacPendingList`;
 export const RESCHEDULE_OT_BOOKING = `/otController/reschedule`;
 export const CANCEL_OT_BOOKING = `/otController/cancel`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;

@@ -3,9 +3,35 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { Link } from "react-router-dom";
+import { getRequest } from "../../../service/apiService";
+import { PAC_PENDING_LIST } from "../../../config/apiConfig";
 
-// Current logged-in user for the auto-filled "Cleared By" field (dummy - no auth wiring)
-const CURRENT_USER = "Nurse Priya";
+// Helper to get logged-in user name from storage
+const getLoggedInUserName = () => {
+  try {
+    return (
+      sessionStorage.getItem("loggedInUserName") ||
+      localStorage.getItem("loggedInUserName") ||
+      sessionStorage.getItem("userName") ||
+      localStorage.getItem("userName") ||
+      "Nurse Priya"
+    );
+  } catch (e) {
+    return "Nurse Priya";
+  }
+};
+
+// Helper to format scheduled date and time
+const formatScheduledDateTime = (item) => {
+  const date = item.scheduledDate || item.preferredDate || "";
+  const start = item.scheduledStartTime || item.preferredStartTime || "";
+  const end = item.scheduledEndTime || item.preferredEndTime || "";
+  if (!date && !start) return "-";
+  if (start && end) {
+    return `${date} (${start} - ${end})`.trim();
+  }
+  return `${date} ${start}`.trim();
+};
 
 const PACClearance = () => {
   // ----- State -----
@@ -13,10 +39,13 @@ const PACClearance = () => {
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [appliedFilters, setAppliedFilters] = useState({ search: "", type: "All" });
 
   // Clear PAC modal states
   const [showClearModal, setShowClearModal] = useState(false);
@@ -34,83 +63,108 @@ const PACClearance = () => {
     { id: "previous", label: "Previous Visits" }
   ];
 
-  // ----- Dummy data (PAC Pending List - Updated Grid) -----
-  // Both OPD and IPD requests appear together; OPD shows UHID with no
-  // Ward/Bed, IPD shows IP No. with Ward/Bed - matching the source table
-  // (ot_booking joined with ot_booking_request_hd/dt + Patient/IPD/Visit).
-  const dummyData = [
-    {
-      id: 1,
-      uhidOrIp: "UHID/00125",
-      patientName: "Rajesh Kumar",
-      type: "OPD",
-      department: "Orthopaedics",
-      surgery: "Total Knee Replacement",
-      surgeon: "Dr. Sharma",
-      ot: "OT-01",
-      scheduledDateTime: "20-Aug-2026 10:00",
-      wardBed: null,
-    },
-    {
-      id: 2,
-      uhidOrIp: "IPD/26/00128",
-      patientName: "Amit Kumar",
-      type: "IPD",
-      department: "General Surgery",
-      surgery: "Hernia Repair",
-      surgeon: "Dr. Gupta",
-      ot: "OT-02",
-      scheduledDateTime: "20-Aug-2026 14:00",
-      wardBed: "Surgical Ward / B-12",
-    },
-    {
-      id: 3,
-      uhidOrIp: "IPD/26/00135",
-      patientName: "Sunita Devi",
-      type: "IPD",
-      department: "Gynaecology",
-      surgery: "Hysterectomy",
-      surgeon: "Dr. Verma",
-      ot: "OT-03",
-      scheduledDateTime: "21-Aug-2026 09:00",
-      wardBed: "Gynae Ward / C-05",
-    },
-  ];
+  // ----- Fetch PAC Pending List -----
+  const fetchPacPendingList = async (
+    page = 0,
+    search = appliedFilters.search,
+    type = appliedFilters.type
+  ) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        type: type || "All",
+        page: page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+      });
+
+      if (search && search.trim()) {
+        params.append("search", search.trim());
+      }
+
+      const res = await getRequest(`${PAC_PENDING_LIST}?${params.toString()}`);
+
+      if (res?.response?.content) {
+        const normalized = res.response.content.map((item, idx) => {
+          let surgeryString = "-";
+          if (Array.isArray(item.surgeries) && item.surgeries.length > 0) {
+            surgeryString =
+              item.surgeries.map((s) => s.surgeryName).filter(Boolean).join(", ") || "-";
+          } else if (typeof item.surgeries === "string" && item.surgeries.trim()) {
+            surgeryString = item.surgeries.trim();
+          } else if (item.surgeryName || item.surgery) {
+            surgeryString = item.surgeryName || item.surgery;
+          }
+
+          const wardBed =
+            item.wardName && item.bedNumber
+              ? `${item.wardName} / ${item.bedNumber}`
+              : item.wardName || item.bedNumber || null;
+
+          const uhidOrIp =
+            item.patientType === "IPD"
+              ? item.ipNo || item.uhidNo || "-"
+              : item.uhidNo || item.ipNo || "-";
+
+          return {
+            ...item,
+            id: item.otBookingId ?? item.id ?? page * DEFAULT_ITEMS_PER_PAGE + idx + 1,
+            uhidOrIp,
+            patientName: item.patientName || "-",
+            type: item.patientType || "-",
+            department: item.departmentName || "-",
+            surgery: surgeryString,
+            surgeon: item.primarySurgeonName || item.surgeonName || "-",
+            ot: item.otName || "-",
+            scheduledDateTime: formatScheduledDateTime(item),
+            wardBed,
+          };
+        });
+
+        setData(normalized);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalItems(res.response.totalElements || 0);
+      } else {
+        setData([]);
+        setTotalPages(0);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching PAC pending list:", error);
+      showPopup("Failed to fetch PAC pending list.", "error");
+      setData([]);
+      setTotalPages(0);
+      setTotalItems(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ----- Effects -----
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setLoading(false);
-    }, 300);
+    fetchPacPendingList(0, "", "All");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ----- Filtered data -----
-  const filteredData = data.filter((item) => {
-    const matchSearch =
-      item.uhidOrIp.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgery.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgeon.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchType = typeFilter ? item.type === typeFilter : true;
-    return matchSearch && matchType;
-  });
-
-  // ----- Pagination slice -----
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
   // ----- Handlers -----
-  const handlePageChange = (page) => setCurrentPage(page);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchPacPendingList(page - 1, appliedFilters.search, appliedFilters.type);
+  };
 
-  const handleSearch = () => setCurrentPage(1);
+  const handleSearch = () => {
+    setCurrentPage(1);
+    const newFilters = { search: searchQuery, type: typeFilter || "All" };
+    setAppliedFilters(newFilters);
+    fetchPacPendingList(0, searchQuery, typeFilter || "All");
+  };
 
   const handleReset = () => {
     setSearchQuery("");
-    setTypeFilter("");
+    setTypeFilter("All");
     setCurrentPage(1);
+    const resetFilters = { search: "", type: "All" };
+    setAppliedFilters(resetFilters);
+    fetchPacPendingList(0, "", "All");
   };
 
   const getCurrentDateTimeLabel = () => {
@@ -177,7 +231,7 @@ const PACClearance = () => {
           <div className="card form-card">
             <div className="card-header">
               <div className="d-flex align-items-center gap-1">
-                <button className="btn-back" title="Back to PAC Pending List" onClick={() => setEditPACClearance(false)}><i className="icofont-arrow-left"></i></button>
+                <button className="btn-back" title="Back to PAC Pending List" onClick={() => { setEditPACClearance(false); setSelectedRecord(null); }}><i className="icofont-arrow-left"></i></button>
                 <h4 className="card-title p-2 mb-0">PAC Assessment / Clearance</h4>
               </div>
             </div>
@@ -192,47 +246,47 @@ const PACClearance = () => {
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="PatientName">Patient Name</label>
-                    <input type="text" id="PatientName" name="PatientName" className="form-control" value="Rajesh Kumar" readOnly />
+                    <input type="text" id="PatientName" name="PatientName" className="form-control" value={selectedRecord?.patientName || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="ipdNo">IPD No.</label>
-                    <input type="text" id="ipdNo" name="ipdNo" className="form-control" value="IPD/26/00125" readOnly />
+                    <input type="text" id="ipdNo" name="ipdNo" className="form-control" value={selectedRecord?.ipNo || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
-                    <label className="form-label mb-1" htmlFor="uhidNo">UHID/10025</label>
-                    <input type="text" id="uhidNo" name="uhidNo" className="form-control" value="UHID/10025" readOnly />
+                    <label className="form-label mb-1" htmlFor="uhidNo">UHID No.</label>
+                    <input type="text" id="uhidNo" name="uhidNo" className="form-control" value={selectedRecord?.uhidNo || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
-                    <label className="form-label mb-1" htmlFor="ageSex">Age / Sex</label>
-                    <input type="text" id="ageSex" name="ageSex" className="form-control" value="58 / Male" readOnly />
+                    <label className="form-label mb-1" htmlFor="ageSex">Type / Dept</label>
+                    <input type="text" id="ageSex" name="ageSex" className="form-control" value={selectedRecord ? `${selectedRecord.type || "-"} / ${selectedRecord.department || "-"}` : "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="wardBed">Ward / Bed</label>
-                    <input type="text" id="wardBed" name="wardBed" className="form-control" value="Ortho / B-12" readOnly />
+                    <input type="text" id="wardBed" name="wardBed" className="form-control" value={selectedRecord?.wardBed || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeonName">Surgeon</label>
-                    <input type="text" id="surgeonName" name="surgeonName" className="form-control" value="Dr. Sharma" readOnly />
+                    <input type="text" id="surgeonName" name="surgeonName" className="form-control" value={selectedRecord?.surgeon || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeryId">Surgery</label>
-                    <input type="text" id="surgeryId" name="surgeryId" className="form-control" value="Total Knee Replacement" readOnly />
+                    <input type="text" id="surgeryId" name="surgeryId" className="form-control" value={selectedRecord?.surgery || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="OtId">OT</label>
-                    <input type="text" id="OtId" name="OtId" className="form-control" value="Main OT-01" readOnly />
+                    <input type="text" id="OtId" name="OtId" className="form-control" value={selectedRecord?.ot || "-"} readOnly />
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label mb-1" htmlFor="surgeryDate">Surgery Date</label>
-                    <input type="text" id="surgeryDate" name="surgeryDate" className="form-control" value="06 Nov 2026" readOnly />
+                    <input type="text" id="surgeryDate" name="surgeryDate" className="form-control" value={selectedRecord?.scheduledDate || selectedRecord?.scheduledDateTime || "-"} readOnly />
                   </div>
 
                 </div>
@@ -729,7 +783,7 @@ const PACClearance = () => {
 
                 <div className="d-flex justify-content-between align-items-center">
                   <div className="">
-                    <button className="btn btnOutline" onClick={() => setEditPACClearance(false)}><i className="icofont-arrow-left"></i> <span>Back</span></button>
+                    <button className="btn btnOutline" onClick={() => { setEditPACClearance(false); setSelectedRecord(null); }}><i className="icofont-arrow-left"></i> <span>Back</span></button>
                   </div>
                   <div className="">
                     <button className="btn btn btn-secondary me-3">Save Draft</button>
@@ -766,13 +820,18 @@ const PACClearance = () => {
               <div className="mb-4">
                 <div className="row g-3 align-items-end">
                   <div className="col-md-3">
-                    <label className="form-label fw-bold">UHID/IP No.</label>
+                    <label className="form-label fw-bold">Search</label>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="UHID/IP No., Patient, Surgery or Surgeon"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSearch();
+                        }
+                      }}
                     />
                   </div>
                   <div className="col-md-2">
@@ -782,17 +841,17 @@ const PACClearance = () => {
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
                     >
-                      <option value="">All</option>
+                      <option value="All">All</option>
                       <option value="OPD">OPD</option>
                       <option value="IPD">IPD</option>
                     </select>
                   </div>
-                  <div className="col-md-2 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>
-                      Search
+                  <div className="col-md-3 d-flex gap-2">
+                    <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+                      <i className="fa fa-search me-1"></i> Search
                     </button>
-                    <button className="btn btn-secondary" onClick={handleReset}>
-                      Reset
+                    <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                      <i className="fa fa-refresh me-1"></i> Reset
                     </button>
                   </div>
                 </div>
@@ -816,34 +875,44 @@ const PACClearance = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
+                    {data.length > 0 ? (
+                      data.map((item) => (
                         <tr key={item.id}>
                           <td>{item.uhidOrIp}</td>
                           <td>{item.patientName}</td>
-                          <td>
-                            {item.type}
-                          </td>
+                          <td>{item.type}</td>
                           <td>{item.department}</td>
                           <td>{item.surgery}</td>
                           <td>{item.surgeon}</td>
-                          <td>
-                            {item.ot}
-                          </td>
+                          <td>{item.ot}</td>
                           <td>{item.scheduledDateTime}</td>
                           <td>{item.wardBed || "—"}</td>
                           <td className="text-center">
                             <div className="btnCenter">
-                              <button className="btn btn-sm btn-success" onClick={() => openClearModal(item)} title="Clear PAC">Clear PAC</button>
-                              <button className="btn btn-sm btn-primary" onClick={() => setEditPACClearance(true)}>PAC Assessment</button>
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => openClearModal(item)}
+                                title="Clear PAC"
+                              >
+                                Clear PAC
+                              </button>
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => {
+                                  setSelectedRecord(item);
+                                  setEditPACClearance(true);
+                                }}
+                              >
+                                PAC Assessment
+                              </button>
                             </div>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="10" className="text-center">
-                          No patients pending PAC clearance.
+                        <td colSpan="10" className="text-center py-4 text-muted">
+                          <i className="fa fa-info-circle me-1"></i> No patients pending PAC clearance.
                         </td>
                       </tr>
                     )}
@@ -851,12 +920,15 @@ const PACClearance = () => {
                 </table>
               </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-              />
+              {totalItems > 0 && (
+                <Pagination
+                  totalItems={totalItems}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  totalPages={totalPages}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -925,7 +997,7 @@ const PACClearance = () => {
                     <input
                       type="text"
                       className="form-control form-control-sm"
-                      value={`${CURRENT_USER} (Auto)`}
+                      value={getLoggedInUserName()}
                       readOnly
                       style={{ backgroundColor: "#e9ecef" }}
                     />
