@@ -222,7 +222,7 @@ const validRoutes = [
   "/ComponentWiseStockReport",
   "/ComponentExpiryReport",
   "/DiscardAnalysisReport",
-  "/DonorDeferralHistoryReport",
+  "/donor-deferral-history-report",
   "/UsageByWardOTReport",
   "/printBarcode",
   "/BloodBankStockAndAvailability",

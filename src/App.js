@@ -557,7 +557,7 @@ function App() {
                 <Route path="/ComponentWiseStockReport" element={<ComponentWiseStockReport/>} />
                   <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} />
                   <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
-                 <Route path="/DonorDeferralHistoryReport " element={<DonorDeferralHistoryReport/>} />
+                 <Route path="/donor-deferral-history-report" element={<DonorDeferralHistoryReport/>} />
 
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
