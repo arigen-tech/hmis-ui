@@ -846,6 +846,7 @@ export const GET_PREVIOUS_DIET_ORDER_HISTORY = '/ipd/getPreviousDietOrderHistory
 export const SAVE_DIET_ORDER_BY_INPATIENT = '/ipd/saveDietOrderByInpatient';
 export const SAVE_CURRENT_ACTIVE_DIET_SCHEDULE = '/ipd/saveCurrentActiveDietSchedule';
 export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
+export const MAS_PROCEDURES_GET_ALL_WRT_DEPARTMENT = '/master/masProcedures';
 export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`;
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
 export const IP_INVESTIGATION_REPORT_URL = `${ALL_REPORTS}/ipInvestigationReport`;
@@ -923,6 +924,14 @@ export const PATIENT_VISIT_QUEUE = "/visit/queue";
 
 export const LABORATORY_TEMPLATE_TYPE = 'L';
 export const RADIOLOGY_TEMPLATE_TYPE = 'R';
+
+export const DENTAL_PREVIOUS_DETAILS = "/opd/dental/previous-details";
+export const DENTAL_PROCEDURE_HISTORY = "/opd/dental/procedure-history";
+export const DENTAL_SESSION_HISTORY = "/opd/dental/session-history";
+
+export const BLOOD_INVENTORY_STOCK_SUMMARY_REPORT_URL = `${API_HOST}/report/bloodInventoryStockSummary`;
+export const BLOOD_INVENTORY_STOCK_DETAIL_REPORT_URL = `${API_HOST}/report/bloodInventoryStockDetail`;
+export const COMPONENT_WISE_STOCK_REPORT_URL = `${API_HOST}/report/componentWiseStockReport`;
 
 
 

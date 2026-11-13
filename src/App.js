@@ -220,8 +220,9 @@ import PendingForCrossMatch from './Views/BloodBank/PendingForCrossMatch';
 import PendingForIssue from './Views/BloodBank/PendingForIssue';
 import BloodInventoryStockReport from './Views/BloodBank/BloodInventoryReport';
 import ComponentWiseStockReport from './Views/BloodBank/ComponentWiseStockReport';
-// import ComponentExpiryReport from './Views/BloodBank/ComponentExpiryReport';
+import ComponentExpiryReport from './Views/BloodBank/ComponentExpiryReport';
 import DiscardAnalysisReport from './Views/BloodBank/DiscardAnalysisReport';
+import DonorDeferralHistoryReport from './Views/BloodBank/DonorDeferralHistoryReport';
 import UsageByWardOTReport from './Views/BloodBank/UsageByWardOTReport';
 import PrintBarcode from './Views/Laboratory/PrintBarcode';
 import BloodBankStockAndAvailability from './Views/BloodBank/BloodBankStockAndAvailability';
@@ -554,8 +555,10 @@ function App() {
                 <Route path="/PendingForIssue" element={<PendingForIssue/>} />
                 <Route path="/BloodInventoryStockReport" element={<BloodInventoryStockReport/>} />
                 <Route path="/ComponentWiseStockReport" element={<ComponentWiseStockReport/>} />
-                  {/* <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} /> */}
+                  <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} />
                   <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
+                 <Route path="/DonorDeferralHistoryReport " element={<DonorDeferralHistoryReport/>} />
+
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
                 <Route path="/BloodBankStockAndAvailability" element={<BloodBankStockAndAvailability/>} />
