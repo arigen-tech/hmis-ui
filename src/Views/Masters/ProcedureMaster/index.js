@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index"
 import { getRequest, putRequest, postRequest } from "../../../service/apiService"
-import { MAS_PROCEDURE, MAS_DEPARTMENT } from "../../../config/apiConfig"
+import { MAS_PROCEDURE, MAS_PROCEDURE_TYPE, MAS_PROCEDURES_GET_ALL } from "../../../config/apiConfig"
 import { ADD_PROCEDURE_SUCC_MSG, UPDATE_PROCEDURE_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
@@ -10,7 +10,7 @@ const ProcedureMaster = () => {
   const [formData, setFormData] = useState({
     procedureCode: "",
     procedureName: "",
-    departmentId: "",
+    procedureTypeId: "",
     opdAllowed: "",
     ipdAllowed: "",
     isNursing: "",
@@ -26,7 +26,7 @@ const ProcedureMaster = () => {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [procedureData, setProcedureData] = useState([])
-  const [departmentData, setDepartmentData] = useState([])
+  const [procedureTypeList, setProcedureTypeList] = useState([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
@@ -53,48 +53,37 @@ const ProcedureMaster = () => {
     { value: "MAJ", label: "Major" }
   ]
 
-  useEffect(() => {
-    fetchProcedureData()
-    fetchDepartmentData()
-  }, [])
-
-  useEffect(() => {
-    if (showForm) {
-      fetchDepartmentData()
+  // Fetch procedure types for dropdown
+  const fetchProcedureTypes = async () => {
+    try {
+      const data = await getRequest(`${MAS_PROCEDURE_TYPE}/getAll/0`)
+      if (data && data.status === 200 && Array.isArray(data.response)) {
+        setProcedureTypeList(data.response)
+      } else {
+        setProcedureTypeList([])
+      }
+    } catch (error) {
+      console.error("Error fetching Procedure Types:", error)
+      setProcedureTypeList([])
     }
-  }, [showForm])
+  }
 
-  // Validate form
-  useEffect(() => {
-    const { procedureCode, procedureName, departmentId, opdAllowed, ipdAllowed, isNursing, procedureLevel } = formData
-    setIsFormValid(
-      procedureCode.trim() !== "" &&
-      procedureName.trim() !== "" &&
-      departmentId !== "" &&
-      opdAllowed !== "" &&
-      ipdAllowed !== "" &&
-      isNursing !== "" &&
-      procedureLevel !== ""
-    )
-  }, [formData])
-
-  // Filter data based on search query
-  const filteredProcedureData = procedureData.filter(procedure =>
-    procedure.procedureCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedure.procedureName?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const fetchProcedureData = async () => {
+  // Fetch procedure data with server pagination & search
+  const fetchProcedureData = async (page = currentPage, search = searchQuery) => {
     setLoading(true)
     try {
-      const data = await getRequest(`${MAS_PROCEDURE}/getAll/0`)
+      const apiPage = Math.max(0, page - 1)
+      const searchParam = encodeURIComponent(search.trim())
+      const data = await getRequest(
+        `${MAS_PROCEDURES_GET_ALL}?flag=1&page=${apiPage}&size=${DEFAULT_ITEMS_PER_PAGE}&search=${searchParam}`
+      )
       
-      if (data.status === 200 && data.response) {
-        setProcedureData(data.response)
-        setTotalItems(data.response.length)
-        setTotalPages(Math.ceil(data.response.length / DEFAULT_ITEMS_PER_PAGE))
+      if (data && data.status === 200 && data.response) {
+        const content = data.response.content || []
+        setProcedureData(content)
+        setTotalItems(data.response.totalElements || 0)
+        setTotalPages(data.response.totalPages || 0)
       } else {
-        console.error("Unexpected API response format:", data)
         setProcedureData([])
         setTotalItems(0)
         setTotalPages(0)
@@ -102,31 +91,43 @@ const ProcedureMaster = () => {
     } catch (error) {
       console.error("Error fetching Procedure data:", error)
       setProcedureData([])
+      setTotalItems(0)
+      setTotalPages(0)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchDepartmentData = async () => {
-    try {
-      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`)
-      if (data.status === 200 && Array.isArray(data.response)) {
-        // Filter for OPD departments only
-        const opdDepartments = data.response.filter(dept =>
-          dept.departmentTypeName && dept.departmentTypeName.toUpperCase() === "OPD"
-        )
-        setDepartmentData(opdDepartments)
-        return opdDepartments
-      } else {
-        console.error("Unexpected API response format:", data)
-        setDepartmentData([])
-        return []
-      }
-    } catch (error) {
-      console.error("Error fetching Department data:", error)
-      return []
+  useEffect(() => {
+    fetchProcedureTypes()
+  }, [])
+
+  useEffect(() => {
+    if (showForm && procedureTypeList.length === 0) {
+      fetchProcedureTypes()
     }
-  }
+  }, [showForm, procedureTypeList.length])
+
+  // Debounced search & pagination watcher
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchProcedureData(currentPage, searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [currentPage, searchQuery])
+
+  // Validate form
+  useEffect(() => {
+    const { procedureCode, procedureName, procedureTypeId, opdAllowed, ipdAllowed, isNursing } = formData
+    setIsFormValid(
+      procedureCode.trim() !== "" &&
+      procedureName.trim() !== "" &&
+      Boolean(procedureTypeId) &&
+      opdAllowed !== "" &&
+      ipdAllowed !== "" &&
+      isNursing !== ""
+    )
+  }, [formData])
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
@@ -135,12 +136,14 @@ const ProcedureMaster = () => {
   const handleEdit = async (item) => {
     setEditingProcedure(item)
     
-    await fetchDepartmentData()
+    if (procedureTypeList.length === 0) {
+      fetchProcedureTypes()
+    }
     
     setFormData({
       procedureCode: item.procedureCode || "",
       procedureName: item.procedureName || "",
-      departmentId: item.departmentId?.toString() || "",
+      procedureTypeId: item.procedureTypeId ? String(item.procedureTypeId) : "",
       opdAllowed: item.opdAllowed || "",
       ipdAllowed: item.ipdAllowed || "",
       isNursing: item.isNursing || "",
@@ -148,6 +151,24 @@ const ProcedureMaster = () => {
     })
     
     setShowForm(true)
+
+    try {
+      const res = await getRequest(`${MAS_PROCEDURE}/getById/${item.procedureId}`)
+      const data = res?.response || res
+      if (data && typeof data === "object") {
+        setFormData({
+          procedureCode: data.procedureCode ?? item.procedureCode ?? "",
+          procedureName: data.procedureName ?? item.procedureName ?? "",
+          procedureTypeId: data.procedureTypeId ? String(data.procedureTypeId) : (item.procedureTypeId ? String(item.procedureTypeId) : ""),
+          opdAllowed: data.opdAllowed ?? item.opdAllowed ?? "",
+          ipdAllowed: data.ipdAllowed ?? item.ipdAllowed ?? "",
+          isNursing: data.isNursing ?? item.isNursing ?? "",
+          procedureLevel: data.procedureLevel ?? item.procedureLevel ?? ""
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching procedure by id:", error)
+    }
   }
 
   const handleSave = async (e) => {
@@ -159,13 +180,13 @@ const ProcedureMaster = () => {
     }
 
     const payload = {
-      procedureCode: formData.procedureCode,
-      procedureName: formData.procedureName,
-      departmentId: parseInt(formData.departmentId, 10),
+      procedureCode: formData.procedureCode.trim(),
+      procedureName: formData.procedureName.trim(),
       opdAllowed: formData.opdAllowed,
       ipdAllowed: formData.ipdAllowed,
       isNursing: formData.isNursing,
-      procedureLevel: formData.procedureLevel
+      procedureLevel: formData.procedureLevel || null,
+      procedureTypeId: Number(formData.procedureTypeId)
     }
 
     try {
@@ -175,14 +196,14 @@ const ProcedureMaster = () => {
           `${MAS_PROCEDURE}/update/${editingProcedure.procedureId}`,
           payload
         )
-        if (response.status === 200) {
+        if (response && (response.status === 200 || response.status === 201)) {
           setPopupMessage({
-            message: "Procedure updated successfully!",
+            message: UPDATE_PROCEDURE_SUCC_MSG,
             type: "success",
             onClose: () => {
               setPopupMessage(null)
               resetForm()
-              setCurrentPage(1)
+              fetchProcedureData(currentPage, searchQuery)
             }
           })
         } else {
@@ -190,14 +211,15 @@ const ProcedureMaster = () => {
         }
       } else {
         response = await postRequest(`${MAS_PROCEDURE}/create`, payload)
-        if (response.status === 201 || response.status === 200) {
+        if (response && (response.status === 201 || response.status === 200)) {
           setPopupMessage({
-            message: "Procedure added successfully!",
+            message: ADD_PROCEDURE_SUCC_MSG,
             type: "success",
             onClose: () => {
               setPopupMessage(null)
               resetForm()
               setCurrentPage(1)
+              fetchProcedureData(1, "")
             }
           })
         } else {
@@ -206,7 +228,7 @@ const ProcedureMaster = () => {
       }
     } catch (error) {
       console.error("Error saving Procedure:", error)
-      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+      showPopup(error?.response?.data?.message || FAIL_TO_SAVE_CHANGES, "error")
     } finally {
       setProcess(false)
     }
@@ -218,7 +240,7 @@ const ProcedureMaster = () => {
     setFormData({
       procedureCode: "",
       procedureName: "",
-      departmentId: "",
+      procedureTypeId: "",
       opdAllowed: "",
       ipdAllowed: "",
       isNursing: "",
@@ -259,8 +281,7 @@ const ProcedureMaster = () => {
             type: "success",
             onClose: () => {
               setPopupMessage(null)
-              fetchProcedureData()
-              setCurrentPage(1)
+              fetchProcedureData(currentPage, searchQuery)
             }
           })
         } else {
@@ -305,7 +326,8 @@ const ProcedureMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
-    fetchProcedureData()
+    fetchProcedureData(1, "")
+    fetchProcedureTypes()
   }
 
   const handleActivate = async () => {
@@ -318,11 +340,9 @@ const ProcedureMaster = () => {
 
         if (response && response.status === 200) {
           showPopup("Procedure activated successfully!", "success", () => {
-                        fetchProcedureData();
-                    })
+            fetchProcedureData(currentPage, searchQuery);
+          })
           resetForm()
-          await fetchProcedureData()
-          setCurrentPage(1)
         } else {
           throw new Error(response.message || "Failed to activate")
         }
@@ -334,11 +354,6 @@ const ProcedureMaster = () => {
       }
     }
   }
-
-  // Get current page items
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredProcedureData.slice(indexOfFirstItem, indexOfLastItem)
 
   // Format date function
   const formatDate = (dateString) => {
@@ -367,7 +382,15 @@ const ProcedureMaster = () => {
               <div className="d-flex justify-content-between align-items-center gap-2">
                 {!showForm && (
                   <>
-                    <form className="d-inline-block searchform me-2" role="search">
+                    <form
+                      className="d-inline-block searchform me-2"
+                      role="search"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        setCurrentPage(1)
+                        fetchProcedureData(1, searchQuery)
+                      }}
+                    >
                       <div className="input-group searchinput">
                         <input
                           type="search"
@@ -377,7 +400,15 @@ const ProcedureMaster = () => {
                           value={searchQuery}
                           onChange={handleSearchChange}
                         />
-                        <span className="input-group-text" id="search-icon">
+                        <span
+                          className="input-group-text"
+                          id="search-icon"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => {
+                            setCurrentPage(1)
+                            fetchProcedureData(1, searchQuery)
+                          }}
+                        >
                           <i className="fa fa-search"></i>
                         </span>
                       </div>
@@ -393,16 +424,7 @@ const ProcedureMaster = () => {
                       type="button"
                       className="btn btn-success"
                       onClick={() => {
-                        setEditingProcedure(null)
-                        setFormData({
-                          procedureCode: "",
-                          procedureName: "",
-                          departmentId: "",
-                          opdAllowed: "",
-                          ipdAllowed: "",
-                          isNursing: "",
-                          procedureLevel: ""
-                        })
+                        resetForm()
                         setShowForm(true)
                       }}
                     >
@@ -421,7 +443,7 @@ const ProcedureMaster = () => {
                         <tr>
                           <th>Procedure Code</th>
                           <th>Procedure Name</th>
-                          <th>Department</th>
+                          <th>Procedure Type</th>
                           <th>OPD Allowed</th>
                           <th>IPD Allowed</th>
                           <th>Is Nursing</th>
@@ -431,8 +453,8 @@ const ProcedureMaster = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => {
+                        {procedureData.length > 0 ? (
+                          procedureData.map((item) => {
                             const levelLabel = procedureLevelOptions.find(
                               opt => opt.value === item.procedureLevel
                             )?.label || item.procedureLevel || "-"
@@ -445,7 +467,7 @@ const ProcedureMaster = () => {
                               <tr key={item.procedureId}>
                                 <td>{item.procedureCode || '-'}</td>
                                 <td style={{ textTransform: "capitalize" }}>{item.procedureName || '-'}</td>
-                                <td>{item.departmentName || '-'}</td>
+                                <td>{item.procedureTypeName || '-'}</td>
                                 <td>{opdLabel}</td>
                                 <td>{ipdLabel}</td>
                                 <td>{nursingLabel}</td>
@@ -492,9 +514,9 @@ const ProcedureMaster = () => {
                     </table>
                   </div>
 
-                  {filteredProcedureData.length > 0 && (
+                  {totalItems > 0 && (
                     <Pagination
-                      totalItems={filteredProcedureData.length}
+                      totalItems={totalItems}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={handlePageChange}
@@ -544,20 +566,21 @@ const ProcedureMaster = () => {
                       </div>
                       <div className="form-group col-md-4 mt-3">
                         <label>
-                          Department <span className="text-danger">*</span>
+                          Procedure Type <span className="text-danger">*</span>
                         </label>
                         <select
                           className="form-select"
-                          id="departmentId"
+                          id="procedureTypeId"
+                          name="procedureTypeId"
                           onChange={handleSelectChange}
-                          value={formData.departmentId}
+                          value={formData.procedureTypeId}
                           required
                           disabled={process}
                         >
-                          <option value="">Select Department</option>
-                          {departmentData.map((department) => (
-                            <option key={department.id} value={department.id}>
-                              {department.departmentName}
+                          <option value="">Select Procedure Type</option>
+                          {procedureTypeList.map((type) => (
+                            <option key={type.procedureTypeId} value={type.procedureTypeId}>
+                              {type.procedureTypeName}
                             </option>
                           ))}
                         </select>
@@ -624,14 +647,14 @@ const ProcedureMaster = () => {
                       </div>
                       <div className="form-group col-md-4 mt-3">
                         <label>
-                          Procedure Level <span className="text-danger">*</span>
+                          Procedure Level
                         </label>
                         <select
                           className="form-select"
                           id="procedureLevel"
+                          name="procedureLevel"
                           onChange={handleSelectChange}
                           value={formData.procedureLevel}
-                          required
                           disabled={process}
                         >
                           <option value="">Select Procedure Level</option>

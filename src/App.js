@@ -206,6 +206,7 @@ import PendingComponentGeneration from './Views/BloodBank/PendingComponentGenera
 import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
 import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
 import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
+import LaboratoryTemplateMaster from './Views/Laboratory/LaboratoryTemplateMaster';
 import PendignListRadiologyReport from './Views/Radiology/PendingListRadiologyReport';
 import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 import BloodFailureReasonMaster from './Views/Masters/BloodFailureReasonMaster';
@@ -219,8 +220,9 @@ import PendingForCrossMatch from './Views/BloodBank/PendingForCrossMatch';
 import PendingForIssue from './Views/BloodBank/PendingForIssue';
 import BloodInventoryStockReport from './Views/BloodBank/BloodInventoryReport';
 import ComponentWiseStockReport from './Views/BloodBank/ComponentWiseStockReport';
-// import ComponentExpiryReport from './Views/BloodBank/ComponentExpiryReport';
+import ComponentExpiryReport from './Views/BloodBank/ComponentExpiryReport';
 import DiscardAnalysisReport from './Views/BloodBank/DiscardAnalysisReport';
+import DonorDeferralHistoryReport from './Views/BloodBank/DonorDeferralHistoryReport';
 import UsageByWardOTReport from './Views/BloodBank/UsageByWardOTReport';
 import PrintBarcode from './Views/Laboratory/PrintBarcode';
 import BloodBankStockAndAvailability from './Views/BloodBank/BloodBankStockAndAvailability';
@@ -290,11 +292,12 @@ import PendingOTReview from './Views/OperationTheatre/PendingOTReview';
 import OTBookingHistory from './Views/OperationTheatre/OTBookingHistory';
 import OTPatientReceiptPending from './Views/OperationTheatre/OTPatientReceiptPending';
 import OTBookingStatusMaster from './Views/Masters/OTBookingStatusMaster';
-// import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
+import OTPreOperativeChecklist from './Views/OperationTheatre/OTPreOperativeChecklist';
 import NISRegister from './Views/Dispensary/NISRegister';
 import PACClearance from './Views/OperationTheatre/PACClearance';
+import OpdPatientQueue from './Views/OPD/OpdPatientQueue';
 // import TemplateResultEditor from './Views/Laboratory/TemplateResultEditor';
-// import OTSurgeryExecution from './Views/OperationTheatre/OTSurgeryExecution';
+import OTSurgeryExecution from './Views/OperationTheatre/OTSurgeryExecution';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -537,6 +540,8 @@ function App() {
                 <Route path="/BloodUnitStatus" element={<BloodUnitStatus />}/>
                 <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
                 <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
+                <Route path="/LaboratoryTemplateMaster" element={<LaboratoryTemplateMaster/>} />
+
                 <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
                 <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
                 <Route path='/BloodFailureReasonMaster' element={<BloodFailureReasonMaster/>}/>
@@ -550,8 +555,10 @@ function App() {
                 <Route path="/PendingForIssue" element={<PendingForIssue/>} />
                 <Route path="/BloodInventoryStockReport" element={<BloodInventoryStockReport/>} />
                 <Route path="/ComponentWiseStockReport" element={<ComponentWiseStockReport/>} />
-                  {/* <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} /> */}
+                  <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} />
                   <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
+                 <Route path="/donor-deferral-history-report" element={<DonorDeferralHistoryReport/>} />
+
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
                 <Route path="/BloodBankStockAndAvailability" element={<BloodBankStockAndAvailability/>} />
@@ -617,11 +624,11 @@ function App() {
                 <Route path="/OTBookingHistory" element={<OTBookingHistory/>} />
                 <Route path="/OTBookingStatusMaster" element={<OTBookingStatusMaster/>} />
                 <Route path="/OTPatientReceiptPending" element={<OTPatientReceiptPending/>} />
-                {/* <Route path="/OTPreOperativeChecklist" element={<OTPreOperativeChecklist/>} /> */}
+                <Route path="/OTPreOperativeChecklist" element={<OTPreOperativeChecklist/>} />
                 <Route path="/NISRegister" element={<NISRegister/>} />
-                {/* <Route path="/OTSurgeryExecution" element={<OTSurgeryExecution/>} /> */}
+                <Route path="/OTSurgeryExecution" element={<OTSurgeryExecution/>} />
                 <Route path="/PACClearance" element={<PACClearance/>} />
-
+                <Route path="/opd-patient-queue" element={<OpdPatientQueue />} />
                 
                 </Route>
             </Route>

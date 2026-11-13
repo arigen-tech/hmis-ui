@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading";
 import Popup from "../../../Components/popup";
 import Pagination from "../../../Components/Pagination";
 import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 import {
-  ALL_REPORTS,
   GET_OPD_REPORTS_LIST,
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
+  REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  FILTER_OPD_DEPT,
   OPD_CASE_SHEET_REPORT,
   OPD_PRESCRIPTION_SLIP_REPORT,
   NIS_MEDICINE_REPORT_URL,
@@ -26,10 +28,15 @@ const OPDReports = () => {
   const [pdfTitle, setPdfTitle] = useState("");
   const [pdfFileName, setPdfFileName] = useState("");
 
+  // Specialty (Department) state
+  const [specialtyList, setSpecialtyList] = useState([]);
+  const [isSpecialtyLoading, setIsSpecialtyLoading] = useState(false);
+
   // Search state
   const [searchData, setSearchData] = useState({
     mobileNo: "",
     patientName: "",
+    departmentId: "",
   });
 
   // Pagination state
@@ -44,6 +51,36 @@ const OPDReports = () => {
 
   const itemsPerPage = 5;
 
+  // Helper to get hospitalId from session/local storage
+  const getHospitalId = () => {
+    return (
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId") ||
+      "12"
+    );
+  };
+
+  // ============= FETCH SPECIALTY / DEPARTMENT LIST =============
+  const fetchSpecialties = useCallback(async () => {
+    try {
+      setIsSpecialtyLoading(true);
+      const res = await getRequest(
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`
+      );
+
+      if (res?.response && Array.isArray(res.response)) {
+        setSpecialtyList(res.response);
+      } else {
+        setSpecialtyList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching department dropdown list:", error);
+      setSpecialtyList([]);
+    } finally {
+      setIsSpecialtyLoading(false);
+    }
+  }, []);
+
   // ============= API FETCH FUNCTIONS =============
   const fetchOPDPatients = useCallback(
     async (page = currentPage, showTableLoader = true, searchParams = null) => {
@@ -53,21 +90,29 @@ const OPDReports = () => {
         }
 
         const backendPage = page - 1;
+        const hospitalId = getHospitalId();
 
         let url = `${GET_OPD_REPORTS_LIST}?page=${backendPage}&size=${itemsPerPage}`;
+        if (hospitalId) {
+          url += `&hospitalId=${encodeURIComponent(hospitalId)}`;
+        }
 
         // Use provided searchParams or fallback to state
         const mobileNo = searchParams?.mobileNo ?? searchData.mobileNo;
         const patientName = searchParams?.patientName ?? searchData.patientName;
+        const departmentId = searchParams?.departmentId ?? searchData.departmentId;
         const shouldSearch = searchParams?.isSearchMode ?? isSearchMode;
 
         // Add search params if in search mode
-        if (shouldSearch && (mobileNo || patientName)) {
+        if (shouldSearch && (mobileNo || patientName || departmentId)) {
           if (mobileNo) {
             url += `&mobileNo=${encodeURIComponent(mobileNo)}`;
           }
           if (patientName) {
             url += `&patientName=${encodeURIComponent(patientName)}`;
+          }
+          if (departmentId) {
+            url += `&departmentId=${encodeURIComponent(departmentId)}`;
           }
         }
 
@@ -98,12 +143,14 @@ const OPDReports = () => {
         setIsResetting(false);
       }
     },
-    [currentPage, isSearchMode, searchData.mobileNo, searchData.patientName],
+    [currentPage, isSearchMode, searchData.mobileNo, searchData.patientName, searchData.departmentId],
   );
 
   // ============= INITIAL LOAD =============
   useEffect(() => {
-    fetchOPDPatients(currentPage, true);
+    fetchSpecialties();
+    fetchOPDPatients(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // ============= HANDLE PAGE CHANGE =============
@@ -118,8 +165,30 @@ const OPDReports = () => {
     setSearchData((prev) => ({ ...prev, [id]: value }));
   };
 
+  const handleSpecialtyChange = (e) => {
+    const value = e.target.value;
+    setSearchData((prev) => ({ ...prev, departmentId: value }));
+    setCurrentPage(1);
+
+    const hasFilters = Boolean(
+      searchData.mobileNo || searchData.patientName || value,
+    );
+    setIsSearchMode(hasFilters);
+
+    fetchOPDPatients(1, true, {
+      mobileNo: searchData.mobileNo,
+      patientName: searchData.patientName,
+      departmentId: value,
+      isSearchMode: hasFilters,
+    });
+  };
+
   const handleSearch = () => {
-    if (!searchData.mobileNo && !searchData.patientName) {
+    if (
+      !searchData.mobileNo &&
+      !searchData.patientName &&
+      !searchData.departmentId
+    ) {
       showPopup("Please enter at least one search criteria", "info");
       return;
     }
@@ -130,6 +199,7 @@ const OPDReports = () => {
     fetchOPDPatients(1, true, {
       mobileNo: searchData.mobileNo,
       patientName: searchData.patientName,
+      departmentId: searchData.departmentId,
       isSearchMode: true,
     });
   };
@@ -140,6 +210,7 @@ const OPDReports = () => {
     const emptySearchData = {
       mobileNo: "",
       patientName: "",
+      departmentId: "",
     };
     setSearchData(emptySearchData);
     setIsSearchMode(false);
@@ -148,6 +219,7 @@ const OPDReports = () => {
     fetchOPDPatients(1, true, {
       mobileNo: "",
       patientName: "",
+      departmentId: "",
       isSearchMode: false,
     });
   };
@@ -254,7 +326,7 @@ const OPDReports = () => {
 
     try {
       setDownloadingNISVisitId(visitId);
-      const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
+      const hospitalId = getHospitalId();
       const reportUrl = `${NIS_MEDICINE_REPORT_URL}?hospitalId=${hospitalId}&visitId=${visitId}`;
       const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
@@ -326,8 +398,8 @@ const OPDReports = () => {
                   {/* Search Section */}
                   <div className="mb-4">
                     <div className="card-body">
-                      <div className="row g-4 align-items-end">
-                        <div className="col-md-5">
+                      <div className="row g-3 align-items-end">
+                        <div className="col-md-3">
                           <label className="form-label fw-semibold">
                             Patient Mobile No.
                           </label>
@@ -346,7 +418,7 @@ const OPDReports = () => {
                             disabled={isSearching || isResetting}
                           />
                         </div>
-                        <div className="col-md-5">
+                        <div className="col-md-4">
                           <label className="form-label fw-semibold">
                             Patient Name
                           </label>
@@ -364,6 +436,37 @@ const OPDReports = () => {
                             }}
                             disabled={isSearching || isResetting}
                           />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">
+                            Specialty
+                          </label>
+                          <select
+                            className="form-select"
+                            id="departmentId"
+                            value={searchData.departmentId}
+                            onChange={handleSpecialtyChange}
+                            disabled={
+                              isSearching || isResetting || isSpecialtyLoading
+                            }
+                          >
+                            <option value="">
+                              {isSpecialtyLoading
+                                ? "Loading specialties..."
+                                : "All Specialties"}
+                            </option>
+                            {specialtyList.map((dept) => {
+                              const deptId = dept.id ?? dept.departmentId;
+                              return (
+                                <option
+                                  key={deptId}
+                                  value={deptId}
+                                >
+                                  {dept.departmentName}
+                                </option>
+                              );
+                            })}
+                          </select>
                         </div>
                         <div className="col-md-2">
                           <div className="d-flex gap-2">

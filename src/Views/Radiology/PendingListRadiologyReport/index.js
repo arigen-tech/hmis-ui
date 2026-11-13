@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest } from "../../../service/apiService";
 import { GET_MODALITY_DROPDOWN_WRT_DEPARTMENT, REQUEST_PARAM_CODE, RADIOLOGY_DEPARTMENT_CODE } from "../../../config/apiConfig";
-import { FETCH_PENDING_LIST_ERR_MSG, FETCH_RADIOLOGY_TEMPLATE_ERR_MSG } from "../../../config/constants";
+import { FETCH_PENDING_LIST_ERR_MSG, FETCH_PACS_TEMPLATE_ERR_MSG } from "../../../config/constants";
 
 const PendingListRadiologyReport = () => {
   const navigate = useNavigate();
@@ -211,7 +211,7 @@ const PendingListRadiologyReport = () => {
       });
     } catch (error) {
       console.error("Error navigating to detailed report:", error);
-      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+      showPopup(FETCH_PACS_TEMPLATE_ERR_MSG, "error");
     }
   };
 

@@ -1136,11 +1136,11 @@ export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do
 export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) => `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;
 export const INDENT_ID_NOT_FOUND = "Indent ID not found";
 
-//Radiology template master
-export const FETCH_RADIOLOGY_TEMPLATE_ERR_MSG = "Failed to fetch radiology template data";
-export const ADD_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template added successfully!";
-export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated successfully!";
-export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
+//PACS template master
+export const FETCH_PACS_TEMPLATE_ERR_MSG = "Failed to fetch template data";
+export const ADD_PACS_TEMPLATE_SUCC_MSG = "PACS template added successfully!";
+export const UPDATE_PACS_TEMPLATE_SUCC_MSG = "PACS template updated successfully!";
+export const DUPLICATE_PACS_TEMPLATE = "A template with this code or name already exists";
 export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
 
 //Blood Test Master
@@ -1508,6 +1508,7 @@ export const UPDATE_STATUS_OT_TEAM_ROLE = "Role status updated successfully!";
 export const FAIL_OT_TEAM_ROLE = "Failed to save OT Team Role. Please try again.";
 export const DUPLICATE_OT_TEAM_ROLE = "A role with the same code or name already exists.";
 export const UPDATE_FAIL_OT_TEAM_ROLE = "Failed to update role status. Please try again.";
+export const FETCH_USERS_BY_USER_TYPE_ERR = "Failed to fetch users for the selected role. Please try again.";
 
 
 export const FETCH_OT_BOOKING_STATUS = "Failed to fetch OT Booking Status data. Please try again.";
@@ -1518,6 +1519,7 @@ export const UPDATE_STATUS_OT_BOOKING_STATUS = "Booking status updated successfu
 export const FAIL_OT_BOOKING_STATUS = "Failed to save OT Booking Status. Please try again.";
 export const DUPLICATE_OT_BOOKING_STATUS = "A booking status with the same code already exists.";
 export const UPDATE_FAIL_OT_BOOKING_STATUS = "Failed to update booking status. Please try again.";
+export const FETCH_OT_BOOKING_HISTORY = "Failed to fetch OT booking history. Please try again.";
 
 // Item Type Codes
 export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";

@@ -79,11 +79,9 @@ const PregnancySection = forwardRef((props, ref) => {
   };
 
   return (
-    <div className="container-fluid mt-3">
-      <div className="card-body">
-        <div className="row align-items-end">
-          <div className="col-md-2 mb-3">
-            <div className="form-check mt-2">
+  <div className="row align-items-end">
+          {/* <div className="col-md-2 mb-3">
+            <div className="form-check mb-2">
               <input
                 className="form-check-input"
                 type="checkbox"
@@ -93,14 +91,9 @@ const PregnancySection = forwardRef((props, ref) => {
                 id="pregnantCheck"
                 disabled={readOnly}
               />
-              <label
-                className="form-check-label fw-bold"
-                htmlFor="pregnantCheck"
-              >
-                Pregnant
-              </label>
+              <label className="form-check-label fw-bold" htmlFor="pregnantCheck">Pregnant</label>
             </div>
-          </div>
+          </div> */}
 
           <div className="col-md-2 mb-3">
             <label className="form-label fw-bold">LMP Date</label>
@@ -110,7 +103,7 @@ const PregnancySection = forwardRef((props, ref) => {
               name="lmpDate"
               value={pregnancyData.lmpDate}
               onChange={handleChange}
-              disabled={readOnly || !pregnancyData.pregnant}
+              // disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
@@ -122,7 +115,7 @@ const PregnancySection = forwardRef((props, ref) => {
               name="edd"
               value={pregnancyData.edd}
               onChange={handleChange}
-              disabled={readOnly || !pregnancyData.pregnant}
+              // disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
@@ -134,11 +127,11 @@ const PregnancySection = forwardRef((props, ref) => {
               name="currentEdd"
               value={pregnancyData.currentEdd}
               onChange={handleChange}
-              disabled={readOnly || !pregnancyData.pregnant}
+              // disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
-          <div className="col-md-4 mb-3">
+          <div className="col-md-6 mb-3">
             <label className="form-label fw-bold">
               Period of Gestation for Today
             </label>
@@ -149,15 +142,13 @@ const PregnancySection = forwardRef((props, ref) => {
               value={pregnancyData.gestationPeriod}
               onChange={handleChange}
               placeholder="Weeks / Days"
-              disabled={readOnly || !pregnancyData.pregnant}
+              // disabled={readOnly || !pregnancyData.pregnant}
               style={{
                 boxShadow: "none",
               }}
             />
           </div>
-        </div>
-      </div>
-    </div>
+  </div>
   );
 });
 

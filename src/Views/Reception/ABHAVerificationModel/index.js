@@ -118,15 +118,16 @@ const ABHAVerificationModal = ({
       return "Enter a valid 14-digit ABHA number.";
     }
 
+    // UPDATED REGEX HERE
     if (
       methodId === "1003" &&
-      !/^[a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*$/.test(trimmedValue)
+      !/^[a-zA-Z0-9._]+@[a-zA-Z0-9]+$/.test(trimmedValue)
     ) {
-      return "Enter a valid ABHA ID / Address. Spaces are not allowed.";
+      return "Enter a valid ABHA ID / Address (e.g., username@abdm).";
     }
 
     return "";
-  };
+};
 
   const getMethodLabel = (methodId) => {
     const map = {
@@ -429,6 +430,12 @@ const ABHAVerificationModal = ({
         throw new Error(response?.message || "Invalid OTP. Please try again.");
       }
 
+      // Preserve the mobile number used to find this ABHA (only when the
+      // authentication type is Mobile Number) so the registration page can
+      // autofill the patient's mobile number with it.
+      const loginMobile =
+        selectedAuthMethod === "1002" ? inputValue.replace(/\D/g, "") : "";
+
       // Fetch ABHA profile
       const xtokenFromResponse =
         response?.response?.xtoken || response?.response?.token || "";
@@ -474,6 +481,7 @@ const ABHAVerificationModal = ({
           gender: profile.gender || "",
           genderId: findGenderId(profile.gender),
           mobileNumber: profile.mobile || profile.mobileNumber || "",
+          loginMobile: loginMobile,
           dateOfBirth:
             profile.dayOfBirth || profile.dateOfBirth || profile.dob || "",
           address: profile.address || "",
@@ -509,6 +517,7 @@ const ABHAVerificationModal = ({
           gender: selectedProfile.gender || "",
           genderId: findGenderId(selectedProfile.gender),
           mobileNumber: patientData?.mobileNo || "",
+          loginMobile: loginMobile,
           dateOfBirth: "",
           address: "",
           stateName: "",
@@ -670,6 +679,7 @@ const ABHAVerificationModal = ({
       abhaAddress: abhaProfile.abhaAddress,
       consentName: abhaProfile.name,
       mobileNumber: abhaProfile.mobileNumber,
+      loginMobile: abhaProfile.loginMobile || "",
       gender: abhaProfile.gender,
       genderId: abhaProfile.genderId,
       dateOfBirth: abhaProfile.dateOfBirth,
