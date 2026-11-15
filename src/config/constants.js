@@ -1592,3 +1592,8 @@ export const CROSS_MATCH_SEARCH_RESULT_OPTIONS = [
 
 export const CROSS_MATCH_SEARCH_OPTIONS = CROSS_MATCH_SEARCH_RESULT_OPTIONS;
 
+// -------------------- PAC Assessment --------------------
+export const SAVE_PAC_ASSESSMENT_SUCCESS = "PAC Assessment saved successfully!";
+export const SAVE_PAC_DRAFT_SUCCESS = "PAC Assessment draft saved successfully!";
+export const SAVE_PAC_ASSESSMENT_ERROR = "Failed to save PAC Assessment. Please try again.";
+
