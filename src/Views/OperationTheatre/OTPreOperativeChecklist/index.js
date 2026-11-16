@@ -49,6 +49,8 @@ const OTPreOperativeChecklist = () => {
   const [remarks, setRemarks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const [fillChecklist, setFillChecklist] = useState(false);
+
   // ----- Dummy data (OT Pre-Operative Checklist - Patient List) -----
   const dummyData = [
 
@@ -143,11 +145,13 @@ const OTPreOperativeChecklist = () => {
     });
     setChecklistAnswers(defaultAnswers);
     setRemarks("");
-    setShowChecklistModal(true);
+    // setShowChecklistModal(true);
+    setFillChecklist(true)
   };
 
   const closeChecklistModal = () => {
-    setShowChecklistModal(false);
+    // setShowChecklistModal(false);
+    setFillChecklist(false)
     setSelectedRecord(null);
     setChecklistAnswers({});
     setRemarks("");
@@ -174,7 +178,7 @@ const OTPreOperativeChecklist = () => {
       );
       setData(updatedData);
       setIsProcessing(false);
-      closeChecklistModal();
+      // closeChecklistModal();
       showPopup("Pre-Operative Checklist saved successfully!", "success");
     }, 500);
   };
@@ -192,237 +196,97 @@ const OTPreOperativeChecklist = () => {
   };
 
   // ============================================================
-  // RENDER: MAIN LIST VIEW
+  // OT PRE-OPERATIVE CHECKLIST MODAL (with fixed positioning to avoid sidebar)
   // ============================================================
-  return (
-    <div className="content-wrapper">
-      {loading && <LoadingScreen />}
-      <div className="row">
-        <div className="col-12 grid-margin stretch-card">
+  if (fillChecklist) {
+    return (
+      <>
+        <div className="content-wrapper">
           <div className="card form-card">
+
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">OT Pre-Operative Checklist</h4>
-            </div>
-            <div className="card-body">
-              {/* Search / Filter Section */}
-              <div className="mb-4">
-                <div className="row g-3 align-items-end">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Search</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="UHID/IP No., Patient, Surgery or Surgeon"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-2">
-                    <label className="form-label fw-bold">Checklist Status</label>
-                    <select
-                      className="form-select"
-                      value={checklistStatusFilter}
-                      onChange={(e) => setChecklistStatusFilter(e.target.value)}
-                    >
-                      <option value="">All</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </div>
-                  <div className="col-md-2 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>
-                      Search
-                    </button>
-                    <button className="btn btn-secondary" onClick={handleReset}>
-                      Reset
-                    </button>
-                  </div>
-                </div>
+              <div className="d-flex align-items-center gap-1">
+                <button className="btn-back" title="Back to PAC Pending List" onClick={closeChecklistModal}><i className="icofont-arrow-left"></i></button>
+                <h4 className="card-title p-2 mb-0">OT Pre-Operative Checklist</h4>
               </div>
+            </div>
 
-              {/* Table */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>UHID / IP No.</th>
-                      <th>Patient Name</th>
-                      <th>Department</th>
-                      <th>Surgery</th>
-                      <th>Surgeon</th>
-                      <th className="text-center">OT</th>
-                      <th>Scheduled Time</th>
-                      <th>Received Time</th>
-                      <th className="text-center">Checklist</th>
-                      <th className="text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.uhidOrIp}</td>
-                          <td>{item.patientName}</td>
-                          <td>{item.department}</td>
-                          <td>{item.surgery}</td>
-                          <td>{item.surgeon}</td>
-                          <td className="text-center">
-                            <span className="badge bg-info">{item.ot}</span>
-                          </td>
-                          <td>{item.scheduledTime}</td>
-                          <td>{item.receivedTime}</td>
-                          <td className="text-center">
-                            <span
-                              className={`badge ${item.checklistStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
-                                }`}
-                            >
-                              {item.checklistStatus}
-                            </span>
-                          </td>
-                          <td className="text-center">
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => openChecklistModal(item)}
-                              title="Open Pre-Operative Checklist"
-                            >
-                              <i className="fa fa-clipboard-list me-1"></i>
-                              {item.checklistStatus === "Completed" ? "View Checklist" : "Fill Checklist"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
+            <div className="card-body" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+              <div className="">
+                {/* Patient / Booking Details */}
+                <h6 className="fw-bold text-primary mb-2">Patient / Booking Details</h6>
+
+                <section className="patient-card">
+                  <div className="patient-header">
+                    <h4>{selectedRecord.patientName}</h4>
+                    <p>UHID / IP No: <strong> {selectedRecord.uhidOrIp}</strong></p>
+                  </div>
+
+                  <div className="details-grid grid-col-3">
+                    <div className="detail-item">
+                      <span className="detail-label">Age / Gender</span>
+                      <span className="detail-value">{selectedRecord.ageGender}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Department</span>
+                      <span className="detail-value">{selectedRecord.department}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Ward / Bed</span>
+                      <span className="detail-value">{selectedRecord.wardBed}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Operation Theatre</span>
+                      <span className="detail-value">{selectedRecord.ot}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Surgeon</span>
+                      <span className="detail-value">{selectedRecord.surgeon}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Scheduled</span>
+                      <span className="detail-value" style={{ color: "#059669" }}>{selectedRecord.scheduledTime}</span>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="surgery-list mb-3">
+                  <h5 className="fw-semibold">Planned Surgeries:</h5>
+                  <ol>
+                    {selectedRecord.plannedSurgeries.map((surgery, idx) => (
+                      <li key={idx}>
+                        <span className="surgery-number">{idx + 1}</span>
+                        <span className="surgery-name">{surgery}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* Pre-Operative Verification */}
+                <h6 className="fw-bold text-primary mb-2">Pre-Operative Verification</h6>
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered align-middle">
+                    <thead className="table-light">
                       <tr>
-                        <td colSpan="10" className="text-center">
-                          No patients found.
-                        </td>
+                        <th>Checklist Item</th>
+                        <th className="text-center" style={{ width: "160px" }}>Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== OT PRE-OPERATIVE CHECKLIST MODAL (with fixed positioning to avoid sidebar) ===== */}
-      {showChecklistModal && selectedRecord && (
-        <>
-          {/* Backdrop overlay */}
-          {/* <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1040
-            }}
-            onClick={closeChecklistModal}
-          /> */}
-
-          {/* Modal container */}
-          <div className="modal show d-block popupModal" tabIndex={-1} role="dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h4 className="modal-title fw-semibold">OT Pre-Operative Checklist</h4>
-                  <button
-                    type="button"
-                    title="Close"
-                    className="btn-close"
-                    onClick={closeChecklistModal}
-                    disabled={isProcessing}
-                  ></button>
-                </div>
-
-                <div className="modal-body" style={{ maxHeight: "75vh", overflowY: "auto" }}>
-                  {/* Patient / Booking Details */}
-                  <h6 className="fw-bold text-primary mb-2">Patient / Booking Details</h6>
-
-                   <section className="patient-card">
-
-                    <div className="patient-header">
-                        <h4>{selectedRecord.patientName}</h4>
-                        <p>UHID / IP No: <strong> {selectedRecord.uhidOrIp}</strong></p>
-                    </div>
-
-                    <div className="details-grid">
-
-                      <div className="detail-item">
-                        <span className="detail-label">Age / Gender</span>
-                        <span className="detail-value">{selectedRecord.ageGender}</span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Department</span>
-                        <span className="detail-value">{selectedRecord.department}</span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Ward / Bed</span>
-                        <span className="detail-value">{selectedRecord.wardBed}</span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Operation Theatre</span>
-                        <span className="detail-value">{selectedRecord.ot}</span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Surgeon</span>
-                        <span className="detail-value">{selectedRecord.surgeon}</span>
-                      </div>
-
-                      <div className="detail-item">
-                        <span className="detail-label">Scheduled</span>
-                        <span className="detail-value" style={{color:"#059669"}}>{selectedRecord.scheduledTime}</span>
-                      </div>
-                    </div>
-                  </section>
-
-
-                  <div className="surgery-list mb-3">
-                    <h5 className="fw-semibold">Planned Surgeries:</h5>
-                    <ol>
-                      {selectedRecord.plannedSurgeries.map((surgery, idx) => (
-                        <li key={idx}>
-                        <span class="surgery-number">{idx + 1}</span> 
-                        <span class="surgery-name">{surgery}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-
-                  {/* Pre-Operative Verification */}
-                  <h6 className="fw-bold text-primary mb-2">Pre-Operative Verification</h6>
-                  <div className="table-responsive">
-                    <table className="table table-sm table-bordered align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Checklist Item</th>
-                          <th className="text-center" style={{ width: "160px" }}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {CHECKLIST_ITEMS.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              {item.label}
-                              {item.required && <span className="text-danger"> *</span>}
-                            </td>
-                            <td>
-                              <div className="btnCenter">
-                                <select
+                    </thead>
+                    <tbody>
+                      {CHECKLIST_ITEMS.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            {item.label}
+                            {item.required && <span className="text-danger"> *</span>}
+                          </td>
+                          <td>
+                            <div className="btnCenter">
+                              <select
                                 className="form-select form-select-sm smSelect"
                                 value={checklistAnswers[item.id] || ""}
                                 onChange={(e) => handleChecklistAnswerChange(item.id, e.target.value)}
@@ -432,17 +296,17 @@ const OTPreOperativeChecklist = () => {
                                 <option value="No">No</option>
                                 {item.hasNA && <option value="N/A">N/A</option>}
                               </select>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                 
-                  {/* Remarks + Auto fields */}
-                  <div className="mb-3">
+                <div className="row">
+                  <div className="col-md-4 mb-2">
+                    {/* Remarks + Auto fields */}
                     <label className="form-label fw-bold">Remarks</label>
                     <textarea
                       className="form-control"
@@ -451,47 +315,35 @@ const OTPreOperativeChecklist = () => {
                       onChange={(e) => setRemarks(e.target.value)}
                       placeholder="Optional remarks..."
                       disabled={isProcessing}
-                      style={{height: "60px"}}
+                      style={{ height: "60px" }}
                     />
                   </div>
-
-                  <div className="row">
-                    <div className="col-md-6 mb-2">
-                      <label className="form-label fw-bold small mb-1">Verified By</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={`${CURRENT_NURSE}`}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-md-6 mb-2">
-                      <label className="form-label fw-bold small mb-1">Date / Time</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={`${getCurrentDateTimeLabel()} `}
-                        readOnly
-                      />
-                    </div>
+                  <div className="col-md-4 mb-2">
+                    <label className="form-label fw-bold small mb-1">Verified By</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      value={`${CURRENT_NURSE}`}
+                      readOnly
+                    />
+                  </div>
+                  <div className="col-md-4 mb-2">
+                    <label className="form-label fw-bold small mb-1">Date / Time</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      value={`${getCurrentDateTimeLabel()} `}
+                      readOnly />
                   </div>
                 </div>
+              </div>
 
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeChecklistModal}
-                    disabled={isProcessing}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleSaveChecklist}
-                    disabled={isProcessing}
-                  >
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <div className="">
+                  <button className="btn btnOutline" onClick={closeChecklistModal}><i className="icofont-arrow-left"></i> <span>Back</span></button>
+                </div>
+                <div className="">
+                  <button type="button" className="btn btn-primary" onClick={handleSaveChecklist} disabled={isProcessing}>
                     {isProcessing ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" />
@@ -503,15 +355,141 @@ const OTPreOperativeChecklist = () => {
                   </button>
                 </div>
               </div>
+
             </div>
           </div>
-        </>
-      )}
+        </div>
 
-      {popupMessage && (
+        {popupMessage && (
         <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
       )}
-    </div>
+      </>
+    )
+  }
+
+  // ============================================================
+  // RENDER: MAIN LIST VIEW
+  // ============================================================
+  return (
+    <>
+      <div className="content-wrapper">
+        {loading && <LoadingScreen />}
+        <div className="row">
+          <div className="col-12 grid-margin stretch-card">
+            <div className="card form-card">
+              <div className="card-header">
+                <h4 className="card-title p-2 mb-0 ps-0">OT Pre-Operative Checklist</h4>
+              </div>
+              <div className="card-body">
+                {/* Search / Filter Section */}
+                <div className="mb-4">
+                  <div className="row g-3 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Search</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="UHID/IP No., Patient, Surgery or Surgeon"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <label className="form-label fw-bold">Checklist Status</label>
+                      <select
+                        className="form-select"
+                        value={checklistStatusFilter}
+                        onChange={(e) => setChecklistStatusFilter(e.target.value)}
+                      >
+                        <option value="">All</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </div>
+                    <div className="col-md-2 d-flex gap-2">
+                      <button className="btn btn-primary" onClick={handleSearch}>
+                        Search
+                      </button>
+                      <button className="btn btn-secondary" onClick={handleReset}>
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="table-responsive">
+                  <table className="table table-bordered table-hover align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>UHID / IP No.</th>
+                        <th>Patient Name</th>
+                        <th>Department</th>
+                        <th>Surgery</th>
+                        <th>Surgeon</th>
+                        <th className="text-center">OT</th>
+                        <th>Scheduled Time</th>
+                        <th>Received Time</th>
+                        <th className="text-center">Checklist</th>
+                        <th className="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.length > 0 ? (
+                        currentItems.map((item) => (
+                          <tr key={item.id}>
+                            <td>{item.uhidOrIp}</td>
+                            <td>{item.patientName}</td>
+                            <td>{item.department}</td>
+                            <td>{item.surgery}</td>
+                            <td>{item.surgeon}</td>
+                            <td className="text-center">
+                              <span className="badge bg-info">{item.ot}</span>
+                            </td>
+                            <td>{item.scheduledTime}</td>
+                            <td>{item.receivedTime}</td>
+                            <td className="text-center">
+                              <span
+                                className={`badge ${item.checklistStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
+                                  }`}
+                              >
+                                {item.checklistStatus}
+                              </span>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => openChecklistModal(item)}
+                                title="Open Pre-Operative Checklist"
+                              >
+                                {item.checklistStatus === "Completed" ? "View Checklist" : "Fill Checklist"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="10" className="text-center">
+                            No patients found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Pagination
+                  totalItems={filteredData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>     
+    </>
   );
 };
 
