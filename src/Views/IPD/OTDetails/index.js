@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Swal from "sweetalert2"
 import { formatDateForDisplay } from "../../../utils/dateUtils"
-import { getRequest } from "../../../service/apiService"
-import { OT_BOOKING_HISTORY } from "../../../config/apiConfig"
+import { getRequest, putRequest } from "../../../service/apiService"
+import { OT_BOOKING_HISTORY, SENT_TO_OT } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Scheduled → Sent to OT → Received in OT → In Recovery / PACU → Sent to Ward/ICU → Reported to Ward
@@ -52,40 +52,41 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   // ─── OT BOOKING DATA (Dynamic API) ───────────────────────
   const [bookingData, setBookingData] = useState(null)
   const [loadingBooking, setLoadingBooking] = useState(false)
+  const [isSendingToOT, setIsSendingToOT] = useState(false)
 
-  useEffect(() => {
-    const fetchBookingHistory = async () => {
-      const patientId = selectedPatient?.patientId || selectedPatient?.id
-      if (!patientId) {
-        setBookingData(null)
-        setLoadingBooking(false)
-        return
-      }
-
-      try {
-        setLoadingBooking(true)
-        const res = await getRequest(
-          `${OT_BOOKING_HISTORY}?patientId=${patientId}&ipd=true&page=0&size=10`
-        )
-        const content =
-          res?.response?.content ||
-          (Array.isArray(res?.response) ? res.response : [])
-        if (content && content.length > 0) {
-          // Top data (latest booking)
-          setBookingData(content[0])
-        } else {
-          setBookingData(null)
-        }
-      } catch (error) {
-        console.error("Error fetching OT booking history:", error)
-        setBookingData(null)
-      } finally {
-        setLoadingBooking(false)
-      }
+  const fetchBookingHistory = useCallback(async () => {
+    const patientId = selectedPatient?.patientId || selectedPatient?.id
+    if (!patientId) {
+      setBookingData(null)
+      setLoadingBooking(false)
+      return
     }
 
-    fetchBookingHistory()
+    try {
+      setLoadingBooking(true)
+      const res = await getRequest(
+        `${OT_BOOKING_HISTORY}?patientId=${patientId}&ipd=true&page=0&size=10`
+      )
+      const content =
+        res?.response?.content ||
+        (Array.isArray(res?.response) ? res.response : [])
+      if (content && content.length > 0) {
+        // Top data (latest booking)
+        setBookingData(content[0])
+      } else {
+        setBookingData(null)
+      }
+    } catch (error) {
+      console.error("Error fetching OT booking history:", error)
+      setBookingData(null)
+    } finally {
+      setLoadingBooking(false)
+    }
   }, [selectedPatient?.patientId, selectedPatient?.id])
+
+  useEffect(() => {
+    fetchBookingHistory()
+  }, [fetchBookingHistory])
 
   // Derive display values from dynamic booking data or fallback
   const otRoom = bookingData?.otName || DUMMY_BOOKING.otRoom
@@ -124,6 +125,12 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     bookingData?.statusName ||
     bookingData?.bookingStatus ||
     (bookingData ? "-" : DUMMY_BOOKING.otStatus)
+
+  // Only enabled when OT Status is Scheduled
+  const isScheduled =
+    Boolean(bookingData) &&
+    (String(otStatus).trim().toLowerCase() === "scheduled" ||
+      bookingData?.bookingStatusId === 3)
 
   // ─── OT PREPARATION FORM ─────────────────────────────────
   const [preparation, setPreparation] = useState({
@@ -187,19 +194,12 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   const canSendToOT = allReady || (isEmergency && overrideReason.trim().length > 0)
 
   const handleSendToOT = () => {
-    if (!allReady && !isEmergency) {
-      Swal.fire({
-        title: "Cannot Send to OT",
-        text: "All readiness checklist items must be completed, or mark this as an Emergency OT with an override reason.",
-        icon: "warning"
-      })
-      return
-    }
-    if (isEmergency && !allReady && !overrideReason.trim()) {
+    const otBookingId = bookingData?.otBookingId
+    if (!otBookingId) {
       Swal.fire({
         title: "Warning",
-        text: "Please enter an override reason for the unmet readiness criteria.",
-        icon: "warning"
+        text: "OT Booking ID not found.",
+        icon: "warning",
       })
       return
     }
@@ -209,26 +209,72 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
 
     Swal.fire({
       title: "Send Patient to OT?",
-      html: `Destination: <b>${destinationOT}</b><br/>From: <b>${fromWardBed}</b>${!allReady && isEmergency ? `<br/><span class="text-danger">Emergency override in effect</span>` : ""}`,
+      html: `Destination: <b>${destinationOT}</b><br/>From: <b>${fromWardBed}</b>`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Send to OT",
-      cancelButtonText: "Cancel"
-    }).then((result) => {
+      cancelButtonText: "Cancel",
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setCurrentStatus(OT_STATUS.SENT_TO_OT)
-        addHistory(
-          "Sent to OT",
-          "Nurse A",
-          !allReady && isEmergency
-            ? `From ${fromWardBed} to ${destinationOT}. Emergency override reason: ${overrideReason}`
-            : `From ${fromWardBed} to ${destinationOT}`
-        )
-        Swal.fire({
-          title: "Success",
-          text: "Patient sent to OT. Bed remains reserved.",
-          icon: "success"
-        })
+        try {
+          setIsSendingToOT(true)
+          const url = `${SENT_TO_OT}?otBookingId=${encodeURIComponent(
+            otBookingId
+          )}&status=SENT_TO_OT`
+          const res = await putRequest(url, {})
+
+          if (
+            res?.status === 200 ||
+            res?.status === 201 ||
+            res?.statuss === "success" ||
+            res?.message === "success" ||
+            res?.response
+          ) {
+            setCurrentStatus(OT_STATUS.SENT_TO_OT)
+            addHistory(
+              "Sent to OT",
+              "Nurse",
+              `From ${fromWardBed} to ${destinationOT}. Status updated to SENT_TO_OT.`
+            )
+
+            // Update status locally so button disables immediately
+            setBookingData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    statusName: "Sent to OT",
+                    status: "SENT_TO_OT",
+                    bookingStatusId: 4,
+                  }
+                : prev
+            )
+
+            Swal.fire({
+              title: "Success",
+              text: "Patient sent to OT successfully.",
+              icon: "success",
+            })
+
+            fetchBookingHistory()
+          } else {
+            Swal.fire({
+              title: "Error",
+              text: res?.message || "Failed to send patient to OT.",
+              icon: "error",
+            })
+          }
+        } catch (error) {
+          console.error("Error sending patient to OT:", error)
+          Swal.fire({
+            title: "Error",
+            text:
+              error?.message ||
+              "Failed to send patient to OT. Please try again.",
+            icon: "error",
+          })
+        } finally {
+          setIsSendingToOT(false)
+        }
       }
     })
   }
@@ -276,15 +322,43 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
       {/* ─── SURGERY / BOOKING (read-only) ─── */}
       <div className="mb-4">
         <div className="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
-          <h6 className="fw-bold mb-0">Surgery / Booking</h6>
-          {bookingData?.bookingNo && (
-            <span
-              className="badge bg-secondary font-weight-normal"
-              style={{ fontSize: "0.75rem" }}
-            >
-              Booking No: {bookingData.bookingNo}
-            </span>
-          )}
+          <div className="d-flex align-items-center gap-2">
+            <h6 className="fw-bold mb-0">Surgery / Booking</h6>
+            {bookingData?.bookingNo && (
+              <span
+                className="badge bg-secondary font-weight-normal"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Booking No: {bookingData.bookingNo}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn btn-warning btn-sm fw-semibold"
+            disabled={!isScheduled || isSendingToOT}
+            onClick={handleSendToOT}
+            title={
+              !isScheduled
+                ? "Available only when OT Status is Scheduled"
+                : "Send patient to OT"
+            }
+          >
+            {isSendingToOT ? (
+              <>
+                <span
+                  className="spinner-border spinner-border-sm me-1"
+                  role="status"
+                />
+                Sending to OT...
+              </>
+            ) : (
+              <>
+                <i className="fa fa-paper-plane me-1" />
+                Send to OT
+              </>
+            )}
+          </button>
         </div>
 
         {loadingBooking ? (

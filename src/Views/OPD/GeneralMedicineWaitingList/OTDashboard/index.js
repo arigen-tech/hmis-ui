@@ -294,9 +294,17 @@ const OTDashboard = () => {
     // Fetch matching bookings for that scheduled date from API
     try {
       setLoadingModalBookings(true);
-      const url = `${OT_BOOKING_HISTORY}?scheduledDate=${encodeURIComponent(
-        dayData.dateStr
-      )}&page=0&size=50`;
+        let url = `${OT_BOOKING_HISTORY}?scheduledDate=${encodeURIComponent(
+          dayData.dateStr
+        )}&page=0&size=50`;
+
+      if (filters.otId) {
+        url += `&otId=${encodeURIComponent(filters.otId)}`;
+      }
+      if (filters.departmentId) {
+        url += `&departmentId=${encodeURIComponent(filters.departmentId)}`;
+      }
+
       const res = await getRequest(url);
       const list =
         res?.response?.content ||
@@ -517,13 +525,12 @@ const OTDashboard = () => {
                                     return (
                                       <div
                                         key={i}
-                                        className={`small fw-semibold ${
-                                          isDone
+                                        className={`small fw-semibold ${isDone
                                             ? "text-success"
                                             : isReject
-                                            ? "text-danger"
-                                            : "text-dark"
-                                        }`}
+                                              ? "text-danger"
+                                              : "text-dark"
+                                          }`}
                                       >
                                         {st.statusName}: {st.count}
                                       </div>
@@ -651,8 +658,8 @@ const OTDashboard = () => {
                           ? "bg-success"
                           : sNameLower.includes("cancel") ||
                             sNameLower.includes("reject")
-                          ? "bg-danger"
-                          : "bg-warning text-dark";
+                            ? "bg-danger"
+                            : "bg-warning text-dark";
                         return (
                           <span key={idx} className={`badge ${badgeColor}`}>
                             {st.statusName}: {st.count}
@@ -662,6 +669,25 @@ const OTDashboard = () => {
                     ) : (
                       <span className="badge bg-secondary">
                         No bookings recorded
+                      </span>
+                    )}
+
+                    {filters.otId && (
+                      <span className="badge bg-secondary">
+                        OT Filter:{" "}
+                        {otOptions.find(
+                          (o) => String(o.otId) === String(filters.otId)
+                        )?.otName || filters.otId}
+                      </span>
+                    )}
+                    {filters.departmentId && (
+                      <span className="badge bg-secondary">
+                        Dept Filter:{" "}
+                        {departmentOptions.find(
+                          (d) =>
+                            String(d.id || d.departmentId) ===
+                            String(filters.departmentId)
+                        )?.departmentName || filters.departmentId}
                       </span>
                     )}
 
@@ -714,8 +740,8 @@ const OTDashboard = () => {
                               ? "bg-success"
                               : sLower.includes("reject") ||
                                 sLower.includes("cancel")
-                              ? "bg-danger"
-                              : "bg-warning text-dark";
+                                ? "bg-danger"
+                                : "bg-warning text-dark";
 
                             return (
                               <tr key={b.otBookingId || idx}>
@@ -748,7 +774,7 @@ const OTDashboard = () => {
                   ) : (
                     <div>
                       {selectedDay.statuses &&
-                      selectedDay.statuses.length > 0 ? (
+                        selectedDay.statuses.length > 0 ? (
                         <div className="table-responsive">
                           <table className="table table-bordered table-hover align-middle mb-0">
                             <thead className="table-light">
@@ -770,8 +796,8 @@ const OTDashboard = () => {
                                   ? "bg-success"
                                   : sNameLower.includes("reject") ||
                                     sNameLower.includes("cancel")
-                                  ? "bg-danger"
-                                  : "bg-warning text-dark";
+                                    ? "bg-danger"
+                                    : "bg-warning text-dark";
                                 return (
                                   <tr key={idx}>
                                     <td>{idx + 1}</td>
