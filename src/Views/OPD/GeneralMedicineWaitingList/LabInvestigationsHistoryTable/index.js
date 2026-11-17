@@ -13,8 +13,9 @@ import Pagination from "../../../../Components/Pagination";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../../Components/popup";
 
-const isTextInvestigation = (type) =>
-  String(type || "").toLowerCase() === "t";
+const isTextInvestigation = (type, result) =>
+  String(type || "").toLowerCase() === "t" ||
+  (typeof result === "string" && /<[a-z][\s\S]*>/i.test(result));
 
 const htmlToPlainText = (html) => {
   if (!html) return "";
@@ -101,8 +102,11 @@ const LabInvestigationsHistoryTable = ({
       const left = Math.max(8, Math.min(rect.left, window.innerWidth - popupWidth - 8));
       const spaceBelow = window.innerHeight - rect.bottom;
       const openUp = spaceBelow < 320 && rect.top > spaceBelow;
+      const title = item.patientName
+        ? `${item.investigationName || "Result"} - ${item.patientName}`
+        : item.investigationName || "Result";
       setHoverPopup({
-        title: item.investigationName || "Result",
+        title,
         html: sanitizeHtml(item.result),
         left,
         top: rect.bottom + 4,
@@ -123,8 +127,11 @@ const LabInvestigationsHistoryTable = ({
     clearTimeout(hoverOpenTimer.current);
     clearTimeout(hoverCloseTimer.current);
     setHoverPopup(null);
+    const title = item.patientName
+      ? `${item.investigationName || "Result"} - ${item.patientName}`
+      : item.investigationName || "Result";
     setResultPopup({
-      title: item.investigationName || "Result",
+      title,
       html: sanitizeHtml(item.result),
     });
   };
@@ -256,7 +263,7 @@ const LabInvestigationsHistoryTable = ({
             </div>
             <div style={{ padding: 16, overflowY: "auto" }} dangerouslySetInnerHTML={{ __html: resultPopup.html }} />
             <div className="d-flex justify-content-end" style={{ padding: "10px 16px", borderTop: "1px solid #dee2e6" }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setResultPopup(null)}>Close</button>
+              <button type="button" className="btn btn-primary" onClick={() => setResultPopup(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -278,7 +285,7 @@ const LabInvestigationsHistoryTable = ({
           </thead>
           <tbody>
             {data.map((item, idx) => {
-              const isText = isTextInvestigation(item.investigationType);
+              const isText = isTextInvestigation(item.investigationType, item.result);
               const inRange = isText ? null : checkInRange(item.result, item.range);
               const id = item.resultEntryDetailsId || item.orderHdId || idx;
               const isGen = generatingIds.has(id);
