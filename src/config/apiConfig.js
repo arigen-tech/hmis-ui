@@ -319,6 +319,7 @@ export const PAC_ASSESSMENT = `/otController/pacAssessment`;
 export const PAC_ASSESSMENT_BY_BOOKING = `${PAC_ASSESSMENT}/booking`;
 export const RESCHEDULE_OT_BOOKING = `/otController/reschedule`;
 export const CANCEL_OT_BOOKING = `/otController/cancel`;
+export const MAS_OT_CHECKLIST = `${MASTERS}/otChecklist`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
