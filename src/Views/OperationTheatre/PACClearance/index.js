@@ -11,27 +11,17 @@ import {
   MAS_ASA_GRADE,
   PAC_ASSESSMENT,
   PAC_ASSESSMENT_BY_BOOKING,
+  GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
+  LAB_INVESTIGATIONS_REPORT_ALL_URL,
+  PACS_STUDY_LIST_GET_API,
 } from "../../../config/apiConfig";
+import LabInvestigationsHistoryTable from "../../OPD/GeneralMedicineWaitingList/LabInvestigationsHistoryTable";
+import RadiologyHistoryTable from "../../OPD/GeneralMedicineWaitingList/RadiologyHistoryTable";
 import {
   SAVE_PAC_ASSESSMENT_SUCCESS,
   SAVE_PAC_DRAFT_SUCCESS,
   SAVE_PAC_ASSESSMENT_ERROR,
 } from "../../../config/constants";
-
-// Helper to get logged-in user name from storage
-const getLoggedInUserName = () => {
-  try {
-    return (
-      sessionStorage.getItem("loggedInUserName") ||
-      localStorage.getItem("loggedInUserName") ||
-      sessionStorage.getItem("userName") ||
-      localStorage.getItem("userName") ||
-      "Nurse Priya"
-    );
-  } catch (e) {
-    return "Nurse Priya";
-  }
-};
 
 // Helper to format scheduled date and time
 const formatScheduledDateTime = (item) => {
@@ -43,6 +33,41 @@ const formatScheduledDateTime = (item) => {
     return `${date} (${start} - ${end})`.trim();
   }
   return `${date} ${start}`.trim();
+};
+
+// Helper to format visit date nicely without timezone shifts
+const formatVisitDate = (dateString) => {
+  if (!dateString) return "-";
+  if (typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateString.trim())) {
+    const [y, m, d] = dateString.trim().split("-");
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthName = months[parseInt(m, 10) - 1] || m;
+    return `${d} ${monthName} ${y}`;
+  }
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
 };
 
 const PACClearance = () => {
@@ -59,11 +84,7 @@ const PACClearance = () => {
   const [typeFilter, setTypeFilter] = useState("All");
   const [appliedFilters, setAppliedFilters] = useState({ search: "", type: "All" });
 
-  // Clear PAC modal states
-  const [showClearModal, setShowClearModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [clearRemarks, setClearRemarks] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const [editPACClearance, setEditPACClearance] = useState(false);
 
@@ -266,6 +287,25 @@ const PACClearance = () => {
   const [loadingAssessmentDetails, setLoadingAssessmentDetails] = useState(false);
   const [existingDocuments, setExistingDocuments] = useState([]);
 
+  // Previous OPD Vitals states
+  const [previousVitals, setPreviousVitals] = useState([]);
+  const [loadingPreviousVitals, setLoadingPreviousVitals] = useState(false);
+  const [previousVitalsPage, setPreviousVitalsPage] = useState(1);
+  const [previousVitalsTotalPages, setPreviousVitalsTotalPages] = useState(0);
+  const [previousVitalsTotalItems, setPreviousVitalsTotalItems] = useState(0);
+
+  // Previous LAB Investigations states
+  const [labInvestigationsData, setLabInvestigationsData] = useState([]);
+  const [labInvestigationsLoading, setLabInvestigationsLoading] = useState(false);
+  const [labInvestigationsCurrentPage, setLabInvestigationsCurrentPage] = useState(0);
+  const [labInvestigationsTotalElements, setLabInvestigationsTotalElements] = useState(0);
+
+  // Previous Radiology Investigations states
+  const [radiologyHistoryData, setRadiologyHistoryData] = useState([]);
+  const [radiologyHistoryLoading, setRadiologyHistoryLoading] = useState(false);
+  const [radiologyHistoryCurrentPage, setRadiologyHistoryCurrentPage] = useState(0);
+  const [radiologyHistoryTotalElements, setRadiologyHistoryTotalElements] = useState(0);
+
   const handleAddDiseaseRow = () => {
     setMedicalHistory((prev) => [...prev, { diseaseName: "", duration: "" }]);
   };
@@ -338,6 +378,19 @@ const PACClearance = () => {
     setPacRemarks("");
     setExistingAssessmentId(null);
     setExistingDocuments([]);
+    setActiveTab("lab");
+    setPreviousVitals([]);
+    setPreviousVitalsPage(1);
+    setPreviousVitalsTotalPages(0);
+    setPreviousVitalsTotalItems(0);
+    setLabInvestigationsData([]);
+    setLabInvestigationsLoading(false);
+    setLabInvestigationsCurrentPage(0);
+    setLabInvestigationsTotalElements(0);
+    setRadiologyHistoryData([]);
+    setRadiologyHistoryLoading(false);
+    setRadiologyHistoryCurrentPage(0);
+    setRadiologyHistoryTotalElements(0);
   };
 
   // ----- Fetch Existing PAC Assessment for Booking (for edit/update) -----
@@ -369,8 +422,8 @@ const PACClearance = () => {
           asm.bpSystolic && asm.bpDiastolic
             ? `${asm.bpSystolic}/${asm.bpDiastolic}`
             : asm.bpSystolic
-            ? String(asm.bpSystolic)
-            : "";
+              ? String(asm.bpSystolic)
+              : "";
 
         setVitals({
           weight:
@@ -425,7 +478,7 @@ const PACClearance = () => {
           mallampatiClass: asm.mallampatiClass || "",
           thyromentalDistance:
             asm.thyromentalDistanceCm !== null &&
-            asm.thyromentalDistanceCm !== undefined
+              asm.thyromentalDistanceCm !== undefined
               ? String(asm.thyromentalDistanceCm)
               : "",
           mouthOpening:
@@ -519,6 +572,12 @@ const PACClearance = () => {
           setExistingDocuments(data.documents);
         } else {
           setExistingDocuments([]);
+        }
+
+        if (data.patientId) {
+          setSelectedRecord((prev) =>
+            prev ? { ...prev, patientId: prev.patientId || data.patientId } : prev
+          );
         }
       }
     } catch (err) {
@@ -702,8 +761,8 @@ const PACClearance = () => {
       console.error("Error saving PAC assessment:", error);
       showPopup(
         error?.message ||
-          error?.response?.message ||
-          SAVE_PAC_ASSESSMENT_ERROR,
+        error?.response?.message ||
+        SAVE_PAC_ASSESSMENT_ERROR,
         "error"
       );
     } finally {
@@ -854,6 +913,158 @@ const PACClearance = () => {
     }
   };
 
+  // ----- Fetch Previous OPD Vitals History -----
+  const fetchPreviousVitalsHistory = async (page = 0) => {
+    const patientId =
+      selectedRecord?.patientId ||
+      selectedRecord?.patient?.id ||
+      selectedRecord?.patient?.patientId ||
+      selectedRecord?.patientMasterId ||
+      null;
+
+    if (!patientId) {
+      setPreviousVitals([]);
+      setPreviousVitalsTotalPages(0);
+      setPreviousVitalsTotalItems(0);
+      return;
+    }
+
+    const hospitalId =
+      selectedRecord?.hospitalId ||
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId") ||
+      12;
+
+    try {
+      setLoadingPreviousVitals(true);
+      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=5`;
+      const res = await getRequest(url);
+      if (res?.response) {
+        let content = [];
+        let totalPagesCount = 0;
+        let totalElementsCount = 0;
+
+        if (Array.isArray(res.response.content)) {
+          content = res.response.content;
+          totalPagesCount = res.response.totalPages || 0;
+          totalElementsCount = res.response.totalElements || 0;
+        } else if (Array.isArray(res.response)) {
+          content = res.response;
+          totalPagesCount = 1;
+          totalElementsCount = res.response.length;
+        }
+
+        setPreviousVitals(content);
+        setPreviousVitalsTotalPages(totalPagesCount);
+        setPreviousVitalsTotalItems(totalElementsCount);
+      } else {
+        setPreviousVitals([]);
+        setPreviousVitalsTotalPages(0);
+        setPreviousVitalsTotalItems(0);
+      }
+    } catch (err) {
+      console.error("Error fetching previous vitals:", err);
+      setPreviousVitals([]);
+      setPreviousVitalsTotalPages(0);
+      setPreviousVitalsTotalItems(0);
+    } finally {
+      setLoadingPreviousVitals(false);
+    }
+  };
+
+  const handlePreviousVitalsPageChange = (page) => {
+    setPreviousVitalsPage(page);
+    fetchPreviousVitalsHistory(page - 1);
+  };
+
+  // ----- Fetch Previous LAB Investigations -----
+  const fetchLabInvestigationsHistory = async (page = 0, size = 5) => {
+    const patientId =
+      selectedRecord?.patientId ||
+      selectedRecord?.patient?.id ||
+      selectedRecord?.patient?.patientId ||
+      selectedRecord?.patientMasterId ||
+      null;
+
+    if (!patientId) {
+      setLabInvestigationsData([]);
+      setLabInvestigationsTotalElements(0);
+      return;
+    }
+
+    const hospitalId =
+      selectedRecord?.hospitalId ||
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId") ||
+      12;
+
+    try {
+      setLabInvestigationsLoading(true);
+      const url = `${LAB_INVESTIGATIONS_REPORT_ALL_URL}?hospitalId=${hospitalId}&patientId=${patientId}&page=${page}&size=${size}`;
+      const res = await getRequest(url);
+      if (res?.response) {
+        const content = Array.isArray(res.response.content)
+          ? res.response.content
+          : Array.isArray(res.response)
+            ? res.response
+            : [];
+        setLabInvestigationsData(content);
+        setLabInvestigationsTotalElements(res.response.totalElements ?? content.length);
+        setLabInvestigationsCurrentPage(res.response.pageable?.pageNumber ?? page);
+      } else {
+        setLabInvestigationsData([]);
+        setLabInvestigationsTotalElements(0);
+      }
+    } catch (err) {
+      console.error("Error fetching lab investigations:", err);
+      setLabInvestigationsData([]);
+      setLabInvestigationsTotalElements(0);
+    } finally {
+      setLabInvestigationsLoading(false);
+    }
+  };
+
+  // ----- Fetch Previous Radiology Investigations -----
+  const fetchRadiologyHistory = async (page = 0, size = 5) => {
+    const patientId =
+      selectedRecord?.patientId ||
+      selectedRecord?.patient?.id ||
+      selectedRecord?.patient?.patientId ||
+      selectedRecord?.patientMasterId ||
+      null;
+
+    if (!patientId) {
+      setRadiologyHistoryData([]);
+      setRadiologyHistoryTotalElements(0);
+      return;
+    }
+
+    try {
+      setRadiologyHistoryLoading(true);
+      const url = `${PACS_STUDY_LIST_GET_API}?patientId=${patientId}&status=y&page=${page}&size=${size}`;
+      const res = await getRequest(url);
+      if (res?.response) {
+        const content = Array.isArray(res.response.content)
+          ? res.response.content
+          : Array.isArray(res.response)
+            ? res.response
+            : [];
+        setRadiologyHistoryData(content);
+        setRadiologyHistoryTotalElements(res.response.totalElements ?? content.length);
+        setRadiologyHistoryCurrentPage(res.response.pageable?.pageNumber ?? page);
+      } else {
+        setRadiologyHistoryData([]);
+        setRadiologyHistoryTotalElements(0);
+      }
+    } catch (err) {
+      console.error("Error fetching radiology history:", err);
+      setRadiologyHistoryData([]);
+      setRadiologyHistoryTotalElements(0);
+    } finally {
+      setRadiologyHistoryLoading(false);
+    }
+  };
+
   // ----- Effects -----
   useEffect(() => {
     fetchPacPendingList(0, "", "All");
@@ -862,6 +1073,22 @@ const PACClearance = () => {
     fetchAsaGrades();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+      if (editPACClearance) {
+        if (activeTab === "lab") {
+          setLabInvestigationsCurrentPage(0);
+          fetchLabInvestigationsHistory(0, 5);
+        } else if (activeTab === "radiology") {
+          setRadiologyHistoryCurrentPage(0);
+          fetchRadiologyHistory(0, 5);
+        } else if (activeTab === "previous") {
+          setPreviousVitalsPage(1);
+          fetchPreviousVitalsHistory(0);
+        }
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editPACClearance, activeTab, selectedRecord?.patientId]);
 
   const handleToggleInstruction = (id) => {
     setSelectedInstructions((prev) =>
@@ -906,46 +1133,6 @@ const PACClearance = () => {
     const resetFilters = { search: "", type: "All" };
     setAppliedFilters(resetFilters);
     fetchPacPendingList(0, "", "All");
-  };
-
-  const getCurrentDateTimeLabel = () => {
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[now.getMonth()];
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${day}-${month}-${year} ${hours}:${minutes}`;
-  };
-
-  // ----- Open modal for Clear PAC -----
-  const openClearModal = (record) => {
-    setSelectedRecord(record);
-    setClearRemarks("");
-    setShowClearModal(true);
-  };
-
-  // ----- Close modal -----
-  const closeClearModal = () => {
-    setShowClearModal(false);
-    setSelectedRecord(null);
-    setClearRemarks("");
-  };
-
-  // ----- Confirm action (Clear PAC) -----
-  // Marks is_pac_done = 'Y' on the backend equivalent - the record then
-  // drops off this Pending List, same as the "patient automatically
-  // disappears from the PAC Pending List" rule.
-  const handleConfirmClear = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      const updatedData = data.filter((item) => item.id !== selectedRecord.id);
-      setData(updatedData);
-      setIsProcessing(false);
-      closeClearModal();
-      showPopup("PAC cleared successfully!", "success");
-    }, 500);
   };
 
   // ----- Popup helper -----
@@ -1541,50 +1728,175 @@ const PACClearance = () => {
                       ))}
                     </div>
 
-                    {activeTab === "lab" && <div className="tab-content">
-                      <div className="row g-3 mb-4">
-                        <div className="col-md-12">
-                          <label className="form-label fw-bold">Previous LAB Investigations</label>
-                          <textarea className="form-control" rows="6" readOnly defaultValue="Show investigation, result, date, abnormal flag and report preview."></textarea>
+                    {activeTab === "lab" && (
+                      <div className="tab-content">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <label className="form-label fw-bold mb-0">Previous LAB Investigations</label>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => fetchLabInvestigationsHistory(labInvestigationsCurrentPage, 5)}
+                            disabled={labInvestigationsLoading}
+                            title="Refresh LAB Investigations"
+                          >
+                            <i className={`fa fa-refresh me-1 ${labInvestigationsLoading ? "fa-spin" : ""}`}></i>
+                            Refresh
+                          </button>
                         </div>
+
+                        {!selectedRecord?.patientId &&
+                        !selectedRecord?.patient?.id &&
+                        !selectedRecord?.patient?.patientId &&
+                        !selectedRecord?.patientMasterId ? (
+                          <div className="alert alert-warning py-2 mb-0">
+                            Patient ID not available for this record.
+                          </div>
+                        ) : (
+                          <LabInvestigationsHistoryTable
+                            data={labInvestigationsData}
+                            loading={labInvestigationsLoading}
+                            currentPage={labInvestigationsCurrentPage}
+                            totalElements={labInvestigationsTotalElements}
+                            pageSize={5}
+                            onPageChange={(page) => {
+                              setLabInvestigationsCurrentPage(page);
+                              fetchLabInvestigationsHistory(page, 5);
+                            }}
+                          />
+                        )}
                       </div>
-                      <div className="row g-3 mb-3">
-                        <div className="col-md-12">
-                          <label className="form-label fw-bold">Investigation Review Status</label>
-                          <label className="radioLabel">
-                            <input type="radio" name="reviewStatusType" value="Reviewed" />
-                            <span>Reviewed</span>
-                          </label>
-                          <label className="radioLabel mt-2">
-                            <input type="radio" name="reviewStatusType" value="Additional Investigation Required" />
-                            <span>Additional Investigation Required</span>
-                          </label>
-                          <label className="radioLabel mt-2">
-                            <input type="radio" name="reviewStatusType" value="Not Indicated" />
-                            <span>Not Indicated</span>
-                          </label>
+                    )}
+
+                    {activeTab === "radiology" && (
+                      <div className="tab-content">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <label className="form-label fw-bold mb-0">Previous Radiology Investigations</label>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => fetchRadiologyHistory(radiologyHistoryCurrentPage, 5)}
+                            disabled={radiologyHistoryLoading}
+                            title="Refresh Radiology Investigations"
+                          >
+                            <i className={`fa fa-refresh me-1 ${radiologyHistoryLoading ? "fa-spin" : ""}`}></i>
+                            Refresh
+                          </button>
                         </div>
-                      </div>
 
-                      <div className="row g-3 mb-1">
-                        <div className="col-md-12">
-                          <label className="form-label fw-bold">Investigation Findings / Additional Tests</label>
-                          <textarea className="form-control" rows="6" placeholder="" defaultValue="ECG, Echo, Chest X-Ray, laboratory findings or further tests"></textarea>
+                        {!selectedRecord?.patientId &&
+                        !selectedRecord?.patient?.id &&
+                        !selectedRecord?.patient?.patientId &&
+                        !selectedRecord?.patientMasterId ? (
+                          <div className="alert alert-warning py-2 mb-0">
+                            Patient ID not available for this record.
+                          </div>
+                        ) : (
+                          <RadiologyHistoryTable
+                            data={radiologyHistoryData}
+                            loading={radiologyHistoryLoading}
+                            currentPage={radiologyHistoryCurrentPage}
+                            totalElements={radiologyHistoryTotalElements}
+                            pageSize={5}
+                            onPageChange={(page) => {
+                              setRadiologyHistoryCurrentPage(page);
+                              fetchRadiologyHistory(page, 5);
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {activeTab === "previous" && (
+                      <div className="tab-content">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <label className="form-label fw-bold mb-0">Previous OPD Vitals History</label>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => fetchPreviousVitalsHistory(previousVitalsPage - 1)}
+                            disabled={loadingPreviousVitals}
+                            title="Refresh Vitals History"
+                          >
+                            <i className={`fa fa-refresh me-1 ${loadingPreviousVitals ? "fa-spin" : ""}`}></i>
+                            Refresh
+                          </button>
                         </div>
+
+                        {loadingPreviousVitals ? (
+                          <div className="text-center py-4">
+                            <span className="spinner-border spinner-border-sm me-2 text-primary" />
+                            <span>Loading previous visit vitals history...</span>
+                          </div>
+                        ) : !selectedRecord?.patientId &&
+                          !selectedRecord?.patient?.id &&
+                          !selectedRecord?.patient?.patientId &&
+                          !selectedRecord?.patientMasterId ? (
+                          <div className="alert alert-warning py-2 mb-0">
+                            Patient ID not available for this record.
+                          </div>
+                        ) : previousVitals.length === 0 ? (
+                          <div className="text-center py-4 text-muted border rounded bg-light">
+                            No previous visit vitals found.
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="table-responsive">
+                              <table className="table table-bordered table-hover align-middle mb-0">
+                                <thead className="table-light">
+                                  <tr>
+                                    <th className="text-center" style={{ width: "50px" }}>#</th>
+                                    <th>Visit Date</th>
+                                    <th>Weight (kg)</th>
+                                    <th>Height (cm)</th>
+                                    <th>BMI (kg/m²)</th>
+                                    <th>BP (mmHg)</th>
+                                    <th>Pulse (/min)</th>
+                                    <th>Temp (°C)</th>
+                                    <th>RR (/min)</th>
+                                    <th>SpO2 (%)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {previousVitals.map((vital, idx) => {
+                                    const bpText =
+                                      vital.bpSystolic && vital.bpDiastolic
+                                        ? `${vital.bpSystolic}/${vital.bpDiastolic}`
+                                        : vital.bpSystolic || vital.bpDiastolic || "-";
+                                    const rowNum = (previousVitalsPage - 1) * 10 + idx + 1;
+                                    return (
+                                      <tr key={idx}>
+                                        <td className="text-center text-muted">{rowNum}</td>
+                                        <td className="fw-semibold">{formatVisitDate(vital.visitDate)}</td>
+                                        <td>{vital.weight ? `${vital.weight}` : "-"}</td>
+                                        <td>{vital.height ? `${vital.height}` : "-"}</td>
+                                        <td>{vital.bmi ? `${vital.bmi}` : "-"}</td>
+                                        <td>{bpText}</td>
+                                        <td>{vital.pulse ? `${vital.pulse}` : "-"}</td>
+                                        <td>{vital.temperature ? `${vital.temperature}` : "-"}</td>
+                                        <td>{vital.rr ? `${vital.rr}` : "-"}</td>
+                                        <td>{vital.spo2 ? `${vital.spo2}%` : "-"}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {previousVitalsTotalItems > 0 && (
+                              <div className="mt-3">
+                                <Pagination
+                                  totalItems={previousVitalsTotalItems}
+                                  itemsPerPage={10}
+                                  currentPage={previousVitalsPage}
+                                  onPageChange={handlePreviousVitalsPageChange}
+                                  totalPages={previousVitalsTotalPages}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-
-                    </div>
-                    }
-
-                    {activeTab === "radiology" && <div className="tab-content">
-                      <h4 className="fw-bold">Radiology Data here...</h4>
-                    </div>
-                    }
-
-                    {activeTab === "previous" && <div className="tab-content">
-                      <h4 className="fw-bold">Previous Visits Data here.....</h4>
-                    </div>
-                    }
+                    )}
 
                   </div>
                   {/* Tabs end here---- */}
@@ -1843,7 +2155,7 @@ const PACClearance = () => {
                           <i
                             className={
                               scannedPacFile.type === "application/pdf" ||
-                              scannedPacFile.name.toLowerCase().endsWith(".pdf")
+                                scannedPacFile.name.toLowerCase().endsWith(".pdf")
                                 ? "icofont-file-document fs-5 text-danger"
                                 : "icofont-image fs-5 text-primary"
                             }
@@ -1969,268 +2281,151 @@ const PACClearance = () => {
                 </div>
 
               </div>
+                </div>
+              </div>
+
             </div>
-          </div>
 
-        </div>
-
-        {popupMessage && (
-          <Popup
-            message={popupMessage.message}
-            type={popupMessage.type}
-            onClose={popupMessage.onClose}
-          />
-        )}
-      </>
-    );
+            {popupMessage && (
+              <Popup
+                message={popupMessage.message}
+                type={popupMessage.type}
+                onClose={popupMessage.onClose}
+              />
+            )}
+          </>
+          );
   }
 
 
 
-  // ============================================================
-  // RENDER: MAIN LIST VIEW
-  // ============================================================
-  return (
-    <div className="content-wrapper">
-      {loading && <LoadingScreen />}
-      <div className="row">
-        <div className="col-12 grid-margin stretch-card">
-          <div className="card form-card">
-            <div className="card-header">
-              <h4 className="card-title p-2 mb-0">PAC Pending List</h4>
-            </div>
+          // ============================================================
+          // RENDER: MAIN LIST VIEW
+          // ============================================================
+          return (
+          <div className="content-wrapper">
+            {loading && <LoadingScreen />}
+            <div className="row">
+              <div className="col-12 grid-margin stretch-card">
+                <div className="card form-card">
+                  <div className="card-header">
+                    <h4 className="card-title p-2 mb-0">PAC Pending List</h4>
+                  </div>
 
-            <div className="card-body">
-              {/* Search / Filter Section */}
-              <div className="mb-4">
-                <div className="row g-3 align-items-end">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Search</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="UHID/IP No., Patient, Surgery or Surgeon"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleSearch();
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="col-md-2">
-                    <label className="form-label fw-bold">Type</label>
-                    <select
-                      className="form-select"
-                      value={typeFilter}
-                      onChange={(e) => setTypeFilter(e.target.value)}
-                    >
-                      <option value="All">All</option>
-                      <option value="OPD">OPD</option>
-                      <option value="IPD">IPD</option>
-                    </select>
-                  </div>
-                  <div className="col-md-3 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
-                      <i className="fa fa-search me-1"></i> Search
-                    </button>
-                    <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
-                      <i className="fa fa-refresh me-1"></i> Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
+                  <div className="card-body">
+                    {/* Search / Filter Section */}
+                    <div className="mb-4">
+                      <div className="row g-3 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label fw-bold">Search</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="UHID/IP No., Patient, Surgery or Surgeon"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleSearch();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-2">
+                          <label className="form-label fw-bold">Type</label>
+                          <select
+                            className="form-select"
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                          >
+                            <option value="All">All</option>
+                            <option value="OPD">OPD</option>
+                            <option value="IPD">IPD</option>
+                          </select>
+                        </div>
+                        <div className="col-md-3 d-flex gap-2">
+                          <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+                            <i className="fa fa-search me-1"></i> Search
+                          </button>
+                          <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                            <i className="fa fa-refresh me-1"></i> Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Table */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>UHID / IP No.</th>
-                      <th>Patient Name</th>
-                      <th>Type</th>
-                      <th>Department</th>
-                      <th>Surgery</th>
-                      <th>Surgeon</th>
-                      <th>OT</th>
-                      <th>Scheduled Date / Time</th>
-                      <th>Ward / Bed</th>
-                      <th className="text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.length > 0 ? (
-                      data.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.uhidOrIp}</td>
-                          <td>{item.patientName}</td>
-                          <td>{item.type}</td>
-                          <td>{item.department}</td>
-                          <td>{item.surgery}</td>
-                          <td>{item.surgeon}</td>
-                          <td>{item.ot}</td>
-                          <td>{item.scheduledDateTime}</td>
-                          <td>{item.wardBed || "—"}</td>
-                          <td className="text-center">
-                            <div className="btnCenter">
-                              <button
-                                className="btn btn-sm btn-success"
-                                onClick={() => openClearModal(item)}
-                                title="Clear PAC"
-                              >
-                                Clear PAC
-                              </button>
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => handleOpenAssessment(item)}
-                              >
-                                PAC Assessment
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="10" className="text-center py-4 text-muted">
-                          <i className="fa fa-info-circle me-1"></i> No patients pending PAC clearance.
-                        </td>
-                      </tr>
+                    {/* Table */}
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead className="table-light">
+                          <tr>
+                            <th>UHID / IP No.</th>
+                            <th>Patient Name</th>
+                            <th>Type</th>
+                            <th>Department</th>
+                            <th>Surgery</th>
+                            <th>Surgeon</th>
+                            <th>OT</th>
+                            <th>Scheduled Date / Time</th>
+                            <th>Ward / Bed</th>
+                            <th className="text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.length > 0 ? (
+                            data.map((item) => (
+                              <tr key={item.id}>
+                                <td>{item.uhidOrIp}</td>
+                                <td>{item.patientName}</td>
+                                <td>{item.type}</td>
+                                <td>{item.department}</td>
+                                <td>{item.surgery}</td>
+                                <td>{item.surgeon}</td>
+                                <td>{item.ot}</td>
+                                <td>{item.scheduledDateTime}</td>
+                                <td>{item.wardBed || "—"}</td>
+                                <td className="text-center">
+                                  <div className="btnCenter">
+                                    <button
+                                      className="btn btn-sm btn-primary"
+                                      onClick={() => handleOpenAssessment(item)}
+                                    >
+                                      PAC Assessment
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="10" className="text-center py-4 text-muted">
+                                <i className="fa fa-info-circle me-1"></i> No patients pending PAC clearance.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {totalItems > 0 && (
+                      <Pagination
+                        totalItems={totalItems}
+                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={handlePageChange}
+                        totalPages={totalPages}
+                      />
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              {totalItems > 0 && (
-                <Pagination
-                  totalItems={totalItems}
-                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
-                  totalPages={totalPages}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== CLEAR PAC MODAL ===== */}
-      {showClearModal && selectedRecord && (
-        <div
-          className="modal d-block"
-          tabIndex="-1"
-          role="dialog"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Clear PAC</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={closeClearModal}
-                  disabled={isProcessing}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  <strong>Patient:</strong> {selectedRecord.patientName} ({selectedRecord.uhidOrIp})
-                  {selectedRecord.type}
-                </p>
-                <p>
-                  <strong>Department:</strong> {selectedRecord.department}
-                </p>
-                <p>
-                  <strong>Surgery:</strong> {selectedRecord.surgery}
-                </p>
-                <p>
-                  <strong>Surgeon:</strong> {selectedRecord.surgeon}
-                </p>
-                <p>
-                  <strong>OT:</strong> {selectedRecord.ot}
-                </p>
-                <p>
-                  <strong>Scheduled Date/Time:</strong> {selectedRecord.scheduledDateTime}
-                </p>
-                {selectedRecord.wardBed && (
-                  <p>
-                    <strong>Ward / Bed:</strong> {selectedRecord.wardBed}
-                  </p>
-                )}
-
-                <div className="mb-3">
-                  <label className="form-label fw-bold">Remarks (Optional)</label>
-                  <textarea
-                    className="form-control"
-                    rows="2"
-                    value={clearRemarks}
-                    onChange={(e) => setClearRemarks(e.target.value)}
-                    placeholder="Any additional notes..."
-                    disabled={isProcessing}
-                  />
-                </div>
-
-                <div className="row">
-                  <div className="col-md-6 mb-2">
-                    <label className="form-label fw-bold small mb-1">Cleared By</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      value={getLoggedInUserName()}
-                      readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
-                    />
-                  </div>
-                  <div className="col-md-6 mb-2">
-                    <label className="form-label fw-bold small mb-1">Date / Time</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      value={`${getCurrentDateTimeLabel()} (Auto)`}
-                      readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
-                    />
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={closeClearModal}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-success"
-                  onClick={handleConfirmClear}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Confirm"
-                  )}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {popupMessage && (
-        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-      )}
-    </div>
-  );
+            {popupMessage && (
+              <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+            )}
+          </div>
+          );
 };
 
-export default PACClearance;
+          export default PACClearance;
