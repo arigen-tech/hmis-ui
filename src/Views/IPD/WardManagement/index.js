@@ -14,11 +14,12 @@ import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
 import BloodTransfusion from "../BloodTransfusion"
-import AdmissionDetails from "../AdmissionDetails"; 
+import AdmissionDetails from "../AdmissionDetails";
 import OTDetails from "../OTDetails"
 // import OTDetails from "../OTDetails"
 import ShiftHandover from "../ShiftHandover"
 import { formatDateForDisplay } from "../../../utils/dateUtils"
+import PatientConsentForm from "../PatientConsentForm/intex"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -170,6 +171,7 @@ const WardManagement = () => {
     "Medication / MAR",
     "Blood / Transfusion",
     "OT Details",
+    "Patient Consent",
     "Nursing Care / Procedures",
     "Diet",
     "Shift Handover",
@@ -338,7 +340,7 @@ const WardManagement = () => {
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">
-                  <h4 className="card-title p-2 mb-0 me-3">WARD MANAGEMENT</h4>
+                  <h4 className="card-title p-2 mb-0 ps-0 me-3">Ward Management</h4>
                   {loadingWards ? (
                     <div className="d-flex align-items-center ms-2">
                       <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
@@ -792,115 +794,121 @@ const WardManagement = () => {
                                   {caseSheetTabs.map((tab) => {
                                     const isTabDisabled = !isAssessmentSubmitted && tab !== "Admission Details" && tab !== "IPD Initial Assessment";
                                     return (
-                                    <button
-                                      key={tab}
-                                      className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary' : 'btn-outline-warning'}`}
-                                      onClick={() => !isTabDisabled && setActiveTab(tab)}
-                                      disabled={isTabDisabled}
-                                      style={{ 
-                                        fontSize: "0.55rem", 
-                                        whiteSpace: "nowrap",
-                                        opacity: isTabDisabled ? 0.5 : 1,
-                                        cursor: isTabDisabled ? "not-allowed" : "pointer"
-                                      }}
-                                    >
-                                      {tab}
-                                    </button>
-                                  )})}
+                                      <button
+                                        key={tab}
+                                        className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary' : 'btn-outline-warning'}`}
+                                        onClick={() => !isTabDisabled && setActiveTab(tab)}
+                                        disabled={isTabDisabled}
+                                        style={{
+                                          fontSize: "0.55rem",
+                                          whiteSpace: "nowrap",
+                                          opacity: isTabDisabled ? 0.5 : 1,
+                                          cursor: isTabDisabled ? "not-allowed" : "pointer"
+                                        }}
+                                      >
+                                        {tab}
+                                      </button>
+                                    )
+                                  })}
                                 </div>
                               </div>
                             </div>
 
-                        {/* Tab Content */}
-                        <div className="">
-                          <div className="card-header bg-light">
-                            <h6 className="mb-0">{activeTab}</h6>
-                          </div>
-                          <div className="card-body">
-                            {activeTab === "Clinical Dashboard" && (
-                              <ClinicalDashboard selectedPatient={selectedPatient} />
-                            )}
+                            {/* Tab Content */}
+                            <div className="">
+                              <div className="card-header bg-light">
+                                <h6 className="mb-0">{activeTab}</h6>
+                              </div>
+                              <div className="card-body">
+                                {activeTab === "Clinical Dashboard" && (
+                                  <ClinicalDashboard selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Admission Details" && (
-  <AdmissionDetails selectedPatient={selectedPatient} />
-)}
+                                {activeTab === "Admission Details" && (
+                                  <AdmissionDetails selectedPatient={selectedPatient} />
+                                )}
 
-{activeTab === "Blood / Transfusion" && (
-  <BloodTransfusion 
-  selectedPatient={selectedPatient}
-  selectedWard={selectedWard}
-   />
+                                {activeTab === "Blood / Transfusion" && (
+                                  <BloodTransfusion
+                                    selectedPatient={selectedPatient}
+                                    selectedWard={selectedWard}
+                                  />
 
-)}
-{activeTab === "OT Details" && (
-  <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />
-)} 
-{/* 
+                                )}
+                                {activeTab === "OT Details" && (
+                                  <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />
+                                )}
+
+                                {activeTab === "Patient Consent" && (
+                                  <PatientConsentForm />
+                                )}
+
+                                {/* 
 {activeTab === "OT Details" && (
   <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />
 )} */}
 
 
-{activeTab === "Shift Handover" && (
-  <ShiftHandover selectedPatient={selectedPatient} />
-)}
+                                {activeTab === "Shift Handover" && (
+                                  <ShiftHandover selectedPatient={selectedPatient} />
+                                )}
 
 
-                            {activeTab === "IPD Initial Assessment" && (
-                              <IPDInitialAssessment 
-                                selectedPatient={selectedPatient} 
-                                onAssessmentSubmit={() => setIsAssessmentSubmitted(true)}
-                              />
-                            )}
+                                {activeTab === "IPD Initial Assessment" && (
+                                  <IPDInitialAssessment
+                                    selectedPatient={selectedPatient}
+                                    onAssessmentSubmit={() => setIsAssessmentSubmitted(true)}
+                                  />
+                                )}
 
-                            {activeTab === "Medication / MAR" && (
-                              < MedicationModule selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Medication / MAR" && (
+                                  < MedicationModule selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Doctor Visit / Case Notes" && (
-                              <DoctorVisitCaseNotes selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Doctor Visit / Case Notes" && (
+                                  <DoctorVisitCaseNotes selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Ward / Bed Transfer" && (
-                              <BedTransfer selectedPatient={selectedPatient} selectedWard={selectedWard} />
-                            )}
+                                {activeTab === "Ward / Bed Transfer" && (
+                                  <BedTransfer selectedPatient={selectedPatient} selectedWard={selectedWard} />
+                                )}
 
-                            {activeTab === "Vitals & Monitoring" && (
-                              <VitalsandMonitoring selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Vitals & Monitoring" && (
+                                  <VitalsandMonitoring selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Investigations / Orders" && (
-                              <InvestigationOrderandTracking selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Investigations / Orders" && (
+                                  <InvestigationOrderandTracking selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Diet" && (
-                              <DietOrderHistory selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Diet" && (
+                                  <DietOrderHistory selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Discharge" && (
-                              <DischargeFromWard selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Discharge" && (
+                                  <DischargeFromWard selectedPatient={selectedPatient} />
+                                )}
 
-                            {activeTab === "Nursing Care / Procedures" && (
-                              <NursingCareModule selectedPatient={selectedPatient} />
-                            )}
+                                {activeTab === "Nursing Care / Procedures" && (
+                                  <NursingCareModule selectedPatient={selectedPatient} />
+                                )}
 
-                            {/* Fallback for any undefined tabs */}
-                            {activeTab !== "Clinical Dashboard" &&
-                              activeTab !== "IPD Initial Assessment" &&
-                              activeTab !== "Medication / MAR" &&
-                              activeTab !== "Doctor Visit / Case Notes" &&
-                              activeTab !== "Ward / Bed Transfer" &&
-                              activeTab !== "Vitals & Monitoring" &&
-                              activeTab !== "Investigations / Orders" &&
-                              activeTab !== "Diet" &&
-                              activeTab !== "Discharge" &&
-                              activeTab !== "Nursing Care / Procedures" && (
-                              <div>
+                                {/* Fallback for any undefined tabs */}
+                                {activeTab !== "Clinical Dashboard" &&
+                                  activeTab !== "IPD Initial Assessment" &&
+                                  activeTab !== "Medication / MAR" &&
+                                  activeTab !== "Doctor Visit / Case Notes" &&
+                                  activeTab !== "Ward / Bed Transfer" &&
+                                  activeTab !== "Vitals & Monitoring" &&
+                                  activeTab !== "Investigations / Orders" &&
+                                  activeTab !== "Diet" &&
+                                  activeTab !== "Discharge" &&
+                                  activeTab !== "Nursing Care / Procedures" && (
+                                    <div>
+                                    </div>
+                                  )}
                               </div>
-                            )}
-                          </div>
-                        </div>
+                            </div>
                           </>
                         )}
                       </div>

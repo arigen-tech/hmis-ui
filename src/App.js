@@ -298,6 +298,7 @@ import PACClearance from './Views/OperationTheatre/PACClearance';
 import OpdPatientQueue from './Views/OPD/OpdPatientQueue';
 // import TemplateResultEditor from './Views/Laboratory/TemplateResultEditor';
 import OTSurgeryExecution from './Views/OperationTheatre/OTSurgeryExecution';
+import PatientConsent from './Views/OperationTheatre/PatientConsent';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -629,6 +630,7 @@ function App() {
                 <Route path="/OTSurgeryExecution" element={<OTSurgeryExecution/>} />
                 <Route path="/PACClearance" element={<PACClearance/>} />
                 <Route path="/opd-patient-queue" element={<OpdPatientQueue />} />
+                <Route path="/patient-consent" element={<PatientConsent />} />
                 
                 </Route>
             </Route>

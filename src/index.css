@@ -24208,7 +24208,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   -webkit-transition: ease 0.1s;
   transition: ease 0.1s;
   background: var(--primary-color);
-  z-index: 99999;
+  z-index: 9998;
   margin: 4px 0px;
   height: calc(100vh - 8px);
   width: 280px;
@@ -26615,4 +26615,16 @@ table td .status {
   border-radius: 30px !important;
   font-size: 11px !important;
   font-weight: 600 !important;
+}
+
+
+.link {
+  font-weight: 400;
+  color: #0d6efd;
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: #0a58ca;
+  text-decoration: none;
 }

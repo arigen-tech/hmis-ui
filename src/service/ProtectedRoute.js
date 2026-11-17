@@ -294,6 +294,7 @@ const validRoutes = [
   "/OTSurgeryExecution",
   "/PACClearance",
   "/opd-patient-queue",
+  "/patient-consent",
 ];
 
 // Routes that should bypass authorization
