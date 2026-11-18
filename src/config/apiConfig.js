@@ -945,6 +945,28 @@ export const DENTAL_SESSION_HISTORY = "/opd/dental/session-history";
 export const BLOOD_INVENTORY_STOCK_SUMMARY_REPORT_URL = `${API_HOST}/report/bloodInventoryStockSummary`;
 export const BLOOD_INVENTORY_STOCK_DETAIL_REPORT_URL = `${API_HOST}/report/bloodInventoryStockDetail`;
 export const COMPONENT_WISE_STOCK_REPORT_URL = `${API_HOST}/report/componentWiseStockReport`;
+export const USAGE_BY_WARD_OT_REPORT_URL = `${API_HOST}/report/bloodWardOT`;
+export const BLOOD_GROUPS_API = "/master/blood-group/getAll/1";
+export const BLOOD_COMPONENTS_API = "/master/masBloodComponent/getAll/1";
+export const INVENTORY_STATUS_API = "/master/masBloodInventoryStatus/getAll/1";
+export const COMPONENT_EXPIRY_API = "/bloodBank/component-expiry";
+
+export const WARDS_API = "/master/masWard/getAll/1";
+export const OT_USAGE_API = "/bloodBank/ot-usage";
+export const DONOR_DEFERRAL_API = "/bloodBank/donor-deferral";
+
+export const BLOOD_DONOR_DEFERRAL_REPORT_URL = `${API_HOST}/report/bloodDonorDeferral`;
+export const BLOOD_USAGE_BY_WARD_OT_REPORT_URL = `${API_HOST}/report/bloodWardOT`;
+export const BLOOD_COMPONENT_EXPIRY_REPORT_URL = `${API_HOST}/report/bloodComponentExpiry`;
+
+
+export const DISCARD_REASONS_API = "/master/discard-reason/getAll/1";
+export const STOCK_DETAIL_API = "/bloodBank/stocks";
+export const BLOOD_COMPONENT_DISCARD_API = "/bloodBank/discard";
+
+export const EXPIRED_REASON_CODE = "EXPIRED";
+export const OTHER_REASON_CODE = "OTHER";
+
 
 
 

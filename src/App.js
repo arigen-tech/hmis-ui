@@ -217,6 +217,7 @@ import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
 import BloodRequestTracking from './Views/BloodBank/BloodRequestTracking';
 import OPDRegister from './Views/OPD/OpdRegister';
 import PendingForCrossMatch from './Views/BloodBank/PendingForCrossMatch';
+import BloodComponentDiscard from './Views/BloodBank/BloodComponentDiscard';
 import PendingForIssue from './Views/BloodBank/PendingForIssue';
 import BloodInventoryStockReport from './Views/BloodBank/BloodInventoryReport';
 import ComponentWiseStockReport from './Views/BloodBank/ComponentWiseStockReport';
@@ -559,6 +560,8 @@ function App() {
                   <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} />
                   <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
                  <Route path="/donor-deferral-history-report" element={<DonorDeferralHistoryReport/>} />
+                <Route path="/blood-component-discard" element={<BloodComponentDiscard/>} />
+
 
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />

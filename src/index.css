@@ -24655,7 +24655,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   padding: 0px 12px;
 }
 
-.mainContent{
+.mainContent {
   flex: 1;
 }
 
@@ -26404,26 +26404,30 @@ table td .status {
 }
 
 /* ---------------------- */
-.tab-container .nav-tabs{
+.tab-container .nav-tabs {
   gap: 8px;
 }
-.tab-container .nav-tabs .nav-item button.nav-link{
+
+.tab-container .nav-tabs .nav-item button.nav-link {
   background: rgb(0 0 0 / 0.02);
   border: solid 1px rgb(0 0 0 / 0.08);
   border-bottom: 0;
   font-size: 14px;
   color: rgb(0 0 0 / 0.80);
 }
-.tab-container .nav-tabs .nav-item button.nav-link:hover{
+
+.tab-container .nav-tabs .nav-item button.nav-link:hover {
   background: rgb(0 0 0 / 0.05);
 }
-.tab-container .nav-tabs .nav-item button.active{
+
+.tab-container .nav-tabs .nav-item button.active {
   background-color: var(--white-color);
   color: #2563eb;
   font-weight: 600;
 }
-.tab-container .tab-content-panel{
-  border: solid 1px rgb(0 0 0 / 0.15);  
+
+.tab-container .tab-content-panel {
+  border: solid 1px rgb(0 0 0 / 0.15);
   border-radius: 0 0 8px 8px;
   padding: 15px;
   margin-top: -1px;
@@ -26548,6 +26552,13 @@ table td .status {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.col-span-2 {
+    grid-column: span 2;
+}
+.col-span-3 {
+    grid-column: span 3;
+}
+
 .detail-item {
   display: flex;
   flex-direction: column;
@@ -26627,4 +26638,49 @@ table td .status {
 .link:hover {
   color: #0a58ca;
   text-decoration: none;
+}
+
+/* ***************************** */
+
+.wardTabs button {
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 5px 10px;
+}
+
+.wardTabs button.active {
+  background-color: #0a58ca !important;
+  border-color: #0a58ca !important;
+  color: var(--white-color) !important;
+}
+
+.patientInfoMain h5{
+  font-weight: 600;
+  line-height: normal;
+}
+
+.patientInfo {
+  gap: 15px;
+}
+
+.patientInfo div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: normal;
+}
+.patientInfo div i{
+  font-size: 13px;
+  opacity: 0.80;
+}
+
+.status-badge {
+  background: rgba(255,255,255,0.17);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }

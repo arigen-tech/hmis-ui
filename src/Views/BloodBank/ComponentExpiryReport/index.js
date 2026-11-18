@@ -1,255 +1,314 @@
 import { useState, useEffect } from "react";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import { BLOOD_COMPONENTS_API, BLOOD_GROUPS_API, COMPONENT_EXPIRY_API, INVENTORY_STATUS_API, STATUS_D, STATUS_P, BLOOD_COMPONENT_EXPIRY_REPORT_URL } from "../../../config/apiConfig";
 
-const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-
-const COMPONENTS = [
-  "Whole Blood",
-  "Packed Red Blood Cells (PRBC)",
-  "Fresh Frozen Plasma (FFP)",
-  "Platelets",
-  "Cryoprecipitate",
-  "Granulocytes",
+// Days presets — auto-computes expiryFromDate / expiryToDate from today
+const DATE_PRESETS = [
+  { label: "Custom", value: "" },
+  { label: "7 Days", value: "7" },
+  { label: "30 Days", value: "30" },
+  { label: "90 Days", value: "90" },
+  { label: "120 Days", value: "120" },
 ];
 
-const INVENTORY_STATUS = ["Available", "Reserved", "Allocated", "Expired"];
-
-const STORAGE_LOCATIONS = [
-  "Main BB - Rack A, Shelf 1",
-  "Main BB - Rack A, Shelf 2",
-  "Main BB - Rack A, Shelf 3",
-  "Main BB - Rack A, Shelf 4",
-  "Main BB - Rack B, Shelf 1",
-  "Main BB - Rack B, Shelf 2",
-  "Main BB - Rack B, Shelf 3",
-  "Main BB - Rack C, Shelf 1",
-  "Main BB - Rack C, Shelf 2",
-  "Main BB - Rack D, Shelf 1",
-];
+const DEFAULT_INVENTORY_STATUS_ID = "1";
 
 const ComponentExpiryReport = () => {
   // UI state
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+
+  // NEW: separate flag for pagination-only refreshes (keeps table visible)
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Filters
+  const [filters, setFilters] = useState({
+    datePreset: "", // "" = custom, or "7" | "30" | "90" | "120"
+    expiryFromDate: "",
+    expiryToDate: "",
+    componentId: "",
+    bloodGroupId: "",
+    inventoryStatus: DEFAULT_INVENTORY_STATUS_ID, // default AVAILABLE (id=1)
+  });
+
+  // Dropdowns
+  const [components, setComponents] = useState([]);
+  const [bloodGroups, setBloodGroups] = useState([]);
+  const [inventoryStatuses, setInventoryStatuses] = useState([]);
+
+  // Data + pagination
+  const [reportData, setReportData] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    total: 0,
+    size: DEFAULT_ITEMS_PER_PAGE,
+  });
+
+  // PDF viewer state
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isViewLoading, setIsViewLoading] = useState(false);
+  const [isPrintLoading, setIsPrintLoading] = useState(false);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
+      onClose: () => setPopupMessage(null),
     });
   };
 
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    return new Date().toISOString().split('T')[0];
+  // ---- Load dropdowns on mount ----
+  useEffect(() => {
+    const loadDropdowns = async () => {
+      try {
+        const [compRes, bgRes, statusRes] = await Promise.all([
+          getRequest(BLOOD_COMPONENTS_API),
+          getRequest(BLOOD_GROUPS_API),
+          getRequest(INVENTORY_STATUS_API),
+        ]);
+        if (compRes && compRes.response) setComponents(compRes.response);
+        if (bgRes && bgRes.response) setBloodGroups(bgRes.response);
+        if (statusRes && statusRes.response) setInventoryStatuses(statusRes.response);
+      } catch (err) {
+        console.error("Error loading dropdown data:", err);
+        showPopup("Failed to load dropdown data", "error");
+      }
+    };
+    loadDropdowns();
+  }, []);
+
+  // ---- Helpers ----
+  const formatApiDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   };
 
-  // UI-only handlers
-  const handleSearch = () => {
-    setIsGenerating(true);
-    
-    // Simulate search
-    setTimeout(() => {
-      setIsGenerating(false);
-      setShowReport(true);
-      setCurrentPage(1);
-    }, 1000);
+  const getTodayDate = () => formatApiDate(new Date());
+
+  // Days preset change → auto-fill from/to dates
+  const handleDatePresetChange = (value) => {
+    if (!value) {
+      // Custom — let user pick manually, keep existing dates
+      setFilters((prev) => ({ ...prev, datePreset: "" }));
+      return;
+    }
+    const today = new Date();
+    const toDate = new Date(today);
+    toDate.setDate(toDate.getDate() + parseInt(value, 10));
+    setFilters((prev) => ({
+      ...prev,
+      datePreset: value,
+      expiryFromDate: formatApiDate(today),
+      expiryToDate: formatApiDate(toDate),
+    }));
   };
 
-  const handlereset = () => {
-    setShowReport(false);
-    setCurrentPage(1);
+  // Grid query params — pagination + only-selected filters
+  const buildQueryParams = (page) => {
+    const params = new URLSearchParams();
+    params.append("page", String(page - 1));
+    params.append("size", String(DEFAULT_ITEMS_PER_PAGE));
+    if (filters.expiryFromDate) params.append("expiryFromDate", filters.expiryFromDate);
+    if (filters.expiryToDate) params.append("expiryToDate", filters.expiryToDate);
+    if (filters.componentId) params.append("componentId", filters.componentId);
+    if (filters.bloodGroupId) params.append("bloodGroupId", filters.bloodGroupId);
+    // inventoryStatus defaults to 1 on the backend — only send when explicit (skip on "All")
+    if (filters.inventoryStatus) params.append("inventoryStatus", filters.inventoryStatus);
+    return params.toString();
   };
 
-  // Calculate days left until expiry
+  // Report query params — same filters, no pagination
+  const buildReportQueryParams = () => {
+    const params = new URLSearchParams();
+    if (filters.expiryFromDate) params.append("expiryFromDate", filters.expiryFromDate);
+    if (filters.expiryToDate) params.append("expiryToDate", filters.expiryToDate);
+    if (filters.componentId) params.append("componentId", filters.componentId);
+    if (filters.bloodGroupId) params.append("bloodGroupId", filters.bloodGroupId);
+    if (filters.inventoryStatus) params.append("inventoryStatus", filters.inventoryStatus);
+    return params.toString();
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return "";
+    const datePart = String(dateStr).split("T")[0];
+    const parts = datePart.split("-");
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return datePart;
+  };
+
   const calculateDaysLeft = (expiryDateStr) => {
+    if (!expiryDateStr) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const expiryDate = new Date(expiryDateStr);
-    expiryDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = expiryDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
+    const expiry = new Date(expiryDateStr);
+    expiry.setHours(0, 0, 0, 0);
+    return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
   };
 
-  // Static data for UI demonstration
-  const expiryData = [
-    {
-      id: "1",
-      unitNo: "PRBC-20250301-001",
-      component: "Packed Red Blood Cells (PRBC)",
-      bloodGroup: "O+",
-      expiryDate: "2026-03-05",
-      daysLeft: calculateDaysLeft("2026-03-05"),
-      status: "Available",
-      storageLocation: "Main BB - Rack A, Shelf 2"
-    },
-    {
-      id: "2",
-      unitNo: "PRBC-20250301-002",
-      component: "Packed Red Blood Cells (PRBC)",
-      bloodGroup: "O+",
-      expiryDate: "2026-03-07",
-      daysLeft: calculateDaysLeft("2026-03-07"),
-      status: "Available",
-      storageLocation: "Main BB - Rack A, Shelf 3"
-    },
-    {
-      id: "3",
-      unitNo: "PRBC-20250301-003",
-      component: "Packed Red Blood Cells (PRBC)",
-      bloodGroup: "A+",
-      expiryDate: "2026-03-10",
-      daysLeft: calculateDaysLeft("2026-03-10"),
-      status: "Reserved",
-      storageLocation: "Main BB - Rack A, Shelf 4"
-    },
-    {
-      id: "4",
-      unitNo: "PLT-20250301-001",
-      component: "Platelets",
-      bloodGroup: "A+",
-      expiryDate: "2026-03-08",
-      daysLeft: calculateDaysLeft("2026-03-08"),
-      status: "Available",
-      storageLocation: "Main BB - Rack B, Shelf 1"
-    },
-    {
-      id: "5",
-      unitNo: "PLT-20250301-002",
-      component: "Platelets",
-      bloodGroup: "A+",
-      expiryDate: "2026-03-09",
-      daysLeft: calculateDaysLeft("2026-03-09"),
-      status: "Reserved",
-      storageLocation: "Main BB - Rack B, Shelf 2"
-    },
-    {
-      id: "6",
-      unitNo: "FFP-20250301-001",
-      component: "Fresh Frozen Plasma (FFP)",
-      bloodGroup: "B-",
-      expiryDate: "2026-03-15",
-      daysLeft: calculateDaysLeft("2026-03-15"),
-      status: "Available",
-      storageLocation: "Main BB - Rack C, Shelf 1"
-    },
-    {
-      id: "7",
-      unitNo: "FFP-20250301-002",
-      component: "Fresh Frozen Plasma (FFP)",
-      bloodGroup: "B-",
-      expiryDate: "2026-03-18",
-      daysLeft: calculateDaysLeft("2026-03-18"),
-      status: "Allocated",
-      storageLocation: "Main BB - Rack C, Shelf 2"
-    },
-    {
-      id: "8",
-      unitNo: "CRYO-20250301-001",
-      component: "Cryoprecipitate",
-      bloodGroup: "AB+",
-      expiryDate: "2026-03-20",
-      daysLeft: calculateDaysLeft("2026-03-20"),
-      status: "Available",
-      storageLocation: "Main BB - Rack D, Shelf 1"
-    },
-    {
-      id: "9",
-      unitNo: "CRYO-20250301-002",
-      component: "Cryoprecipitate",
-      bloodGroup: "AB+",
-      expiryDate: "2026-03-22",
-      daysLeft: calculateDaysLeft("2026-03-22"),
-      status: "Available",
-      storageLocation: "Main BB - Rack D, Shelf 2"
-    },
-    {
-      id: "10",
-      unitNo: "WB-20250301-001",
-      component: "Whole Blood",
-      bloodGroup: "O-",
-      expiryDate: "2026-03-20",
-      daysLeft: calculateDaysLeft("2026-03-20"),
-      status: "Available",
-      storageLocation: "Main BB - Rack E, Shelf 1"
-    },
-    {
-      id: "11",
-      unitNo: "WB-20250301-002",
-      component: "Whole Blood",
-      bloodGroup: "O-",
-      expiryDate: "2026-02-28",
-      daysLeft: calculateDaysLeft("2026-02-28"),
-      status: "Expired",
-      storageLocation: "Main BB - Rack E, Shelf 2"
-    },
-    {
-      id: "12",
-      unitNo: "PLT-20250301-003",
-      component: "Platelets",
-      bloodGroup: "B+",
-      expiryDate: "2026-03-25",
-      daysLeft: calculateDaysLeft("2026-03-25"),
-      status: "Available",
-      storageLocation: "Main BB - Rack B, Shelf 3"
-    }
-  ];
-
-  // Format date for display (DD-MMM-YYYY)
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const month = monthNames[date.getMonth()];
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    } catch (error) {
-      return "";
-    }
-  };
-
-  // Get badge class for days left
   const getDaysLeftBadgeClass = (daysLeft) => {
-    if (daysLeft < 0) return "bg-danger";
+    if (daysLeft == null) return "bg-secondary";
     if (daysLeft <= 3) return "bg-danger";
     if (daysLeft <= 7) return "bg-warning";
     if (daysLeft <= 15) return "bg-info";
     return "bg-success";
   };
 
-  // Get status badge class
+  const formatDaysLeftLabel = (daysLeft) => {
+    if (daysLeft == null) return "";
+    if (daysLeft < 0) return "Expired";
+    if (daysLeft === 0) return "Today";
+    return `${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+  };
+
   const getStatusBadgeClass = (status) => {
-    switch(status) {
-      case "Available":
-        return "bg-success";
-      case "Reserved":
-        return "bg-warning";
-      case "Allocated":
-        return "bg-info";
-      case "Expired":
-        return "bg-danger";
-      default:
-        return "bg-secondary";
+    const s = String(status || "").trim().toUpperCase();
+    switch (s) {
+      case "AVAILABLE": return "bg-success";
+      case "RESERVED": return "bg-warning";
+      case "ALLOCATED": return "bg-info";
+      case "EXPIRED": return "bg-danger";
+      case "DISCARDED": return "bg-dark";
+      case "ISSUED": return "bg-primary";
+      case "RECEIVED_AT_WARD": return "bg-secondary";
+      default: return "bg-secondary";
     }
   };
 
-  // Pagination
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = expiryData.slice(indexOfFirst, indexOfLast);
+  const formatStatusLabel = (status) => {
+    const s = String(status || "").trim();
+    if (!s) return "";
+    return s
+      .toLowerCase()
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  };
+
+  // ---- Fetch grid data (Search + Pagination) ----
+  // isPageChange = true → don't hide table, only show in-table spinner
+  const fetchReportData = async (page = 1, isPageChange = false) => {
+    if (isPageChange) {
+      setIsRefreshing(true);
+    } else {
+      setIsGenerating(true);
+      setShowReport(false);
+    }
+
+    try {
+      const response = await getRequest(`${COMPONENT_EXPIRY_API}?${buildQueryParams(page)}`);
+      if (response && response.response) {
+        const data = response.response;
+        setReportData(data.content || []);
+        setPagination({
+          page: (data.number || 0) + 1,
+          total: data.totalElements || 0,
+          size: data.size || DEFAULT_ITEMS_PER_PAGE,
+        });
+        setShowReport(true);
+      }
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+      showPopup("Failed to fetch report data", "error");
+    } finally {
+      if (isPageChange) {
+        setIsRefreshing(false);
+      } else {
+        setIsGenerating(false);
+      }
+    }
+  };
+
+  // ---- PDF generation (VIEW / PRINT) — same flow as BloodBankStockReport ----
+  const generatePdfReport = async (flag) => {
+    if (flag === STATUS_D) {
+      setIsViewLoading(true);
+    } else if (flag === STATUS_P) {
+      setIsPrintLoading(true);
+    }
+    setPdfUrl(null);
+
+    try {
+      const query = buildReportQueryParams();
+      // Helper appends "&flag=<flag>" to this URL — ensure "?" is always present
+      const reportUrl = query
+        ? `${BLOOD_COMPONENT_EXPIRY_REPORT_URL}?${query}`
+        : `${BLOOD_COMPONENT_EXPIRY_REPORT_URL}?`;
+
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, flag);
+
+      if (flag === STATUS_D) {
+        const fileURL = window.URL.createObjectURL(blob);
+        setPdfUrl(fileURL);
+      }
+      // PRINT (STATUS_P) streams directly to printer — nothing to do here
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      showPopup(
+        flag === STATUS_D
+          ? "Failed to generate report for view/download"
+          : "Failed to print report",
+        "error"
+      );
+    } finally {
+      if (flag === STATUS_D) {
+        setIsViewLoading(false);
+      } else if (flag === STATUS_P) {
+        setIsPrintLoading(false);
+      }
+    }
+  };
+
+  const handleViewReport = () => generatePdfReport(STATUS_D);
+  const handlePrintReport = () => generatePdfReport(STATUS_P);
+
+  // ---- Handlers ----
+  const handleSearch = () => {
+    fetchReportData(1);
+  };
+
+  const handleReset = () => {
+    setShowReport(false);
+    setIsRefreshing(false);
+    setReportData([]);
+    setPagination({ page: 1, total: 0, size: DEFAULT_ITEMS_PER_PAGE });
+    setFilters({
+      datePreset: "",
+      expiryFromDate: "",
+      expiryToDate: "",
+      componentId: "",
+      bloodGroupId: "",
+      inventoryStatus: DEFAULT_INVENTORY_STATUS_ID,
+    });
+    setPdfUrl(null);
+  };
+
+  // When dates are edited manually, drop back to "Custom"
+  const handleFromDateChange = (e) => {
+    setFilters({ ...filters, datePreset: "", expiryFromDate: e.target.value });
+  };
+  const handleToDateChange = (e) => {
+    setFilters({ ...filters, datePreset: "", expiryToDate: e.target.value });
+  };
+
+  // In-table spinner row (used by the report table)
+  const renderLoadingRow = (colSpan) => (
+    <tr>
+      <td colSpan={colSpan} className="text-center py-4">
+        <span
+          className="spinner-border spinner-border-sm me-2"
+          role="status"
+          aria-hidden="true"
+        ></span>
+        <span className="fw-bold">Loading...</span>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="content-wrapper">
@@ -258,6 +317,15 @@ const ComponentExpiryReport = () => {
           message={popupMessage.message}
           type={popupMessage.type}
           onClose={popupMessage.onClose}
+        />
+      )}
+
+      {/* PDF Viewer */}
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => setPdfUrl(null)}
+          name="Component Expiry Report"
         />
       )}
 
@@ -270,83 +338,122 @@ const ComponentExpiryReport = () => {
             <div className="card-body">
               {/* Search Parameters Section */}
               <div className="row mb-4">
+                {/* Select Days */}
+                <div className="col-md-2">
+                  <label className="form-label">Select Days</label>
+                  <select
+                    className="form-select"
+                    value={filters.datePreset}
+                    onChange={(e) => handleDatePresetChange(e.target.value)}
+                  >
+                    {DATE_PRESETS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Expiry From Date */}
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">Expiry From Date</label>
+                  <label className="form-label">Expiry From Date</label>
                   <input
                     type="date"
                     className="form-control"
-                    defaultValue=""
+                    value={filters.expiryFromDate}
                     max={getTodayDate()}
+                    onChange={handleFromDateChange}
                   />
                 </div>
 
                 {/* Expiry To Date */}
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">Expiry To Date</label>
+                  <label className="form-label">Expiry To Date</label>
                   <input
                     type="date"
                     className="form-control"
-                    defaultValue=""
-                    max={getTodayDate()}
+                    value={filters.expiryToDate}
+                    onChange={handleToDateChange}
                   />
                 </div>
 
-                {/* Component Dropdown */}
+                {/* Component */}
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">Component</label>
+                  <label className="form-label">Component</label>
                   <select
                     className="form-select"
-                    defaultValue=""
+                    value={filters.componentId}
+                    onChange={(e) =>
+                      setFilters({ ...filters, componentId: e.target.value })
+                    }
                   >
                     <option value="">All Components</option>
-                    {COMPONENTS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                    {components.map((c) => (
+                      <option key={c.componentId} value={c.componentId}>
+                        {c.componentName}
+                      </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Blood Group Dropdown */}
+                {/* Blood Group */}
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">Blood Group</label>
+                  <label className="form-label">Blood Group</label>
                   <select
                     className="form-select"
-                    defaultValue=""
+                    value={filters.bloodGroupId}
+                    onChange={(e) =>
+                      setFilters({ ...filters, bloodGroupId: e.target.value })
+                    }
                   >
                     <option value="">All Blood Groups</option>
-                    {BLOOD_GROUPS.map((g) => (
-                      <option key={g} value={g}>{g}</option>
+                    {bloodGroups.map((g) => (
+                      <option key={g.bloodGroupId} value={g.bloodGroupId}>
+                        {g.bloodGroupName}
+                      </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Inventory Status Dropdown - Default: AVAILABLE */}
+                {/* Inventory Status — default AVAILABLE */}
                 <div className="col-md-2">
-                  <label className="form-label fw-bold">Inventory Status</label>
+                  <label className="form-label">Inventory Status</label>
                   <select
                     className="form-select"
-                    defaultValue="Available"
+                    value={filters.inventoryStatus}
+                    onChange={(e) =>
+                      setFilters({ ...filters, inventoryStatus: e.target.value })
+                    }
                   >
                     <option value="">All Status</option>
-                    {INVENTORY_STATUS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    {inventoryStatuses.map((s) => (
+                      <option
+                        key={s.inventoryStatusId}
+                        value={s.inventoryStatusId}
+                      >
+                        {formatStatusLabel(s.statusCode)}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Buttons Row */}
+              {/* Search / Reset buttons */}
               <div className="row mb-4">
                 <div className="col-12 d-flex justify-content-end gap-2">
                   <button
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSearch}
-                    disabled={isGenerating}
+                    disabled={isGenerating || isRefreshing}
                   >
                     {isGenerating ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         Searching...
                       </>
                     ) : (
@@ -356,26 +463,69 @@ const ComponentExpiryReport = () => {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={handlereset}
+                    onClick={handleReset}
                   >
                     Reset
                   </button>
                 </div>
               </div>
 
-              {/* Loading State */}
-              {isGenerating && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
+              {/* View / Print buttons row */}
+              <div className="row mb-4">
+                <div className="col-12 d-flex justify-content-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm"
+                    onClick={handleViewReport}
+                    disabled={isGenerating || isRefreshing || isViewLoading}
+                  >
+                    {isViewLoading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-warning btn-sm"
+                    onClick={handlePrintReport}
+                    disabled={isGenerating || isRefreshing || isPrintLoading}
+                  >
+                    {isPrintLoading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Printing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa fa-print me-2"></i> PRINT
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* Report Table */}
+              {/* Report table */}
               {!isGenerating && showReport && (
                 <>
                   <div className="table-responsive">
                     <table className="table table-bordered align-middle">
-                      <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                      <thead
+                        style={{ backgroundColor: "#9db4c0", color: "black" }}
+                      >
                         <tr>
                           <th>Unit No</th>
                           <th>Component</th>
@@ -383,33 +533,46 @@ const ComponentExpiryReport = () => {
                           <th>Expiry Date</th>
                           <th className="text-center">Days Left</th>
                           <th>Inventory Status</th>
-                          <th>Storage Location</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
-                            <tr key={item.id}>
-                              <td className="fw-bold">{item.unitNo}</td>
-                              <td>{item.component}</td>
-                              <td>{item.bloodGroup}</td>
-                              <td>{formatDateForDisplay(item.expiryDate)}</td>
-                              <td className="text-center">
-                                <span className={`badge ${getDaysLeftBadgeClass(item.daysLeft)}`}>
-                                  {item.daysLeft > 0 ? `${item.daysLeft} days` : item.daysLeft === 0 ? 'Today' : 'Expired'}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={`badge ${getStatusBadgeClass(item.status)}`}>
-                                  {item.status}
-                                </span>
-                              </td>
-                              <td>{item.storageLocation}</td>
-                            </tr>
-                          ))
+                        {isRefreshing ? (
+                          renderLoadingRow(6)
+                        ) : reportData.length > 0 ? (
+                          reportData.map((item, idx) => {
+                            const daysLeft = calculateDaysLeft(item.expiryDate);
+                            return (
+                              <tr key={item.inventoryId || idx}>
+                                <td className="fw-bold">{item.unitNo}</td>
+                                <td>
+                                  {item.componentName || item.componentCode}
+                                </td>
+                                <td>{item.bloodGroup}</td>
+                                <td>{formatDisplayDate(item.expiryDate)}</td>
+                                <td className="text-center">
+                                  <span
+                                    className={`badge ${getDaysLeftBadgeClass(
+                                      daysLeft
+                                    )}`}
+                                  >
+                                    {formatDaysLeftLabel(daysLeft)}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`badge ${getStatusBadgeClass(
+                                      item.inventoryStatus
+                                    )}`}
+                                  >
+                                    {formatStatusLabel(item.inventoryStatus)}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="7" className="text-center py-4">
+                            <td colSpan="6" className="text-center py-4">
                               No Record Found
                             </td>
                           </tr>
@@ -418,18 +581,16 @@ const ComponentExpiryReport = () => {
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  {expiryData.length > DEFAULT_ITEMS_PER_PAGE && (
+                  {reportData.length > 0 && (
                     <Pagination
-                      totalItems={expiryData.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      totalItems={pagination.total}
+                      itemsPerPage={pagination.size}
+                      currentPage={pagination.page}
+                      onPageChange={(p) => fetchReportData(p, true)}
                     />
                   )}
                 </>
               )}
-
             </div>
           </div>
         </div>
