@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { MAS_ANAESTHESIA_TYPE } from "../../../config/apiConfig";
 
 // ----- Static option lists -----
-const ANAESTHESIA_TYPE_OPTIONS = ["General Anaesthesia", "Spinal Anaesthesia", "Epidural Anaesthesia", "Regional Anaesthesia"];
 const ASA_GRADE_OPTIONS = ["I", "II", "III", "IV", "V"];
 const DRUG_UNIT_OPTIONS = ["Amp", "Vial", "Bottle", "Tablet", "mg", "ml"];
 const CONSUMABLE_UNIT_OPTIONS = ["Nos", "Pair", "Set", "Box"];
@@ -36,6 +37,10 @@ const OTSurgeryExecution = () => {
   const [view, setView] = useState("worklist");
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [activeTab, setActiveTab] = useState("anaesthesia");
+
+  // Anaesthesia Type master dropdown states
+  const [anaesthesiaTypes, setAnaesthesiaTypes] = useState([]);
+  const [loadingAnaesthesiaTypes, setLoadingAnaesthesiaTypes] = useState(false);
 
   // ----- Dummy worklist data (patients ready for surgery post Pre-Op Checklist) -----
   const dummyWorklist = [
@@ -83,12 +88,33 @@ const OTSurgeryExecution = () => {
     },
   ];
 
+  const fetchAnaesthesiaTypes = async () => {
+    setLoadingAnaesthesiaTypes(true);
+    try {
+      const res = await getRequest(`${MAS_ANAESTHESIA_TYPE}/getAll/1`);
+      if (res?.response && Array.isArray(res.response)) {
+        const activeTypes = res.response.filter(
+          (item) => String(item.status || "Y").toUpperCase() === "Y"
+        );
+        setAnaesthesiaTypes(activeTypes);
+      } else {
+        setAnaesthesiaTypes([]);
+      }
+    } catch (error) {
+      console.error("Error fetching anaesthesia types:", error);
+      setAnaesthesiaTypes([]);
+    } finally {
+      setLoadingAnaesthesiaTypes(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
       setWorklistData(dummyWorklist);
       setLoading(false);
     }, 300);
+    fetchAnaesthesiaTypes();
   }, []);
 
   const filteredWorklist = worklistData.filter(
@@ -130,7 +156,8 @@ const OTSurgeryExecution = () => {
 
   // ----- Anaesthesia -----
   const [anaesthesia, setAnaesthesia] = useState({
-    anaesthesiaType: "Spinal Anaesthesia",
+    anaesthesiaTypeId: "",
+    anaesthesiaType: "",
     anaesthetist: "Dr. Kumar",
     assistantAnaesthetist: "Dr. Verma",
     anaesthesiaStart: "2026-08-20T09:55",
@@ -420,11 +447,27 @@ const OTSurgeryExecution = () => {
           </label>
           <select
             className="form-select"
-            value={anaesthesia.anaesthesiaType}
-            onChange={(e) => handleAnaesthesiaChange("anaesthesiaType", e.target.value)}
+            value={anaesthesia.anaesthesiaTypeId}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const selectedItem = anaesthesiaTypes.find(
+                (item) => String(item.anaesthesiaTypeId) === String(selectedId)
+              );
+              setAnaesthesia((prev) => ({
+                ...prev,
+                anaesthesiaTypeId: selectedId,
+                anaesthesiaType: selectedItem?.anaesthesiaTypeName || "",
+              }));
+            }}
+            disabled={loadingAnaesthesiaTypes}
           >
-            {ANAESTHESIA_TYPE_OPTIONS.map((type) => (
-              <option key={type} value={type}>{type}</option>
+            <option value="">
+              {loadingAnaesthesiaTypes ? "Loading anaesthesia types..." : "Select Anaesthesia Type"}
+            </option>
+            {anaesthesiaTypes.map((item) => (
+              <option key={item.anaesthesiaTypeId} value={item.anaesthesiaTypeId}>
+                {item.anaesthesiaTypeName}
+              </option>
             ))}
           </select>
         </div>

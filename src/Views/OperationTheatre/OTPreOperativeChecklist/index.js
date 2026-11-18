@@ -131,7 +131,7 @@ const OTPreOperativeChecklist = () => {
         params.append("search", search.trim());
       }
 
-      if (status && status.trim()) {
+      if (status && (status.trim() === "N" || status.trim() === "D")) {
         params.append("checklistStatus", status.trim());
       }
 
@@ -144,7 +144,12 @@ const OTPreOperativeChecklist = () => {
             ? res.response
             : [];
 
-        const normalized = content.map((item, idx) => {
+        // Only show Pending (N) and Draft (D) checklists; exclude Completed (Y)
+        const pendingOrDraftContent = content.filter(
+          (item) => String(item.isChecklistDone || "").toUpperCase() !== "Y"
+        );
+
+        const normalized = pendingOrDraftContent.map((item, idx) => {
           let surgeryString = "-";
           let plannedSurgeries = [];
           if (Array.isArray(item.surgeries) && item.surgeries.length > 0) {
@@ -191,8 +196,17 @@ const OTPreOperativeChecklist = () => {
         });
 
         setData(normalized);
-        setTotalItems(res.response.totalElements ?? normalized.length);
-        setTotalPages(res.response.totalPages ?? (normalized.length > 0 ? 1 : 0));
+        const excludedCount = content.length - pendingOrDraftContent.length;
+        const adjustedTotalItems =
+          excludedCount > 0
+            ? Math.max(0, (res.response.totalElements ?? content.length) - excludedCount)
+            : (res.response.totalElements ?? normalized.length);
+        setTotalItems(adjustedTotalItems);
+        setTotalPages(
+          adjustedTotalItems > 0
+            ? (res.response.totalPages ?? Math.ceil(adjustedTotalItems / DEFAULT_ITEMS_PER_PAGE))
+            : 0
+        );
         setCurrentPage((res.response.pageable?.pageNumber ?? page) + 1);
       } else {
         setData([]);
@@ -857,7 +871,7 @@ const OTPreOperativeChecklist = () => {
                       >
                         <option value="">All</option>
                         <option value="N">Pending</option>
-                        <option value="Y">Completed</option>
+                        <option value="D">Draft</option>
                       </select>
                     </div>
                     <div className="col-md-2 d-flex gap-2">

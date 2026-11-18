@@ -1,8 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getRequest } from "../../../service/apiService";
+import { MAS_CONSENT_TYPE } from "../../../config/apiConfig";
 
 const PatientConsent = () => {
     const [patientConsentInfo, setPatientConsentInfo] = useState(false);
     const [showDocument, setShowDocument] = useState(false);
+    const [consentTypes, setConsentTypes] = useState([]);
+    const [loadingConsentTypes, setLoadingConsentTypes] = useState(false);
+    const [selectedConsentTypeId, setSelectedConsentTypeId] = useState("");
+
+    const fetchConsentTypes = async () => {
+        setLoadingConsentTypes(true);
+        try {
+            const res = await getRequest(`${MAS_CONSENT_TYPE}/getAll/1`);
+            if (res?.response && Array.isArray(res.response)) {
+                const activeTypes = res.response.filter(
+                    (item) => String(item.status || "Y").toUpperCase() === "Y"
+                );
+                setConsentTypes(activeTypes);
+            } else {
+                setConsentTypes([]);
+            }
+        } catch (error) {
+            console.error("Error fetching consent types:", error);
+            setConsentTypes([]);
+        } finally {
+            setLoadingConsentTypes(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchConsentTypes();
+    }, []);
 
 
 
@@ -64,10 +93,21 @@ const PatientConsent = () => {
                             <div className="row mb-3">
                                 <div className="col-md-6 mb-2">
                                     <label className="form-label fw-bold small mb-1">Consent Type <span className="text-danger">*</span></label>
-                                    <select className="form-select">
-                                        <option value="">Surgery / Procedure Consent</option>
-                                        <option value=""></option>
-                                    </select>
+                                        <select
+                                            className="form-select"
+                                            value={selectedConsentTypeId}
+                                            onChange={(e) => setSelectedConsentTypeId(e.target.value)}
+                                            disabled={loadingConsentTypes}
+                                        >
+                                            <option value="">
+                                                {loadingConsentTypes ? "Loading consent types..." : "Select Consent Type"}
+                                            </option>
+                                            {consentTypes.map((item) => (
+                                                <option key={item.consentTypeId} value={item.consentTypeId}>
+                                                    {item.consentTypeName}
+                                                </option>
+                                            ))}
+                                        </select>
                                 </div>
                                 <div className="col-md-6 mb-2">
                                     <label className="form-label fw-bold">Remarks</label>
@@ -127,7 +167,7 @@ const PatientConsent = () => {
                     </div>
                 </div>
 
-                { showDocument && <div className="modal show d-block " tabindex="-1" style={{ background: "rgba(0, 0, 0, 0.5)", zIndex: "9999" }}>
+                {showDocument && <div className="modal show d-block " tabindex="-1" style={{ background: "rgba(0, 0, 0, 0.5)", zIndex: "9999" }}>
                     <div className="modal-dialog modal-dialog-centered modal-lg">
                         <div className="modal-content">
                             <div className="modal-header">
@@ -146,7 +186,7 @@ const PatientConsent = () => {
                 </div>
                 }
 
-                
+
 
             </>
         )
