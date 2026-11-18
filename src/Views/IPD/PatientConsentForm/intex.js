@@ -65,10 +65,9 @@ const PatientConsentForm = () => {
                     </div>
                 </div>
                 <div className="mb-4">
-                    <button type="button" class="btn btn-secondary me-2">Cancel</button>
-                    <button class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-sm btn-secondary me-2">Cancel</button>
+                    <button class="btn btn-sm btn-primary">Submit</button>
                 </div>
-
 
                 <div className="">
                     <hr />

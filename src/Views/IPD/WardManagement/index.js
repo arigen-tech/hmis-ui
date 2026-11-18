@@ -365,7 +365,7 @@ const WardManagement = () => {
                       ))}
                     </select>
                   ) : wards.length === 1 ? (
-                    <span className="badge bg-info text-dark fs-6 px-3 py-2 fw-bold" style={{ fontWeight: "700" }}>
+                    <span className="badge bg-info text-dark fs-6 fw-semibold" style={{ padding: "6px 8px" }}>
                       {wards[0].wardName ? wards[0].wardName.trim() : ""}
                     </span>
                   ) : (
@@ -374,7 +374,7 @@ const WardManagement = () => {
                 </div>
 
                 {!selectedPatient && (
-                  <div className="d-flex align-items-center gap-2">
+                  <div className="d-flex align-items-center gap-2 topBtnGroup">
                     <button
                       type="button"
                       className={`btn btn-sm ${deptView === "critical" ? "btn-danger" : "btn-outline-danger"}`}
@@ -402,14 +402,14 @@ const WardManagement = () => {
                 {selectedPatient && (
                   <div className="flex-grow-1 d-flex justify-content-end">
                     <button className="btn btn-light btn-sm" onClick={handleBackToCards}>
-                      <i className="fa fa-arrow-left me-1"></i> Nursing Home
+                      <i className="fa fa-arrow-left me-1"></i>
+                      <span>Nursing Home</span>
                     </button>
                   </div>
                 )}
               </div>
             </div>
             <div className="mt-2">
-
               {!selectedPatient && deptView && (
                 <div className="row mb-3">
                   <div className="col-12">
@@ -420,41 +420,35 @@ const WardManagement = () => {
                           {deptView === "transfer" && "Transfer List "}
                           {deptView === "worklist" && "Worklist "}
                         </h6>
-                        <button
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={() => setDeptView(null)}
-                        >
-                          <i className="fa fa-times me-1"></i> Close
-                        </button>
+                        <button className="btn btn-sm btn-outline-secondary- btnCloseIn" title="Close" onClick={() => setDeptView(null)}>&#10005;</button>
                       </div>
                       <div className="card-body p-0">
                         <div className="table-responsive">
-
                           {deptView === "critical" && (
                             <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
                               <thead className="table-light">
                                 <tr>
-                                  <th>S No.</th>
+                                  <th className="text-center">S No.</th>
                                   <th>Patient</th>
                                   <th>Bed No</th>
                                   <th>Test</th>
                                   <th>Value</th>
                                   <th>Normal Range</th>
                                   <th>Reported Time</th>
-                                  <th>Status</th>
+                                  <th className="text-center">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {dummyCriticalResults.map((row, idx) => (
                                   <tr key={row.id}>
-                                    <td>{idx + 1}</td>
+                                    <td className="text-center">{idx + 1}</td>
                                     <td>{row.patientName}</td>
                                     <td>{row.bedNo}</td>
                                     <td>{row.testName}</td>
                                     <td className="fw-bold text-danger">{row.value}</td>
                                     <td>{row.normalRange}</td>
                                     <td>{row.reportedTime}</td>
-                                    <td>
+                                    <td className="text-center">
                                       <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
                                         {row.status}
                                       </span>
@@ -475,31 +469,31 @@ const WardManagement = () => {
                             <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
                               <thead className="table-light">
                                 <tr>
-                                  <th>S No.</th>
+                                  <th className="text-center">S No.</th>
                                   <th>Task</th>
                                   <th>Patient</th>
                                   <th>Bed No</th>
-                                  <th>Priority</th>
+                                  <th className="text-center">Priority</th>
                                   <th>Assigned To</th>
                                   <th>Due Time</th>
-                                  <th>Status</th>
+                                  <th className="text-center">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {dummyWorklist.map((row, idx) => (
                                   <tr key={row.id}>
-                                    <td>{idx + 1}</td>
+                                    <td className="text-center">{idx + 1}</td>
                                     <td>{row.task}</td>
                                     <td>{row.patientName}</td>
                                     <td>{row.bedNo}</td>
-                                    <td>
+                                    <td className="text-center">
                                       <span className={`badge bg-${getPriorityBadgeColor(row.priority)}`}>
                                         {row.priority}
                                       </span>
                                     </td>
                                     <td>{row.assignedTo}</td>
                                     <td>{row.dueTime}</td>
-                                    <td>
+                                    <td className="text-center">
                                       <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
                                         {row.status}
                                       </span>
@@ -578,7 +572,7 @@ const WardManagement = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="row g-2">
+                    <div className="row g-2 forCardHeight">
                       {patientData.map((patient) => {
                         const isVacant = patient.status === "VACANT";
                         return (
@@ -666,15 +660,11 @@ const WardManagement = () => {
                   {!isPatientListCollapsed ? (
                     <div className="col-md-1" style={{ paddingLeft: 0, paddingRight: 0 }}>
                       <div className="card mb-3 h-100" style={{ borderRadius: 0 }}>
-                        <div className="card-header bg-light d-flex justify-content-between align-items-center py-2">
-                          <h6 className="mb-0" style={{ fontSize: "0.9rem" }}>Patient list </h6>
-                          <button
-                            className="arrow icofont-rounded-down ms-auto text-end fs-6 collapse-arrow border-0 bg-transparent"
-                            type="button"
-                            aria-expanded={!isPatientListCollapsed}
-                            onClick={() => setIsPatientListCollapsed(true)}
-                            style={{ transform: 'rotate(0deg)', transition: 'transform 0.3s ease', padding: '0.1rem' }}
-                          ></button>
+                        <div className="card-header bg-light d-flex justify-content-between align-items-center py-2 cardHeader">
+                          <button className="customIcon" onClick={() => setIsPatientListCollapsed(true)}>
+                            <span>Patient List</span>
+                            <span className="arrow icofont-rounded-down d-block" style={{ transform: 'rotate(180deg)', transition: 'transform 0.3s ease' }}></span>
+                          </button>
                         </div>
                         <div className="card-body p-0" style={{ maxHeight: "500px", overflowY: "auto" }}>
                           {loadingBeds ? (
@@ -684,7 +674,7 @@ const WardManagement = () => {
                               </div>
                             </div>
                           ) : (
-                            <div className="list-group list-group-flush">
+                            <div className="list-group list-group-flush listTabGroup">
                               {patientData.map((patient) => {
                                 const isVacant = patient.status === "VACANT";
                                 return (
@@ -695,19 +685,13 @@ const WardManagement = () => {
                                     style={{ borderLeft: `2px solid ${getBorderColor(patient.status)}`, cursor: isVacant ? 'default' : 'pointer', borderRadius: 0 }}
                                     disabled={isVacant}
                                   >
-                                    <div className="d-flex justify-content-between align-items-start">
-                                      <div className="flex-grow-1">
-                                        <div className="fw-bold" style={{ fontSize: "0.75rem", lineHeight: "1.2" }}>
-                                          {patient.patientName}
-                                        </div>
-                                        {patient.doctorName && patient.status !== "VACANT" && (
-                                          <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>
-                                            <i className="fa fa-stethoscope me-1"></i>
-                                            Dr. {patient.doctorName}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
+                                    <h4 className="fw-bold">{patient.patientName}</h4>
+                                    {patient.doctorName && patient.status !== "VACANT" && (
+                                      <span className="text-muted mt-1">
+                                        <i className="fa fa-stethoscope me-1"></i>
+                                        Dr. {patient.doctorName}
+                                      </span>
+                                    )}
                                   </button>
                                 )
                               })}
@@ -718,16 +702,11 @@ const WardManagement = () => {
                     </div>
                   ) : (
                     <div className="col-auto d-flex align-items-start" style={{ paddingLeft: 0 }}>
-                      <div className="d-flex align-items-center bg-light border mb-1">
-                        <span className="me-2 fw-bold" style={{ fontSize: "0.7rem", whiteSpace: "nowrap" }}>Patient List</span>
-                        <button
-                          className="collapse-toggle-collapsed arrow icofont-rounded-down ms-0 fs-6 border-0 bg-transparent"
-                          type="button"
-                          aria-expanded={false}
-                          onClick={() => setIsPatientListCollapsed(false)}
-                          style={{ transform: 'rotate(90deg)', transition: 'transform 0.3s ease' }}
-                          title="Show Patient List"
-                        ></button>
+                      <div className="d-flex align-items-center bg-light- border- mb-1">
+                        <button className="patientListDropdown customIcon" onClick={() => setIsPatientListCollapsed(false)}>
+                          <span>Patient List</span>
+                          <span className="arrow icofont-rounded-down"></span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -735,41 +714,37 @@ const WardManagement = () => {
                   {/* Patient Details */}
                   <div className={isPatientListCollapsed ? "col-md-12" : "col-md-11"} style={!isPatientListCollapsed ? { paddingLeft: 0, paddingRight: 0 } : {}}>
                     <div className="card" style={!isPatientListCollapsed ? { borderRadius: 0 } : {}}>
-                      <div className="card-header bg-primary text-white">
-                        <div className="d-flex justify-content-start align-items-center">
-                          <div className="flex-grow-1">
-                            <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                              <h5 className="mb-0">{selectedPatient.patientName}</h5>
-                              <div className="d-flex gap-3 align-items-center">
-                                <div>
-                                  <i className="fa fa-user-circle me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>{selectedPatient.ageGender}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-clipboard me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>{selectedPatient.admissionNo}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-calendar me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>{formatDateForDisplay(selectedPatient.admissionDate)} {selectedPatient.admissionTime}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-clock me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>DAY {selectedPatient.currentDay}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-bed me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>{selectedPatient.bedNo}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-stethoscope me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>Dr. {selectedPatient.doctorName}</span>
-                                </div>
-                                <div>
-                                  <i className="fa fa-flask me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>Dx: {patientDiagnoses || selectedPatient.diagnosis || "Not specified"}</span>
-                                </div>
-                              </div>
+                      <div className="card-header bg-primary text-white" style={{ padding: "8px 10px" }}>
+                        <div className="d-flex align-items-center gap-3 flex-shrink-0 patientInfoMain">
+                          <h5 className="mb-0">{selectedPatient.patientName}</h5>
+                          <div className="d-flex gap-3 align-items-center patientInfo">
+                            <div>
+                              <i className="fa fa-user-circle"></i>
+                              <span style={{ fontSize: '0.8rem' }}>{selectedPatient.ageGender}</span>
+                            </div>
+                            <div>
+                              <i className="fa fa-clipboard"></i>
+                              <span style={{ fontSize: '0.8rem' }}>{selectedPatient.admissionNo}</span>
+                            </div>
+                            <div>
+                              <i className="fa fa-calendar"></i>
+                              <span style={{ fontSize: '0.8rem' }}>{formatDateForDisplay(selectedPatient.admissionDate)} {selectedPatient.admissionTime}</span>
+                            </div>
+                            <div>
+                              <i class="icofont-wall-clock"></i>
+                              <span style={{ fontSize: '0.8rem' }}>DAY {selectedPatient.currentDay}</span>
+                            </div>
+                            <div>
+                              <i className="fa fa-bed"></i>
+                              <span style={{ fontSize: '0.8rem' }}>{selectedPatient.bedNo}</span>
+                            </div>
+                            <div>
+                              <i className="fa fa-stethoscope"></i>
+                              <span style={{ fontSize: '0.8rem' }}>Dr. {selectedPatient.doctorName}</span>
+                            </div>
+                            <div>
+                              <i className="fa fa-flask"></i>
+                              <span style={{ fontSize: '0.8rem' }}>Dx: {patientDiagnoses || selectedPatient.diagnosis || "Not specified"}</span>
                             </div>
                           </div>
                         </div>
@@ -790,18 +765,16 @@ const WardManagement = () => {
                           <>
                             <div className="card mb-1">
                               <div className="card-body p-2">
-                                <div className="d-flex flex-wrap gap-1">
+                                <div className="d-flex flex-wrap gap-1 wardTabs">
                                   {caseSheetTabs.map((tab) => {
                                     const isTabDisabled = !isAssessmentSubmitted && tab !== "Admission Details" && tab !== "IPD Initial Assessment";
                                     return (
                                       <button
                                         key={tab}
-                                        className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary' : 'btn-outline-warning'}`}
+                                        className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary active' : 'btn-outline-warning'}`}
                                         onClick={() => !isTabDisabled && setActiveTab(tab)}
                                         disabled={isTabDisabled}
                                         style={{
-                                          fontSize: "0.55rem",
-                                          whiteSpace: "nowrap",
                                           opacity: isTabDisabled ? 0.5 : 1,
                                           cursor: isTabDisabled ? "not-allowed" : "pointer"
                                         }}
@@ -1001,10 +974,95 @@ const WardManagement = () => {
           border-radius: 4px;
           cursor: pointer;
         }
-        .icofont-rounded-down::before {
-          content: "▼";
+        .icofont-rounded-down{
+          margin-top: -3px;
+        }
+        .customIcon .icofont-rounded-down::before {
+          content: "⌵";
           font-family: Arial, sans-serif;
-          font-size: 12px;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .patientListDropdown{
+          font-weight: 700;
+          border: solid 1px rgb(0 0 0/0.15);
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          border-radius: 0px 4px 4px 0;
+        }
+        .cardHeader{
+          padding: 8px 10px;
+        }
+        .cardHeader button{
+          display: flex;
+          width: 100%;
+          justify-content: space-between;
+          border: 0;
+          background: none;
+          color: #fff;
+          font-weight: 600;
+          font-weight: 700;
+          padding: 0;
+        }
+        .cardHeader button:hover{
+          background: rgb(0 0 0/0.08);
+        }
+        .listTabGroup button{
+          padding: 10px 8px;
+          border-top: solid 1px rgb(255 255 255/0.2) !important;
+        }
+        .listTabGroup button h4{
+          font-size: 12px !important;
+          line-height: 1.2;
+          margin-bottom: 0px
+        }
+        .listTabGroup button span{
+          display: block;
+          font-size: 10px;
+          line-height: normal;
+        }
+
+        .listTabGroup button.active h4{
+          color: #fff;
+        }
+        .listTabGroup button.active span{
+          color: rgb(255 255 255/0.70) !important;
+        }
+        .forCardHeight .card{
+          height: 100%;
+        }
+        .topBtnGroup .btn-outline-danger{
+          color:#FFBCC5;
+          border: 1px solid #FF6B81;
+        }
+        .topBtnGroup .btn-outline-warning{
+          color: #FFD43B;
+          border: 1px solid #FFD43B;
+       }
+       .topBtnGroup .btn-outline-warning:hover{
+          color:#000;
+       }
+        .topBtnGroup .btn-outline-success{
+          color: #42DDAA;
+          border: 1px solid #42DDAA;
+        }
+        .btnCloseIn{
+          background: none;
+          border-radius: 30px;
+          width: 30px;
+          height: 30px;
+          border: 1px solid #fff;
+          font-size: 15px;
+          color: #fff;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .btnCloseIn:hover{
+          border: 1px solid #FC5A69;
+          background: #FC5A69;
         }
       `}</style>
     </div>
