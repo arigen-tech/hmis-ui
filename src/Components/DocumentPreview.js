@@ -105,16 +105,16 @@ const DocumentPreview = ({ filePath, onClose }) => {
   }, [filePath]);
 
   return (
-    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: "9999" }}>
       <div className="modal-dialog modal-xl">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title">Document Preview</h5>
+            <h4 className="modal-title fw-semibold">Document Preview</h4>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body text-center" style={{ minHeight: '300px' }}>
             {loading && <div>Loading document...</div>}
-            {!loading && !previewUrl && <div>No document available</div>}
+            {!loading && !previewUrl && <div><h3>No document available</h3></div>}
 
             {/* Image */}
             {!loading && previewUrl && mimeType.startsWith("image/") && (

@@ -87,7 +87,7 @@ const FluidBalanceChart = ({ intake, output, balance, date }) => {
   const outputRemainingPercent = (outputRemaining / maxValue) * 100
 
   return (
-    <div className="card border-0 shadow-sm h-100">
+    <div className="card border-0- shadow-sm h-100">
       <div className="card-body p-4">
         <h6 className="mb-3 fw-semibold text-center" style={{ color: "#2c3e50", fontSize: "0.9rem" }}>
           {date}
@@ -415,20 +415,20 @@ const ClinicalDashboard = ({ selectedPatient }) => {
   const rrStatus    = getStatus(RR_ZONES,     vitals.respiration)
 
   return (
-    <div className="container-fluid p-4">
+    <>
       {/* ─── TAB TOGGLE ─── */}
       <div className="d-flex gap-2 mb-3">
         <button
           className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("vitals")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Vital Details
         </button>
         <button
           className={`btn btn-sm ${activeView === "intakeOutput" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("intakeOutput")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Intake / Output
         </button>
@@ -436,7 +436,7 @@ const ClinicalDashboard = ({ selectedPatient }) => {
 
       {/* ─── VITAL DETAILS SECTION ─── */}
       {activeView === "vitals" && (
-        <div>
+        <div className="intakeOutputBadge">
           {/* Row 1: BP Systolic | BP Diastolic | Heart Rate */}
           <div className="row g-3 mb-4">
             <div className="col-md-4">
@@ -597,7 +597,7 @@ const ClinicalDashboard = ({ selectedPatient }) => {
 
       {/* ─── INTAKE / OUTPUT SECTION ─── */}
       {activeView === "intakeOutput" && (
-        <div>
+        <div className="">
           {/* Legend for fluid balance charts */}
           <div className="d-flex gap-3 justify-content-end mb-3">
             <div className="d-flex align-items-center gap-2">
@@ -631,8 +631,20 @@ const ClinicalDashboard = ({ selectedPatient }) => {
           </div>
         </div>
       )}
-    </div>
+
+      <style>
+        {`
+          .intakeOutputBadge .badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            font-weight: normal;
+            border-radius: 30px;
+          }
+        `}
+      </style>
+    </>
   )
 }
 
-export default ClinicalDashboard
+export default ClinicalDashboard;
+
