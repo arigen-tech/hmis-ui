@@ -913,6 +913,9 @@ export const GET_CURRENT_ACTIVE_DIET_SCHEDULE = "/ipd/getCurrentActiveDietSchedu
 export const SAVE_SHIFT_HANDOVER = '/ipd/saveShiftHandover';
 export const GET_SHIFT_HANDOVER = '/ipd/getShiftHandover';
 export const ACTIVE_ADMISSION_LIST_OT = '/otController/activeAdmissionList';
+export const INPATIENT_SURGERIES_OT = '/otController/inpatient';
+export const PATIENT_CONSENT_OT = '/otController/patientConsent';
+export const SAVE_PATIENT_CONSENT_OT = '/otController/patientConsent';
 
 export const MAS_TOOTH_BY_TYPE = `${MASTERS}/masToothByToothType`;
 export const GET_PROCEDURE_WORKLIST = `/procedure/getProcedureWorkList`;
