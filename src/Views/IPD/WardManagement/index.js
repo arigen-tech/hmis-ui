@@ -900,7 +900,7 @@ const WardManagement = () => {
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
-                          <div className="col-md-6">
+                          <div className="col-md-6 gridTwoCol">
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div style={{ width: "20px", height: "20px", backgroundColor: "#d4edda", border: "2px solid #28a745", borderRadius: "4px" }}></div>
                               <span><strong>VACANT</strong> - Light Green with Green Border</span>
@@ -918,7 +918,7 @@ const WardManagement = () => {
                               <span><strong>TRP</strong> - Transferred Patient</span>
                             </div>
                           </div>
-                          <div className="col-md-6">
+                          <div className="col-md-6 gridTwoCol">
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div style={{ width: "20px", height: "20px", backgroundColor: "#d1ecf1", border: "2px solid #17a2b8", borderRadius: "4px" }}></div>
                               <span><strong>OT</strong> - In Operation Theater</span>
@@ -1064,6 +1064,10 @@ const WardManagement = () => {
           border: 1px solid #FC5A69;
           background: #FC5A69;
         }
+        .gridTwoCol{
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          }
       `}</style>
     </div>
   )

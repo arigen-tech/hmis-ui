@@ -24337,7 +24337,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   color: var(--white-color);
   align-items: center;
   padding: 8px 0;
-  font-size: 1rem;
+  font-size: 14px;
 }
 
 .sidebar .menu-list .ms-link {
@@ -24348,7 +24348,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 }
 
 .sidebar .menu-list .ms-link span {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .sidebar .menu-list .fa {
