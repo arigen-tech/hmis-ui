@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import {  REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, GET_OPENING_BALANCE_ENTRY_HEADERS, GET_OPENING_BALANCE_ENTRY_DETAILS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, GET_DRUG_CODE_FOR_DROPDOWN, GET_CURRENT_USER_PROFILE_BY_NAME, GET_DEPARTMENT_BY_ID, UPDATE_OPENING_BALANCE_ENTRY_BY_ID, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS, REQUEST_PARAM_SECTION_CODE } from "../../../config/apiConfig";
+import { REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, GET_OPENING_BALANCE_ENTRY_HEADERS, GET_OPENING_BALANCE_ENTRY_DETAILS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, GET_DRUG_CODE_FOR_DROPDOWN, GET_CURRENT_USER_PROFILE_BY_NAME, GET_DEPARTMENT_BY_ID, UPDATE_OPENING_BALANCE_ENTRY_BY_ID, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS, REQUEST_PARAM_SECTION_CODE } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
@@ -781,8 +781,8 @@ const OpeningBalanceApproval = () => {
       console.error("Error submitting data:", error);
       return {
         success: false,
-        message: error?.message || "Failed to update entries!" 
-    };
+        message: error?.message || "Failed to update entries!"
+      };
     } finally {
       setIsUpdating(false);
       setIsSubmitting(false);
@@ -917,10 +917,10 @@ const OpeningBalanceApproval = () => {
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">View And Edit Opening Balance Entry</h4>
-                <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
-                  Back to List
-                </button>
+                <div class="d-flex align-items-center gap-1">
+                  <button class="btn-back" title="Back to List" onClick={handleBackToList}><i class="icofont-arrow-left"></i></button>
+                  <h4 class="card-title p-2 mb-0">View And Edit Opening Balance Entry</h4>
+                </div>
               </div>
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
@@ -1458,27 +1458,29 @@ const OpeningBalanceApproval = () => {
                   </div>
                 ) : (
                   // View-only mode buttons (for Approved/Pending status)
-                  <div className="d-flex justify-content-end mt-4">
-                    <button
-                      type="button"
-                      className="btn btn-info me-2"
-                      onClick={handleReportClick}
-                      disabled={isUpdating || isSubmitting || loadingDetails || isGeneratingReport}
-                      style={{ color: "white" }}
-                    >
-                      {isGeneratingReport ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Generating...
-                        </>
-                      ) : (
-                        "Report"
-                      )}
-                    </button>
+                  <div className="d-flex justify-content-between mt-4">
+                    <div className="">
+                      <button type="button" class="btn btnOutline" onClick={handleBackToList}><i class="icofont-arrow-left"></i> <span>Back</span></button>
+                    </div>
+                    <div className="">
+                      <button
+                        type="button"
+                        className="btn btn-info me-2"
+                        onClick={handleReportClick}
+                        disabled={isUpdating || isSubmitting || loadingDetails || isGeneratingReport}
+                        style={{ color: "white" }}
+                      >
+                        {isGeneratingReport ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Generating...
+                          </>
+                        ) : (
+                          "Report"
+                        )}
+                      </button>
+                    </div>
 
-                    <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
-                      Back
-                    </button>
                   </div>
                 )}
               </div>
@@ -1506,7 +1508,7 @@ const OpeningBalanceApproval = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">View And Update Opening Balance Entry</h4>
+              <h4 className="card-title p-2 mb-0 ps-0">View And Update Opening Balance Entry</h4>
             </div>
 
             <div className="card-body">
@@ -1578,7 +1580,7 @@ const OpeningBalanceApproval = () => {
                       <th>Balance No.</th>
                       <th>Opening Balance Date</th>
                       <th>Department</th>
-                      <th>Status</th>
+                      <th className="text-center">Status</th>
                       <th>Submitted By</th>
                       <th>Drug / Non Drug</th>
                       <th className="text-center">Action</th>
@@ -1603,7 +1605,7 @@ const OpeningBalanceApproval = () => {
                           <td>{item.balanceNo}</td>
                           <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
                           <td>{item.departmentName}</td>
-                          <td>
+                          <td className="text-center">
                             <span
                               className="badge"
                               style={{

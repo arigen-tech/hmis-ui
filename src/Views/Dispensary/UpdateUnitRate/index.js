@@ -303,7 +303,7 @@ const UpdateUnitRate = () => {
                     </tbody>
                   </table>
                   <div className="d-flex justify-content-end mt-3">
-                    <button type="submit" className="btn btn-success">
+                    <button type="submit" className="btn btn-primary">
                       Submit
                     </button>
                   </div>

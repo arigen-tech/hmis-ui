@@ -39,7 +39,7 @@ import {
   OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME,
 } from "../../../config/constants";
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {sanitizePositiveInt,blockNonDigitKeys} from "../../../utils/FormFieldsValiadtion"
+import { sanitizePositiveInt, blockNonDigitKeys } from "../../../utils/FormFieldsValiadtion"
 
 // PortalDropdown Component (unchanged)
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -151,9 +151,9 @@ const OpeningBalanceEntry = () => {
       },
       onCancel: onCancel
         ? () => {
-            onCancel();
-            setConfirmationPopup(null);
-          }
+          onCancel();
+          setConfirmationPopup(null);
+        }
         : () => setConfirmationPopup(null),
       confirmText,
       cancelText,
@@ -658,8 +658,8 @@ const OpeningBalanceEntry = () => {
         balanceType === "drug"
           ? SECTION_CODE_FOR_DRUGS
           : balanceType === "nondrug"
-          ? SECTION_CODE_FOR_NON_DRUGS
-          : "",
+            ? SECTION_CODE_FOR_NON_DRUGS
+            : "",
       storeBalanceDtList: drugEntries
         .filter((entry) => entry.drugCode || entry.drugName)
         .map((entry) => ({
@@ -687,7 +687,7 @@ const OpeningBalanceEntry = () => {
       const endpoint = isSave ? `${SAVE_OPENING_BALANCE_ENTRY}` : `${SUBMIT_OPENING_BALANCE_ENTRY}`;
       const response = await postRequest(endpoint, payload);
 
-      if (response?.status === 200 ) {
+      if (response?.status === 200) {
         return { success: true, response, action: isSave ? "save" : "submit" };
       } else {
         return {
@@ -697,10 +697,10 @@ const OpeningBalanceEntry = () => {
       }
     } catch (error) {
       console.error(`${isSave ? "Save" : "Submit"} Error:`, error);
-       return {
+      return {
         success: false,
         message: error?.message || "Something went wrong. Please try again."
-    };
+      };
     } finally {
       if (isSave) setIsSaving(false);
       else setIsSubmitting(false);
@@ -739,7 +739,7 @@ const OpeningBalanceEntry = () => {
           showConfirmationPopup(
             result?.message || ERROR_SAVE_DATA_FAILED,
             "error",
-            () => {},
+            () => { },
             null,
             "OK",
             "Close"
@@ -782,7 +782,7 @@ const OpeningBalanceEntry = () => {
           showConfirmationPopup(
             result?.message || ERROR_SUBMIT_DATA_FAILED,
             "error",
-            () => {},
+            () => { },
             null,
             "OK",
             "Close"
@@ -846,7 +846,7 @@ const OpeningBalanceEntry = () => {
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ""}
         type={confirmationPopup?.type || "info"}
-        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onConfirm={confirmationPopup?.onConfirm || (() => { })}
         onCancel={confirmationPopup?.onCancel}
         confirmText={confirmationPopup?.confirmText || "OK"}
         cancelText={confirmationPopup?.cancelText}
@@ -950,8 +950,7 @@ const OpeningBalanceEntry = () => {
                       {/* Manufacturer column moved before Brand Name */}
                       <th style={{ width: "150px", minWidth: "150px" }}>Manufacturer</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Brand Name</th>
-                      <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                      <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
+                      <th className="text-center" style={{ width: "60px", minWidth: "70px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1258,39 +1257,12 @@ const OpeningBalanceEntry = () => {
                         </td>
 
                         <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-success"
-                            onClick={addNewRow}
-                            style={{
-                              color: "white",
-                              border: "none",
-                              width: "35px",
-                              height: "35px",
-                            }}
-                            title="Add Row"
-                            disabled={isSaving || isSubmitting}
-                          >
-                            +
-                          </button>
-                        </td>
-                        <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => removeRow(index)}
-                            disabled={
-                              drugEntries.length === 1 || isSaving || isSubmitting
-                            }
-                            title="Delete Row"
-                            style={{
-                              width: "35px",
-                              height: "35px",
-                            }}
-                          >
-                            -
-                          </button>
-                        </td>
+                          <div className="btnCenter">
+                            <button type="button" className="btn btn-primary btnAdd" title="Add Row" onClick={addNewRow} disabled={isSaving || isSubmitting}><i class="icofont-plus"></i></button>
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete Row" onClick={() => removeRow(index)}
+                            disabled={ drugEntries.length === 1 || isSaving || isSubmitting}><i class="icofont-trash"></i></button>
+                          </div>
+                        </td> 
                       </tr>
                     ))}
                   </tbody>
@@ -1305,43 +1277,47 @@ const OpeningBalanceEntry = () => {
                 />
               )}
 
-              <div className="d-flex justify-content-end gap-2 mt-4">
-                <button type="button" className="btn btn-success" onClick={handleSave}>
-                  {isSaving ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Saving...
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </button>
-                <button type="button" className="btn btn-success" onClick={handleSubmit}>
-                  {isSubmitting ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleReset}
-                  disabled={isSaving || isSubmitting}
-                >
-                  Reset
-                </button>
+              <div className="d-flex justify-content-between mt-4">
+                <div className="">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleReset}
+                    disabled={isSaving || isSubmitting}
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-success" onClick={handleSave}>
+                    {isSaving ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+                    {isSubmitting ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

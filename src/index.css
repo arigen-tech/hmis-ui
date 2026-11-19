@@ -26286,6 +26286,7 @@ table td .status {
 
 .btnAdd i {
   font-size: 14px;
+  margin-bottom: -2px;
 }
 
 .btnDel {
@@ -26308,6 +26309,7 @@ table td .status {
 
 .btnDel i {
   font-size: 14px;
+  margin-bottom: -2px;
 }
 
 .btnCenter {
