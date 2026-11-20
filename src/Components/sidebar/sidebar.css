@@ -12,7 +12,8 @@
   display: flex;
   flex-direction: column; /* make sidebar a flex container */
   margin: 0 !important;
-  padding: 12px;
+  /* padding: 12px; */
+  padding: 12px 5px;
 }
 
 /* Inner container – takes all height and allows children to shrink */
@@ -24,16 +25,15 @@
 }
 
 /* Brand Area – never shrink */
+.logoWrapper{
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px 16px 10px;
+}
 .brand-icon {
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 18px;
   text-decoration: none !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 4px 12px 16px 12px;
-  margin-right: -12px;
-  margin-left: -12px;
 }
 
 .logo-icon {
@@ -68,7 +68,7 @@
   position: sticky;
   top: 0;
   z-index: 1020;
-  padding: 15px 0px 12px 0px;
+  padding: 15px 10px 12px 10px;
 }
 
 #sidebar-search {
@@ -172,20 +172,20 @@
   align-items: center;  
   color: #94a3b8 !important;
   text-decoration: none !important;
-  font-weight: 500 !important;
+  /* font-weight: 500 !important; */
   font-size: 14px !important;
   border-radius: 0.75rem !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   border: 1px solid transparent !important;
-  padding: 10px 12px !important;
+  padding: 10px 8px !important;
 }
 
 .m-link i,
 .ms-link i {
   color: #64748b !important;
   transition: color 0.2s ease;
-  font-size: 16px !important;
-  margin-right: 12px;
+  font-size: 15px !important;
+  margin-right: 8px;
 }
 
 /* Hover state */
@@ -193,7 +193,7 @@
 .ms-link:hover {
   color: #ffffff !important;
   background: rgba(255, 255, 255, 0.04) !important;
-  padding-left: 14px !important;
+  /* padding-left: 11px !important; */
 }
 
 .m-link:hover i,
@@ -210,7 +210,7 @@
 .m-link.active {
   background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%) !important;
   color: #ffffff !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   box-shadow: 0 4px 15px -3px rgba(59, 130, 246, 0.4) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
@@ -243,11 +243,9 @@
 /* Sub-menus styling */
 .sub-menu {
   list-style: none !important;
-  padding-left: .5rem !important;
-  margin-top: 0.25rem;
   border-left: 1px solid rgba(255, 255, 255, 0.05);
-  margin-left: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin: 4px 0px 8px 15px;
+  padding-left: 2px !important;
 }
 
 .sub-menu li {
@@ -255,8 +253,9 @@
 }
 
 .sub-menu .ms-link {
-  padding: 0.5rem 0.75rem !important;
-  font-size: 0.755rem !important;
+  /* padding: 0.5rem 0.75rem !important; */
+  font-size: 12px !important;
+  padding: 8px 8px !important;
 }
 
 .sidebar-mini-btn {

@@ -1001,11 +1001,14 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
       </div>
 
       {/* ======================= BOTTOM ACTION BAR ======================= */}
-      <div className=" m-3">
-        <div className="card-body d-flex justify-content-end gap-2">
+      <div className="mt-3">
+        <div className="d-flex justify-content-end gap-2">
+        <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+            <i className="mdi mdi-close me-1"></i>Cancel
+          </button>
           <button
             type="button"
-            className="btn btn-sm btn-info text-white"
+            className="btn btn-info text-white"
             onClick={handlePrintClick}
             disabled={isGeneratingReport || !assessmentId}
           >
@@ -1022,7 +1025,7 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
           </button>
           <button
             type="button"
-            className="btn btn-sm btn-success"
+            className="btn btn-primary"
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -1036,10 +1039,7 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
                 <i className="mdi mdi-check me-1"></i>Submit
               </>
             )}
-          </button>
-          <button type="button" className="btn btn-sm btn-outline-danger" onClick={handleCancel}>
-            <i className="mdi mdi-close me-1"></i>Cancel
-          </button>
+          </button>          
         </div>
       </div>
     </div>

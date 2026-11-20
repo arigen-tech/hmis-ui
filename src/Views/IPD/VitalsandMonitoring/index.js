@@ -576,21 +576,21 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("vitals")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Vitals & Monitoring
         </button>
         <button
           className={`btn btn-sm ${activeView === "intakeOutput" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("intakeOutput")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Intake & Output
         </button>
         <button
           className="btn btn-sm btn-success"
           onClick={handleOpenAddModal}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
           type="button"
         >
           + Add Intake/Output
@@ -811,7 +811,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
             )}
           </div>
           <div className="d-flex gap-2 justify-content-end py-2 px-2">
-            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit} disabled={saving}>
+            <button className="btn btn-sm btn-success" onClick={handleVitalsSubmit} disabled={saving}>
               {saving ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -821,7 +821,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                 "Save"
               )}
             </button>
-            <button className="btn btn-success btn-sm" onClick={handlePrintClick} disabled={isGeneratingReport}>
+            <button className="btn btn-sm btn-warning" onClick={handlePrintClick} disabled={isGeneratingReport}>
               {isGeneratingReport ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -966,9 +966,9 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
         >
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Add Intake / Output</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddModal(false)}></button>
+              <div className="modal-header bg-primary- text-white-">
+                <h4 className="modal-title fw-semibold">Add Intake / Output</h4>
+                <button type="button" className="btn-close btn-close-white-" onClick={() => setShowAddModal(false)}></button>
               </div>
               <div className="modal-body">
                 {/* Intake Section */}
@@ -986,7 +986,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                         <th style={{ width: "27%" }}>Type/Route</th>
                         <th style={{ width: "27%" }}>Item</th>
                         <th style={{ width: "23%" }}>Qty (ml)</th>
-                        <th style={{ width: "15%" }}>Action</th>
+                        <th className="text-center" style={{ width: "15%" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1034,14 +1034,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                             />
                           </td>
                           <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => deleteModalIntakeRow(row.id)}
-                              disabled={modalIntakeRows.length === 1}
-                            >
-                              X
-                            </button>
+                          <div className="btnCenter">
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete" onClick={() => deleteModalIntakeRow(row.id)}
+                              disabled={modalIntakeRows.length === 1}><i class="icofont-trash"></i></button>
+                          </div>
                           </td>
                         </tr>
                       ))}
@@ -1072,7 +1068,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                         <th style={{ width: "10%" }}>Sl.No</th>
                         <th style={{ width: "45%" }}>Item</th>
                         <th style={{ width: "30%" }}>Qty (ml)</th>
-                        <th style={{ width: "15%" }}>Action</th>
+                        <th className="text-center" style={{ width: "15%" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1103,14 +1099,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                             />
                           </td>
                           <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => deleteModalOutputRow(row.id)}
-                              disabled={modalOutputRows.length === 1}
-                            >
-                              X
-                            </button>
+                          <div className="btnCenter">
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete" onClick={() => deleteModalOutputRow(row.id)}
+                              disabled={modalOutputRows.length === 1}><i class="icofont-trash"></i></button>
+                          </div>
                           </td>
                         </tr>
                       ))}

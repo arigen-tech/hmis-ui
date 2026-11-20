@@ -409,12 +409,14 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
     <div className={`sidebar ${collapsed ? "sidebar-mini" : "open"}`}>
       <div className="sidebar-inner">
         {/* Brand - fixed */}
-        <Link to="/dashboard" className="brand-icon">
-          <span className="logo-icon">
-            <i className="icofont-heart-beat fs-2" />
-          </span>
-          <span className="logo-text">Arigen-Health</span>
-        </Link>
+        <div className="logoWrapper">
+          <Link to="/dashboard" className="brand-icon">
+            <span className="logo-icon">
+              <i className="icofont-heart-beat fs-2" />
+            </span>
+            <span className="logo-text">Arigen-Health</span>
+          </Link>
+        </div>
 
         {/* Search - fixed */}
         <div className="sidebar-search-wrapper">

@@ -210,21 +210,21 @@ const PhysicalStockAdjustment = () => {
     try {
       setProcessing(true);
       const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
-      
+
       if (response && response.response) {
         const trackingId = response.response?.trackingMId || response.response?.id;
         return { success: true, response, trackingId, action: submitStatus === "s" ? "save" : "submit" };
       } else {
-        return { 
-          success: false, 
-          message: response?.message || `Failed to ${submitStatus === "s" ? 'save' : 'submit'} stock adjustment. Please try again.` 
+        return {
+          success: false,
+          message: response?.message || `Failed to ${submitStatus === "s" ? 'save' : 'submit'} stock adjustment. Please try again.`
         };
       }
     } catch (error) {
       console.error("Error submitting stock adjustment:", error);
-      return { 
-        success: false, 
-        message: "Something went wrong. Please try again." 
+      return {
+        success: false,
+        message: "Something went wrong. Please try again."
       };
     } finally {
       setProcessing(false);
@@ -238,24 +238,24 @@ const PhysicalStockAdjustment = () => {
       "info",
       async () => {
         const result = await handleSaveOrSubmit("s");
-        
+
         if (result?.success) {
           const trackingId = result.trackingId;
-          
+
           showConfirmationPopup(
             PHYSICAL_STOCK_SAVE_SUCC_MSG,
             "success",
             () => {
               // Navigate to report page
-                navigate('/ViewDownloadReport', {
-                  state: {
-                    reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
-                    title: PHYSICAL_STOCK_SAVE_TITLE,
-                    fileName: PHYSICAL_STOCK_SAVE_SUCC_MSG,
-                    returnPath: window.location.pathname
-                  }
-                });
-              
+              navigate('/ViewDownloadReport', {
+                state: {
+                  reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
+                  title: PHYSICAL_STOCK_SAVE_TITLE,
+                  fileName: PHYSICAL_STOCK_SAVE_SUCC_MSG,
+                  returnPath: window.location.pathname
+                }
+              });
+
               handleReset();
             },
             () => {
@@ -269,7 +269,7 @@ const PhysicalStockAdjustment = () => {
           showConfirmationPopup(
             result?.message || FAIL_TO_SAVE_CHANGES,
             "error",
-            () => {},
+            () => { },
             null,
             "OK",
             "Close"
@@ -291,23 +291,23 @@ const PhysicalStockAdjustment = () => {
       "info",
       async () => {
         const result = await handleSaveOrSubmit("p");
-        
+
         if (result?.success) {
           const trackingId = result.trackingId;
-          
+
           showConfirmationPopup(
             PHYSICAL_STOCK_SUBMIT_SUCC_MSG,
             "success",
             () => {
               // Navigate to report page
-                navigate('/ViewDownloadReport', {
-                  state: {
-                    reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
-                    title: PHYSICAL_STOCK_SUBMIT_TITLE,
-                    fileName: PHYSICAL_STOCK_SUBMIT_FILE_NAME,
-                    returnPath: window.location.pathname
-                  }
-                });
+              navigate('/ViewDownloadReport', {
+                state: {
+                  reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
+                  title: PHYSICAL_STOCK_SUBMIT_TITLE,
+                  fileName: PHYSICAL_STOCK_SUBMIT_FILE_NAME,
+                  returnPath: window.location.pathname
+                }
+              });
               handleReset();
             },
             () => {
@@ -319,9 +319,9 @@ const PhysicalStockAdjustment = () => {
           );
         } else {
           showConfirmationPopup(
-            result?.message ||FAIL_TO_SAVE_CHANGES,
+            result?.message || FAIL_TO_SAVE_CHANGES,
             "error",
-            () => {},
+            () => { },
             null,
             "OK",
             "Close"
@@ -373,12 +373,12 @@ const PhysicalStockAdjustment = () => {
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
         type={confirmationPopup?.type || 'info'}
-        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onConfirm={confirmationPopup?.onConfirm || (() => { })}
         onCancel={confirmationPopup?.onCancel}
         confirmText={confirmationPopup?.confirmText || 'OK'}
         cancelText={confirmationPopup?.cancelText}
       />
-      
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -410,8 +410,7 @@ const PhysicalStockAdjustment = () => {
                       <th style={{ width: "100px", minWidth: "100px" }}>Surplus</th>
                       <th style={{ width: "100px", minWidth: "100px" }}>Deficient</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Remarks</th>
-                      <th style={{ width: "60px", minWidth: "60px" }}>Add</th>
-                      <th style={{ width: "70px", minWidth: "70px" }}>Delete</th>
+                      <th className="text-center" style={{ width: "70px", minWidth: "70px" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -736,37 +735,11 @@ const PhysicalStockAdjustment = () => {
                         </td>
 
                         <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn"
-                            onClick={addNewRow}
-                            style={{
-                              backgroundColor: "#d2691e",
-                              color: "white",
-                              border: "none",
-                              width: "35px",
-                              height: "35px",
-                            }}
-                            title="Add Row"
-                          >
-                            +
-                          </button>
-                        </td>
-
-                        <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => removeRow(index)}
-                            disabled={stockEntries.length === 1}
-                            title="Delete Row"
-                            style={{
-                              width: "35px",
-                              height: "35px",
-                            }}
-                          >
-                            -
-                          </button>
+                        <div className="btnCenter">
+                            <button type="button" className="btn btn-primary btnAdd" title="Add Row" onClick={addNewRow}><i class="icofont-plus"></i></button>
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete Row" onClick={() => removeRow(index)}
+                            disabled={stockEntries.length === 1}><i class="icofont-trash"></i></button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -775,11 +748,11 @@ const PhysicalStockAdjustment = () => {
               </div>
 
               {/* Reason for Stock Taking */}
-              <div className="row mt-4">
+              <div className="row mt-2">
                 <div className="col-md-6">
                   <label className="form-label fw-bold">
                     Reason for Stock Taking
-                    <span className="text-danger">*</span>
+                    <span className="text-danger"> *</span>
                   </label>
                   <textarea
                     className="form-control"
@@ -800,26 +773,12 @@ const PhysicalStockAdjustment = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="d-flex justify-content-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={processing}
-                  onClick={handleSave}
-                >
-                  Save
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-success" 
-                  onClick={handleSubmit} 
-                  disabled={processing}
-                >
-                  Submit
-                </button>
-                <button type="button" className="btn btn-danger" onClick={handleReset}>
-                  Reset
-                </button>
+              <div className="d-flex justify-content-between  mt-4">
+                <div className=""><button type="button" className="btn btn-secondary" onClick={handleReset}>Reset</button></div>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-success" disabled={processing} onClick={handleSave}>Save</button>
+                  <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={processing}>Submit</button>
+                </div>
               </div>
             </div>
           </div>
@@ -829,4 +788,4 @@ const PhysicalStockAdjustment = () => {
   )
 }
 
-export default PhysicalStockAdjustment
+export default PhysicalStockAdjustment;

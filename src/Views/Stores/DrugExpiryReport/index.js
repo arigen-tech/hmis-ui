@@ -460,7 +460,7 @@ const DrugExpiry = () => {
 
                     <button
                       type="button"
-                      className="btn btn-primary me-2"
+                      className="btn btn-secondary me-2"
                       onClick={handleReset}
                     >
                       Reset

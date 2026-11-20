@@ -24337,7 +24337,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   color: var(--white-color);
   align-items: center;
   padding: 8px 0;
-  font-size: 1rem;
+  font-size: 14px;
 }
 
 .sidebar .menu-list .ms-link {
@@ -24348,7 +24348,7 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
 }
 
 .sidebar .menu-list .ms-link span {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .sidebar .menu-list .fa {
@@ -25505,14 +25505,16 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   align-items: center;
   justify-content: center;
   transition: all 0.30s ease-in-out;
-
 }
 
 .btn-view:hover {
   background-color: #4DCA88;
-  ;
   color: var(--white-color);
   border-color: #1D8B58;
+}
+.btnSm{
+  width: 30px;
+  height: 30px;
 }
 
 .showPopupBtn {
@@ -26286,6 +26288,7 @@ table td .status {
 
 .btnAdd i {
   font-size: 14px;
+  margin-bottom: -2px;
 }
 
 .btnDel {
@@ -26308,6 +26311,7 @@ table td .status {
 
 .btnDel i {
   font-size: 14px;
+  margin-bottom: -2px;
 }
 
 .btnCenter {
@@ -26480,7 +26484,7 @@ table td .status {
   padding: 14px 16px;
 }
 
-.popupModal .modal-header button {
+.popupModal .modal-header button, .modal-header button {
   background-color: rgb(0 0 0 / 0.08);
   width: 20px;
   height: 20px;
@@ -26489,7 +26493,7 @@ table td .status {
   right: 20px;
 }
 
-.popupModal .modal-header button:hover {
+.popupModal .modal-header button:hover, .modal-header button:hover {
   background-color: rgb(0 0 0 / 0.12);
 }
 
