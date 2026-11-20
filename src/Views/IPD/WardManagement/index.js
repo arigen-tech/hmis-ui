@@ -660,7 +660,7 @@ const WardManagement = () => {
                   {!isPatientListCollapsed ? (
                     <div className="col-md-1" style={{ paddingLeft: 0, paddingRight: 0 }}>
                       <div className="card mb-3 h-100" style={{ borderRadius: 0 }}>
-                        <div className="card-header bg-light d-flex justify-content-between align-items-center py-2 cardHeader">
+                        <div className="card-header d-flex justify-content-between align-items-center cardHeader">
                           <button className="customIcon" onClick={() => setIsPatientListCollapsed(true)}>
                             <span>Patient List</span>
                             <span className="arrow icofont-rounded-down d-block" style={{ transform: 'rotate(180deg)', transition: 'transform 0.3s ease' }}></span>
@@ -714,7 +714,7 @@ const WardManagement = () => {
                   {/* Patient Details */}
                   <div className={isPatientListCollapsed ? "col-md-12" : "col-md-11"} style={!isPatientListCollapsed ? { paddingLeft: 0, paddingRight: 0 } : {}}>
                     <div className="card" style={!isPatientListCollapsed ? { borderRadius: 0 } : {}}>
-                      <div className="card-header bg-primary text-white" style={{ padding: "8px 10px" }}>
+                      <div className="card-header customCardHeader bg-primary text-white">
                         <div className="d-flex align-items-center gap-3 flex-shrink-0 patientInfoMain">
                           <h5 className="mb-0">{selectedPatient.patientName}</h5>
                           <div className="d-flex gap-3 align-items-center patientInfo">
@@ -763,36 +763,37 @@ const WardManagement = () => {
                           </div>
                         ) : (
                           <>
-                            <div className="card mb-1">
-                              <div className="card-body p-2">
-                                <div className="d-flex flex-wrap gap-1 wardTabs">
-                                  {caseSheetTabs.map((tab) => {
-                                    const isTabDisabled = !isAssessmentSubmitted && tab !== "Admission Details" && tab !== "IPD Initial Assessment";
-                                    return (
-                                      <button
-                                        key={tab}
-                                        className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary active' : 'btn-outline-warning'}`}
-                                        onClick={() => !isTabDisabled && setActiveTab(tab)}
-                                        disabled={isTabDisabled}
-                                        style={{
-                                          opacity: isTabDisabled ? 0.5 : 1,
-                                          cursor: isTabDisabled ? "not-allowed" : "pointer"
-                                        }}
-                                      >
-                                        {tab}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
+
+                            <div className="borderBottom p-2">
+                              <div className="d-flex flex-wrap gap-1 wardTabs">
+                                {caseSheetTabs.map((tab) => {
+                                  const isTabDisabled = !isAssessmentSubmitted && tab !== "Admission Details" && tab !== "IPD Initial Assessment";
+                                  return (
+                                    <button
+                                      key={tab}
+                                      className={`btn btn-sm text-dark ${activeTab === tab ? 'btn-primary active' : 'btn-outline-warning'}`}
+                                      onClick={() => !isTabDisabled && setActiveTab(tab)}
+                                      disabled={isTabDisabled}
+                                      style={{
+                                        opacity: isTabDisabled ? 0.5 : 1,
+                                        cursor: isTabDisabled ? "not-allowed" : "pointer"
+                                      }}
+                                    >
+                                      {tab}
+                                    </button>
+                                  )
+                                })}
                               </div>
                             </div>
 
                             {/* Tab Content */}
                             <div className="">
-                              <div className="card-header bg-light">
-                                <h6 className="mb-0">{activeTab}</h6>
-                              </div>
-                              <div className="card-body">
+                              <div className="card-body" style={{padding: "12px"}}>
+                                <div className="subTitle">
+                                  <h4>{activeTab}</h4>
+                                </div>
+                                {/* ------------------ */}
+
                                 {activeTab === "Clinical Dashboard" && (
                                   <ClinicalDashboard selectedPatient={selectedPatient} />
                                 )}
@@ -835,7 +836,7 @@ const WardManagement = () => {
                                 )}
 
                                 {activeTab === "Medication / MAR" && (
-                                  < MedicationModule selectedPatient={selectedPatient} />
+                                  <MedicationModule selectedPatient={selectedPatient} />
                                 )}
 
                                 {activeTab === "Doctor Visit / Case Notes" && (
@@ -991,10 +992,11 @@ const WardManagement = () => {
           gap: 5px;
           border-radius: 0px 4px 4px 0;
         }
-        .cardHeader{
-          padding: 8px 10px;
+        .card .cardHeader{
+          background-color: #5b5b5b !important;
+          padding: 0px;
         }
-        .cardHeader button{
+        .card .cardHeader button{
           display: flex;
           width: 100%;
           justify-content: space-between;
@@ -1004,8 +1006,9 @@ const WardManagement = () => {
           font-weight: 600;
           font-weight: 700;
           padding: 0;
+          padding: 10px;
         }
-        .cardHeader button:hover{
+        .card .cardHeader button:hover{
           background: rgb(0 0 0/0.08);
         }
         .listTabGroup button{
@@ -1023,11 +1026,15 @@ const WardManagement = () => {
           line-height: normal;
         }
 
+        .listTabGroup button.active{
+          background-color: #448AFF !important;
+        }
+
         .listTabGroup button.active h4{
           color: #fff;
         }
         .listTabGroup button.active span{
-          color: rgb(255 255 255/0.70) !important;
+          color: rgb(255 255 255/0.90) !important;
         }
         .forCardHeight .card{
           height: 100%;
@@ -1067,6 +1074,13 @@ const WardManagement = () => {
         .gridTwoCol{
           display: grid;
           grid-template-columns: repeat(2, 1fr);
+          }
+          .card .customCardHeader{
+            background-color: #565656 !important;
+            padding: 8px 10px;
+          }
+          .borderBottom{
+          border-bottom:solid 2px rgb(0 0 0/0.20);
           }
       `}</style>
     </div>

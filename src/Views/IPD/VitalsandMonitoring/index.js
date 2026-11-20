@@ -556,7 +556,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   }
 
   return (
-    <div>
+    <div className="innerCard">
       {popupMessage && (
         <Popup
           message={popupMessage.message}
@@ -896,7 +896,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
 
           {/* Output Card */}
           <div className="card shadow-sm">
-            <div className="card-header bg-warning text-dark py-2">
+            <div className="card-header bg-warning py-2">
               <strong>Output Entry</strong>
             </div>
             <div className="card-body p-0">

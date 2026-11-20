@@ -303,7 +303,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const getStatusBadgeClass = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case `${STATUS_Y}`.toLowerCase():
         return 'badge bg-success';
       case `${STATUS_N}`.toLowerCase():
@@ -316,7 +316,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const getStatusText = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case `${STATUS_Y}`.toLowerCase():
         return 'Completed';
       case `${STATUS_N}`.toLowerCase():
@@ -502,12 +502,12 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     try {
       setIsViewLoading(true);
       setSelectedReportId(radOrderDtId);
-      
+
       const reportUrl = `${RADIOLOGY_REPORT_END_URL}?${REQUEST_PARAM_RAD_ORDER_DT_ID}=${radOrderDtId}`;
       const blob = await fetchPdfReportForViewAndPrint(reportUrl, "d");
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
-      
+
     } catch (err) {
       console.error("Error generating PDF:", err);
       Swal.fire({
@@ -578,14 +578,14 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       labRows.map((row) =>
         row.id === id
           ? {
-              ...row,
-              testName,
-              sample: test.sample,
-              container: test.container,
-              resultUnit: test.resultUnit,
-              searchText: testName,
-              dropdownOpen: false,
-            }
+            ...row,
+            testName,
+            sample: test.sample,
+            container: test.container,
+            resultUnit: test.resultUnit,
+            searchText: testName,
+            dropdownOpen: false,
+          }
           : row
       )
     );
@@ -601,14 +601,14 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       labRows.map((row) =>
         row.id === id
           ? {
-              ...row,
-              searchText: value,
-              testName: "",
-              sample: "",
-              container: "",
-              resultUnit: "",
-              dropdownOpen: true,
-            }
+            ...row,
+            searchText: value,
+            testName: "",
+            sample: "",
+            container: "",
+            resultUnit: "",
+            dropdownOpen: true,
+          }
           : { ...row, dropdownOpen: false }
       )
     );
@@ -684,11 +684,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       radiologyRows.map((row) =>
         row.id === id
           ? {
-              ...row,
-              investigationName,
-              searchText: investigationName,
-              dropdownOpen: false,
-            }
+            ...row,
+            investigationName,
+            searchText: investigationName,
+            dropdownOpen: false,
+          }
           : row
       )
     );
@@ -704,11 +704,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       radiologyRows.map((row) =>
         row.id === id
           ? {
-              ...row,
-              searchText: value,
-              investigationName: "",
-              dropdownOpen: true,
-            }
+            ...row,
+            searchText: value,
+            investigationName: "",
+            dropdownOpen: true,
+          }
           : { ...row, dropdownOpen: false }
       )
     );
@@ -784,21 +784,21 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         const matchedTest =
           type === "lab"
             ? labTests.find(
-                (test) =>
-                  test.testName === row.testName ||
-                  test.investigationName === row.testName ||
-                  test.testName === row.searchText ||
-                  test.investigationName === row.searchText
-              )
+              (test) =>
+                test.testName === row.testName ||
+                test.investigationName === row.testName ||
+                test.testName === row.searchText ||
+                test.investigationName === row.searchText
+            )
             : radiologyTests.find(
-                (test) =>
-                  test.investigationName === row.investigationName ||
-                  test.testName === row.investigationName ||
-                  test.name === row.investigationName ||
-                  test.investigationName === row.searchText ||
-                  test.testName === row.searchText ||
-                  test.name === row.searchText
-              );
+              (test) =>
+                test.investigationName === row.investigationName ||
+                test.testName === row.investigationName ||
+                test.name === row.investigationName ||
+                test.investigationName === row.searchText ||
+                test.testName === row.searchText ||
+                test.name === row.searchText
+            );
 
         return {
           id: matchedTest?.id ?? null,
@@ -828,21 +828,21 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       const matchedTest =
         type === "lab"
           ? labTests.find(
-              (test) =>
-                test.testName === row.testName ||
-                test.investigationName === row.testName ||
-                test.testName === row.searchText ||
-                test.investigationName === row.searchText
-            )
+            (test) =>
+              test.testName === row.testName ||
+              test.investigationName === row.testName ||
+              test.testName === row.searchText ||
+              test.investigationName === row.searchText
+          )
           : radiologyTests.find(
-              (test) =>
-                test.investigationName === row.investigationName ||
-                test.testName === row.investigationName ||
-                test.name === row.investigationName ||
-                test.investigationName === row.searchText ||
-                test.testName === row.searchText ||
-                test.name === row.searchText
-            );
+            (test) =>
+              test.investigationName === row.investigationName ||
+              test.testName === row.investigationName ||
+              test.name === row.investigationName ||
+              test.investigationName === row.searchText ||
+              test.testName === row.searchText ||
+              test.name === row.searchText
+          );
 
       if (!matchedTest) continue;
 
@@ -931,7 +931,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   // Render
   // ----------------------------------------------------------------------------
   return (
-    <div>
+    <div className="innerCard">
       {pdfUrl && (
         <PdfViewer
           pdfUrl={pdfUrl}
@@ -982,7 +982,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       {activeTab === "lab" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-            <strong>Lab Investigation Order Entry</strong>
+          <h6>Lab Investigation Order Entry</h6>
             <button
               type="button"
               className="btn btn-sm btn-success"
@@ -1001,7 +1001,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                     <th style={{ width: "40%" }}>Test Name</th>
                     <th style={{ width: "20%" }}>Sample</th>
                     <th style={{ width: "20%" }}>Container</th>
-                    <th style={{ width: "15%" }}>Action</th>
+                    <th className="text-center" style={{ width: "15%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1065,7 +1065,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                       <div className="d-flex justify-content-between">
                                         <span>
                                           {test.price === null ||
-                                          test.price === undefined
+                                            test.price === undefined
                                             ? "Price not configured"
                                             : `₹${finalPrice.toFixed(2)}`}
                                         </span>
@@ -1101,15 +1101,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                           />
                         </td>
                         <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => deleteLabRow(row.id)}
-                            disabled={labRows.length === 1}
-                            title="Delete row"
-                          >
-                            <i className="mdi mdi-delete"></i> X
-                          </button>
+                          <div className="btnCenter">
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete row" onClick={() => deleteLabRow(row.id)}
+                              disabled={labRows.length === 1}><i class="icofont-trash"></i></button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1134,7 +1129,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       {activeTab === "radiology" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-            <strong>Radiology Investigation Order Entry</strong>
+          <h6>Radiology Investigation Order Entry</h6>
             <button
               type="button"
               className="btn btn-sm btn-success"
@@ -1151,7 +1146,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                   <tr>
                     <th style={{ width: "5%" }}>S.No</th>
                     <th style={{ width: "80%" }}>Investigation</th>
-                    <th style={{ width: "15%" }}>Action</th>
+                    <th className="text-center" style={{ width: "15%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1221,7 +1216,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                       <div className="d-flex justify-content-between">
                                         <span>
                                           {test.price === null ||
-                                          test.price === undefined
+                                            test.price === undefined
                                             ? "Price not configured"
                                             : `Rs. ${finalPrice.toFixed(2)}`}
                                         </span>
@@ -1239,15 +1234,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                           </PortalDropdown>
                         </td>
                         <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => deleteRadiologyRow(row.id)}
-                            disabled={radiologyRows.length === 1}
-                            title="Delete row"
-                          >
-                            <i className="mdi mdi-delete"></i> X
-                          </button>
+                        <div className="btnCenter">
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete row" onClick={() => deleteRadiologyRow(row.id)}
+                            disabled={radiologyRows.length === 1}><i class="icofont-trash"></i></button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1272,7 +1262,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       {activeTab === "tracking" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2">
-            <strong>Order Tracking</strong>
+            <h6>Order Tracking</h6>
           </div>
           <div className="card-body">
             {/* Radio buttons to switch between Lab / Radiology */}
@@ -1302,7 +1292,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 </label>
               </div>
               <button
-                className="btn btn-success btn-sm"
+                className="btn btn-sm btn-warning"
                 onClick={handlePrintClick}
                 disabled={isGeneratingReport}
                 type="button"
@@ -1333,7 +1323,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                       <th>Sample ID</th>
                       <th>Investigation Name</th>
                       <th>Investigation Status</th>
-                      <th>Report</th>
+                      <th className="text-center">Report</th>
                     </tr>
                   ) : (
                     <tr>
@@ -1366,31 +1356,31 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             <td>{row.sampleId}</td>
                             <td>{row.investigationName}</td>
                             <td>{row.investigationStatus}</td>
-                            <td>
+                            <td className="text-center">
                               {row.report === "View / Download" ? (
-                            <button
-                              type="button"
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleViewReport(row)}
-                              disabled={isGeneratingPdf(row.dgOrderHdId)}
-                            >
-                              {isGeneratingPdf(row.dgOrderHdId) ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm me-1"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                  Generating...
-                                </>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => handleViewReport(row)}
+                                  disabled={isGeneratingPdf(row.dgOrderHdId)}
+                                >
+                                  {isGeneratingPdf(row.dgOrderHdId) ? (
+                                    <>
+                                      <span
+                                        className="spinner-border spinner-border-sm me-1"
+                                        role="status"
+                                        aria-hidden="true"
+                                      ></span>
+                                      Generating...
+                                    </>
+                                  ) : (
+                                    "View"
+                                  )}
+                                </button>
                               ) : (
-                                "View"
+                                <span>{row.report}</span>
                               )}
-                            </button>
-                          ) : (
-                            <span>{row.report}</span>
-                          )}
-                        </td>
+                            </td>
                           </>
                         ) : (
                           <>
@@ -1399,12 +1389,12 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             <td>{row.studyDate}</td>
                             <td>{row.modalityName}</td>
                             <td>{row.investigationName}</td>
-                            <td>
+                            <td className="text-center">
                               <span className={getStatusBadgeClass(row.studyStatus)}>
                                 {getStatusText(row.studyStatus)}
                               </span>
                             </td>
-                            <td>
+                            <td className="text-center">
                               <span className={getStatusBadgeClass(row.reportStatus)}>
                                 {getStatusText(row.reportStatus)}
                               </span>
@@ -1432,20 +1422,22 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                               )}
                             </td>
                             <td className="text-center">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-success"
-                                onClick={() => handleDicomView(row)}
-                                disabled={isDicomLoading && selectedDicomRow === row.id}
-                              >
-                                {isDicomLoading && selectedDicomRow === row.id ? (
-                                  <>
-                                    <span className="spinner-border spinner-border-sm me-1" />
-                                  </>
-                                ) : (
-                                  <i className="fa fa-eye"></i>
-                                )}
-                              </button>
+                              <div className="btnCenter">
+                                <button
+                                  type="button"
+                                  className="btn-view"
+                                  onClick={() => handleDicomView(row)}
+                                  disabled={isDicomLoading && selectedDicomRow === row.id}
+                                >
+                                  {isDicomLoading && selectedDicomRow === row.id ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm me-1" />
+                                    </>
+                                  ) : (
+                                    <i className="fa fa-eye"></i>
+                                  )}
+                                </button>
+                              </div>
                             </td>
                           </>
                         )}

@@ -897,7 +897,7 @@ const MedicationModule = ({ selectedPatient }) => {
 
 
   return (
-    <div>
+    <div className='innerCard'>
       <div className="d-flex gap-2 mb-3">
         <button
           className={`btn btn-sm ${activeView === "medications" ? "btn-primary" : "btn-outline-primary"}`}
@@ -919,7 +919,7 @@ const MedicationModule = ({ selectedPatient }) => {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-              <strong>Current Medications (Active Orders)</strong>
+              <h6>Current Medications (Active Orders)</h6>
               <button className="btn btn-sm btn-light" onClick={openAddMedModal}>
                 + Add Medication
               </button>
@@ -999,7 +999,7 @@ const MedicationModule = ({ selectedPatient }) => {
 
           <div className="card shadow-sm">
             <div className="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-              <strong>MAR Administration Log</strong>
+              <h6>MAR Administration Log</h6>
               <div style={{ width: '250px' }}>
                 <select
                   className="form-select form-select-sm"
@@ -1180,9 +1180,9 @@ const MedicationModule = ({ selectedPatient }) => {
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Add New Medication</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddMedModal(false)}></button>
+              <div className="modal-header">
+                <h4 className="modal-title">Add New Medication</h4>
+                <button type="button" className="btn-close" onClick={() => setShowAddMedModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="row g-2">

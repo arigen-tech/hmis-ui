@@ -513,7 +513,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   }
 
   return (
-    <div>
+    <div className="innerCard">
       {popupMessage && (
         <Popup
           message={popupMessage.message}
@@ -707,7 +707,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
             {/* Doctor Visit History */}
             <div>
-              <h6 className="mb-3">Doctor Visit History</h6>
+              <h5 className="mb-2 fw-semibold">Doctor Visit History</h5>
               {loadingHistory ? (
                 <div className="text-center py-4">
                   <div className="spinner-border text-primary" role="status">
