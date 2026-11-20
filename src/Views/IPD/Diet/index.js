@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRequest, postRequest } from '../../../service/apiService';
 import { GET_PREVIOUS_DIET_ORDER_HISTORY, GET_CURRENT_ACTIVE_DIET_SCHEDULE, SAVE_CURRENT_ACTIVE_DIET_SCHEDULE, GET_CURRENT_USER_PROFILE_BY_NAME, MAS_MEAL_TYPE, MAS_DIET_SCHEDULE } from '../../../config/apiConfig';
 import Swal from 'sweetalert2';
+import { formatDateForDisplay, formatDateTimeForDisplay } from '../../../utils/dateUtils';
 
 // Helper to get current date in YYYY-MM-DD format
 const getCurrentDate = () => {
@@ -276,7 +277,7 @@ const DietOrderHistory = ({ selectedPatient }) => {
                   <strong>Special Instruction:</strong> {activeDietOrder.specialInstruction || '-'}
                 </div>
                 <div className="col-md-3">
-                  <strong>Effective From:</strong> {activeDietOrder.fromDate || '-'}
+                  <strong>Effective From:</strong> {formatDateTimeForDisplay(activeDietOrder.fromDate, '-')}
                 </div>
                 <div className="col-md-3">
                   <strong>Ordered By:</strong> {activeDietOrder.orderedBy || '-'}
@@ -327,7 +328,7 @@ const DietOrderHistory = ({ selectedPatient }) => {
                                 onChange={(e) => handleMealCellChange(entry.id, 'date', e.target.value)}
                               />
                             ) : (
-                              <span>{entry.date}</span>
+                              <span>{formatDateForDisplay(entry.date, '-')}</span>
                             )}
                           </td>
                           {/* Meal */}
@@ -522,8 +523,8 @@ const DietOrderHistory = ({ selectedPatient }) => {
                               dietHistory.map(order => (
                                 <tr key={order.dietOrderId} className={order.status === 'A' ? 'table-success' : ''}>
                                   <td>{order.dietTypeName || '-'}</td>
-                                  <td>{order.fromDate || '-'}</td>
-                                  <td>{order.toDate || '-'}</td>
+                                  <td>{formatDateTimeForDisplay(order.fromDate, '-')}</td>
+                                  <td>{formatDateTimeForDisplay(order.toDate, '-')}</td>
                                   <td>{order.specialInstruction || '-'}</td>
                                   <td>{order.orderedBy || '-'}</td>
                                   <td>
@@ -531,7 +532,7 @@ const DietOrderHistory = ({ selectedPatient }) => {
                                       {order.status === 'A' ? 'Active' : 'Completed'}
                                     </span>
                                   </td>
-                                  <td>{order.status !== 'A' ? (order.toDate || '-') : '-'}</td>
+                                  <td>{order.status !== 'A' ? formatDateTimeForDisplay(order.completedOn || order.toDate, '-') : '-'}</td>
                                 </tr>
                               ))
                             )}

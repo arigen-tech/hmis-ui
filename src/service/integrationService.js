@@ -15,13 +15,22 @@ import {
   ABDM_M2_CONSENT_LIST,
   ABDM_M2_CONSENT_STATUS,
   ABDM_M2_FETCH_RECORDS,
+  API_HOST,
 } from "../config/apiConfig";
 
-const INTEGRATION_BASE_URL = "http://localhost:8080";
+const INTEGRATION_BASE_URL = API_HOST;
 const ABDM_PREFIX = "/api/v1/abdm";
 const NHCX_PREFIX = "/beneficiary/api/v1/bis";
 
 let abdmPublicKeyPromise = null;
+
+// Holds the latest ABHA verification data so the registration page can read it:
+// - xToken from verificationWeb/verify-otp
+// - raw profile from create/abha-details
+const abhaSession = {
+  xToken: "",
+  profile: null,
+};
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -164,6 +173,21 @@ const getHospitalContext = () => {
 export const integrationService = {
   baseUrl: INTEGRATION_BASE_URL,
 
+  // Latest xToken returned by verificationWeb/verify-otp
+  getLastAbhaXToken() {
+    return abhaSession.xToken || "";
+  },
+
+  // Latest raw profile returned by create/abha-details (response.response)
+  getLastAbhaProfile() {
+    return abhaSession.profile;
+  },
+
+  clearAbhaSession() {
+    abhaSession.xToken = "";
+    abhaSession.profile = null;
+  },
+
   async secureAbdmFieldPayload({ field, value }) {
     if (!field) {
       throw new Error("Secure ABDM field name is required.");
@@ -256,7 +280,14 @@ export const integrationService = {
   },
 
   async getAbhaDetails(payload) {
-    return postIntegration(`${ABDM_PREFIX}/create/abha-details`, payload);
+    const data = await postIntegration(`${ABDM_PREFIX}/create/abha-details`, payload);
+
+    // Keep the raw ABHA profile (stateCode, districtCode, subdistrictName, ...)
+    if (data?.status !== false && data?.response) {
+      abhaSession.profile = data.response;
+    }
+
+    return data;
   },
 
   async downloadAbhaCard(payload) {
@@ -280,7 +311,18 @@ export const integrationService = {
   },
 
   async verifyAbdmVerificationOtp(payload) {
-    return postIntegration(`${ABDM_PREFIX}/verificationWeb/verify-otp`, payload);
+    // New verification session: drop any stale profile from a previous patient
+    abhaSession.profile = null;
+
+    const data = await postIntegration(`${ABDM_PREFIX}/verificationWeb/verify-otp`, payload);
+
+    // Keep the xToken returned by verify-otp
+    const xToken = data?.response?.xtoken || data?.response?.xToken;
+    if (data?.status !== false && xToken) {
+      abhaSession.xToken = xToken;
+    }
+
+    return data;
   },
 
   async fetchNhcxCount(kind, payload = {}) {

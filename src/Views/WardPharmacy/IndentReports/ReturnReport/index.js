@@ -575,12 +575,11 @@ const ReturnRegister = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header">
-                            <h4 className="card-title p-2 mb-0">RETURN REGISTER AGAINST INDENT</h4>
+                            <h4 className="card-title p-2 mb-0">Return Register Against Indent</h4>
                         </div>
                         <div className="card-body">
-                            <div className="row mb-4">
-                                {/* Report Type Selection */}
-                                <div className="col-md-12 mb-3">
+                        {/* Report Type Selection */}
+                                <div className="d-flex align-items-center gap-3 mb-3">
                                     <div className="form-check form-check-inline">
                                         <input
                                             className="form-check-input"
@@ -591,9 +590,7 @@ const ReturnRegister = () => {
                                             checked={reportType === "itemwise"}
                                             onChange={(e) => setReportType(e.target.value)}
                                         />
-                                        <label className="form-check-label fw-bold" htmlFor="itemwise">
-                                            ITEM-WISE RETURN REPORT
-                                        </label>
+                                        <label className="form-check-label" htmlFor="itemwise">Item-Wise Return Report</label>
                                     </div>
                                     <div className="form-check form-check-inline">
                                         <input
@@ -605,12 +602,11 @@ const ReturnRegister = () => {
                                             checked={reportType === "datewise"}
                                             onChange={(e) => setReportType(e.target.value)}
                                         />
-                                        <label className="form-check-label fw-bold" htmlFor="datewise">
-                                            DATE-WISE RETURN REPORT
-                                        </label>
+                                        <label className="form-check-label" htmlFor="datewise">Date-Wise Return Report</label>
                                     </div>
                                 </div>
 
+                            <div className="row mb-4"> 
                                 {/* Item Type - Mandatory for both report types */}
                                 <div className="col-md-3">
                                     <label className="form-label fw-bold">
@@ -774,6 +770,7 @@ const ReturnRegister = () => {
                             {/* Action Buttons */}
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-between gap-2">
+                                <div className=""></div>
                                     <div className="d-flex gap-2">
                                         <button
                                             type="button"
@@ -789,7 +786,7 @@ const ReturnRegister = () => {
                                             ) : (
                                                 <>
                                                     <i className="fa fa-eye me-2"></i>
-                                                    VIEW / DOWNLOAD
+                                                    View / Download
                                                 </>
                                             )}
                                         </button>
@@ -808,7 +805,7 @@ const ReturnRegister = () => {
                                             ) : (
                                                 <>
                                                     <i className="fa fa-print me-2"></i>
-                                                    PRINT
+                                                    Print
                                                 </>
                                             )}
                                         </button>

@@ -616,6 +616,16 @@ const StoreStockLedgerReport = () => {
               {/* Action Buttons */}
               <div className="row">
                 <div className="col-12 d-flex justify-content-between">
+                <div className="">
+                  <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleReset}
+                      disabled={searchLoading || isSearching}
+                    >Reset</button>
+                </div>
+                  
+                  <div className="d-flex gap-2">
                   <button
                     type="button"
                     className="btn btn-primary"
@@ -630,12 +640,10 @@ const StoreStockLedgerReport = () => {
                     ) : (
                       <>
                         <i className="fa  me-2"></i>
-                        SEARCH
+                        Search
                       </>
                     )}
                   </button>
-                  
-                  <div className="d-flex gap-2">
                     <button
                       type="button"
                       className="btn btn-success btn-sm"
@@ -650,7 +658,7 @@ const StoreStockLedgerReport = () => {
                       ) : (
                         <>
                           <i className="fa fa-eye me-2"></i>
-                          VIEW / DOWNLOAD
+                          View / Download
                         </>
                       )}
                     </button>
@@ -669,19 +677,10 @@ const StoreStockLedgerReport = () => {
                       ) : (
                         <>
                           <i className="fa fa-print me-2"></i>
-                          PRINT
+                          Print
                         </>
                       )}
-                    </button>
-                    
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={handleReset}
-                      disabled={searchLoading || isSearching}
-                    >
-                      Reset
-                    </button>
+                    </button> 
                   </div>
                 </div>
               </div>

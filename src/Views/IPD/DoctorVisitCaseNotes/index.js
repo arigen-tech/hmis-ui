@@ -513,7 +513,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   }
 
   return (
-    <div>
+    <div className="innerCard">
       {popupMessage && (
         <Popup
           message={popupMessage.message}
@@ -533,14 +533,14 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeView === "doctorVisit" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("doctorVisit")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Doctor Visit / Case Notes
         </button>
         <button
           className={`btn btn-sm ${activeView === "diagnosis" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("diagnosis")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Diagnosis ({diagnosisList.length})
         </button>
@@ -677,20 +677,16 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                   onChange={handleDoctorVisitFormChange}
                 />
               </div>
-              <div className="col-12 gap-3 d-flex">
-              <div>
+              <div className="col-12 gap-2 d-flex justify-content-end">
                   <button
-                  className="btn btn-primary btn-sm"
-                  onClick={handleSaveDoctorVisit}
-                  disabled={isSaving}
-                >
-                  <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save Visit"}
-                </button>
-                </div>
-
-                <div>
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSaveDoctorVisit}
+                    disabled={isSaving}
+                  >
+                    <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save Visit"}
+                  </button>
                   <button
-                    className="btn btn-sm btn-primary"
+                    className="btn btn-sm btn-warning"
                     onClick={handlePrintClick}
                     disabled={isGeneratingReport}
                   >
@@ -703,11 +699,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                       "Print"
                     )}
                   </button>
-                </div>
-
               </div>
-
-               
 
             </div>
 
@@ -715,7 +707,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
             {/* Doctor Visit History */}
             <div>
-              <h6 className="mb-3">Doctor Visit History</h6>
+              <h5 className="mb-2 fw-semibold">Doctor Visit History</h5>
               {loadingHistory ? (
                 <div className="text-center py-4">
                   <div className="spinner-border text-primary" role="status">
@@ -730,8 +722,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                     <div className="card-header bg-light">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <strong>{formatDateTime(visit.visitDateTime)}</strong> | 
-                          <span className="ms-2">{visit.doctorName}</span> | 
+                          <strong>{formatDateTime(visit.visitDateTime)}</strong> |
+                          <span className="ms-2">{visit.doctorName}</span> |
                           <span className="ms-2 text-muted">{visit.departmentName || visit.department}</span>
                           {visit.visitTypeName && (
                             <>
@@ -778,7 +770,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                     <th>Type</th>
                     <th>Diagnosis</th>
                     <th>Status</th>
-                    <th>Action</th>
+                    <th className="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -803,13 +795,9 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                         <td>{diag.diagnosisText}</td>
                         <td>{diag.status}</td>
                         <td>
-                          <button
-                            className="btn btn-sm btn-outline-info"
-                            style={{ fontSize: "0.6rem", padding: "0.1rem 0.3rem" }}
-                            onClick={() => handleViewDiagnosis(diag)}
-                          >
-                            View
-                          </button>
+                          <div className="btnCenter">
+                            <button type="button" class="btn-view btnSm" title="View" onClick={() => handleViewDiagnosis(diag)}><i class="fa fa-eye"></i></button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -833,16 +821,49 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
           <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
-                <h6 className="modal-title">Diagnosis Details</h6>
+                <h4 className="modal-title fw-semibold">Diagnosis Details</h4>
                 <button type="button" className="btn-close" onClick={handleCloseViewModal}></button>
               </div>
               <div className="modal-body">
-                <p><strong>Type:</strong> {selectedDiagnosis.type}</p>
-                <p><strong>Diagnosis:</strong> {selectedDiagnosis.diagnosisText}</p>
-                <p><strong>ICD Code:</strong> {selectedDiagnosis.icdCode}</p>
-                <p><strong>Status:</strong> {selectedDiagnosis.status}</p>
-                <p><strong>Date:</strong> {selectedDiagnosis.date}</p>
-                {selectedDiagnosis.remarks && <p><strong>Remarks:</strong> {selectedDiagnosis.remarks}</p>}
+
+                <section className="patient-card mb-0">
+                  {/* <div className="patient-header">
+                <h4>{transfer.patientName}</h4>
+                <p>UHID: <strong> {transfer.uhidNo || ""}</strong></p>
+              </div> */}
+
+                  <div className="details-grid grid-col-2">
+                    <div className="detail-item">
+                      <span className="detail-label">Type:</span>
+                      <span className="detail-value">{selectedDiagnosis.type}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Diagnosis:</span>
+                      <span className="detail-value">{selectedDiagnosis.diagnosisText}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">ICD Code:</span>
+                      <span className="detail-value">{selectedDiagnosis.icdCode}</span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">Status:</span>
+                      <span className="detail-value">{selectedDiagnosis.status}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Date:</span>
+                      <span className="detail-value">{selectedDiagnosis.date}</span>
+                    </div>
+
+                    {selectedDiagnosis.remarks && <div className="detail-item col-span-2">
+                      <span className="detail-label">Remarks:</span>
+                      <span className="detail-value">{selectedDiagnosis.remarks}</span>
+                    </div>
+                    }
+                  </div>
+                </section>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={handleCloseViewModal}>Close</button>
@@ -858,7 +879,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
           <div className="modal-dialog modal-md modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
-                <h6 className="modal-title">Add Diagnosis</h6>
+                <h4 className="modal-title fw-semibold">Add Diagnosis</h4>
                 <button type="button" className="btn-close" onClick={handleCloseAddModal}></button>
               </div>
               <div className="modal-body">

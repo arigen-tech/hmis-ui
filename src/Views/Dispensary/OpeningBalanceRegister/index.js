@@ -283,16 +283,18 @@ const OpeningBalanceRegister = () => {
                     disabled={!fromDate}
                     onFocus={handleToDateFocus}
                   />
-                </div>
-                <div className="col-md-6 mt-4 d-flex align-items-end gap-2">
-                  <button
+                </div>                
+              </div>
+              <div className="d-flex justify-content-between align-items-center mt-4">
+              <div className="">
+                <button
                     type="button"
                     className="btn btn-secondary"
                     onClick={handleReset}
-                  >
-                    Reset
-                  </button>
-                  <button
+                  >Reset</button>
+              </div>
+              <div className="d-flex gap-2">
+                <button
                     type="button"
                     className="btn btn-primary"
                     onClick={handleViewDownload}
@@ -304,9 +306,7 @@ const OpeningBalanceRegister = () => {
                         Generating...
                       </>
                     ) : (
-                      <>
-   <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
-                      </>
+                      <><i className="fa fa-eye me-2"></i> View/Download</>
                     )}
                   </button>
                   <button
@@ -322,11 +322,11 @@ const OpeningBalanceRegister = () => {
                       </>
                     ) : (
                       <>
-                        <i className="fa fa-print me-2"></i> PRINT
+                        <i className="fa fa-print me-2"></i> Print
                       </>
                     )}
                   </button>
-                </div>
+              </div>
               </div>
             </div>
           </div>

@@ -26,17 +26,17 @@
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--dash-bg);
   min-height: 100vh;
-  padding: 1.5rem;
+  padding: 0;
   color: var(--text-dark);
 }
 
 .dashboard-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
-.dashboard-title-area h2 {
+.dashboard-title-area h1 {
   font-weight: 700;
-  font-size: 1.75rem;
+  font-size: 1.375rem !important;
   margin-bottom: 0.25rem;
   background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
   -webkit-background-clip: text;
@@ -46,6 +46,7 @@
 .dashboard-title-area p {
   font-size: 0.9rem;
   color: var(--text-muted);
+  margin-bottom: 0;
 }
 
 .dashboard-filters {

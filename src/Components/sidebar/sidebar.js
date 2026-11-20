@@ -191,7 +191,7 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
                 data-bs-target={`#${collapseId}`}
                 to={item.url !== "#" ? item.url : "#"}
               >
-                <i className={`${getIconClass(item.name)} fs-5`} />
+                <i className={`${getIconClass(item.name)}`} />
                 <span>{item.name}</span>
                 <span
                   className="arrow icofont-rounded-down ms-auto text-end fs-5 collapse-arrow"
@@ -204,9 +204,9 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
               </ul>
             </>
           ) : (
-            <Link className={`ms-link ${isActive(item.url) ? "active" : ""}`} to={item.url}>
-              <i className={`${getIconClass(item.name)} fs-5 me-2`} />
-              {item.name}
+            <Link className={`m-link ms-link ${isActive(item.url) ? "active" : ""}`} to={item.url}>
+              <i className={`${getIconClass(item.name)}`} />
+              <span>{item.name}</span>
             </Link>
           )}
         </li>
@@ -290,7 +290,7 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
   useEffect(() => {
     window.addEventListener("resize", scheduleApplyThumb);
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(scheduleApplyThumb).catch(() => {});
+      document.fonts.ready.then(scheduleApplyThumb).catch(() => { });
     }
     return () => window.removeEventListener("resize", scheduleApplyThumb);
   }, [scheduleApplyThumb]);
@@ -406,15 +406,17 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
   };
 
   return (
-    <div className={`sidebar px-3 py-4 py-md-4 me-0 ms-1 ${collapsed ? "sidebar-mini" : "open"}`}>
+    <div className={`sidebar ${collapsed ? "sidebar-mini" : "open"}`}>
       <div className="sidebar-inner">
         {/* Brand - fixed */}
-        <Link to="index" className="mb-0 brand-icon">
-          <span className="logo-icon">
-            <i className="icofont-heart-beat fs-2" />
-          </span>
-          <span className="logo-text">Arigen-Health</span>
-        </Link>
+        <div className="logoWrapper">
+          <Link to="/dashboard" className="brand-icon">
+            <span className="logo-icon">
+              <i className="icofont-heart-beat fs-2" />
+            </span>
+            <span className="logo-text">Arigen-Health</span>
+          </Link>
+        </div>
 
         {/* Search - fixed */}
         <div className="sidebar-search-wrapper">
@@ -430,11 +432,7 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
 
         {/* Scrollable menu list + custom draggable scrollbar */}
         <div className="menu-list-wrapper">
-          <ul
-            className="menu-list mt-3"
-            ref={menuListRef}
-            onScroll={handleMenuScroll}
-          >
+          <ul className="menu-list" ref={menuListRef} onScroll={handleMenuScroll}>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <li key={i} className="d-flex align-items-center mb-3">
@@ -472,9 +470,7 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
 
         {/* Toggle button - fixed */}
         <button type="button" className="btn btn-link sidebar-mini-btn text-light" onClick={toggleSidebar}>
-          <span className="ms-2">
-            <i className="icofont-bubble-right" />
-          </span>
+          <i className="icofont-bubble-right" />
         </button>
       </div>
     </div>

@@ -6,10 +6,22 @@ import React, {
 } from "react";
 import { getRequest } from "../../../service/apiService";
 import {
+  DENTAL_PREVIOUS_DETAILS,
+  DENTAL_PROCEDURE_HISTORY,
+  DENTAL_SESSION_HISTORY,
   MAS_PROCEDURES_GET_ALL,
+  MAS_PROCEDURES_GET_ALL_WRT_DEPARTMENT,
   MAS_TOOTH_BY_TYPE,
   MAS_TOOTH_CONDITION,
 } from "../../../config/apiConfig";
+import {
+  formatDateForDisplay,
+  formatDateTimeForDisplay,
+} from "../../../utils/dateUtils"; 
+import Pagination from "../../../Components/Pagination";
+
+// Dental history / procedure history / session history endpoints.
+
 
 const DentalSection = forwardRef(
   (
@@ -106,6 +118,14 @@ const DentalSection = forwardRef(
 
     // ==================== Dental History popup ====================
     const [showDentalHistoryModal, setShowDentalHistoryModal] = useState(false);
+    const [dentalHistoryRecords, setDentalHistoryRecords] = useState([]);
+    const [dentalHistoryLoading, setDentalHistoryLoading] = useState(false);
+    const [dentalHistoryError, setDentalHistoryError] = useState(null);
+    
+    // Dental History Pagination State
+    const [dentalHistoryPage, setDentalHistoryPage] = useState(1);
+    const [dentalHistoryTotalPages, setDentalHistoryTotalPages] = useState(1);
+    const [dentalHistoryTotalElements, setDentalHistoryTotalElements] = useState(0);
 
     // ==================== Dental Procedure History popup + View Details popup ====================
     const [showProcedureHistoryModal, setShowProcedureHistoryModal] =
@@ -114,6 +134,19 @@ const DentalSection = forwardRef(
       useState(false);
     const [selectedProcedureHistory, setSelectedProcedureHistory] =
       useState(null);
+    const [procedureHistoryRecords, setProcedureHistoryRecords] = useState([]);
+    const [procedureHistoryLoading, setProcedureHistoryLoading] =
+      useState(false);
+    const [procedureHistoryError, setProcedureHistoryError] = useState(null);
+    
+    // Procedure History Pagination State
+    const [procedureHistoryPage, setProcedureHistoryPage] = useState(1);
+    const [procedureHistoryTotalPages, setProcedureHistoryTotalPages] = useState(1);
+    const [procedureHistoryTotalElements, setProcedureHistoryTotalElements] = useState(0);
+
+    const [procedureSessionHistory, setProcedureSessionHistory] = useState([]);
+    const [procedureDetailLoading, setProcedureDetailLoading] = useState(false);
+    const [procedureDetailError, setProcedureDetailError] = useState(null);
 
     // ==================== Dental Procedure table (Add/Remove rows) ====================
     const [procedures, setProcedures] = useState([]);
@@ -173,18 +206,17 @@ const DentalSection = forwardRef(
           .sort(direction === "desc" ? sortDesc : sortAsc)
           .map((item) => item.toothNumber);
 
-    return {
-      upperRight: mapToothNumbers(1, "asc"),
-      upperLeft: mapToothNumbers(2, "asc"),
-      lowerLeft: mapToothNumbers(3, "asc"),
-      lowerRight: mapToothNumbers(4, "asc"),
-      childUpperRight: mapToothNumbers(5, "asc"),
-      childUpperLeft: mapToothNumbers(6, "asc"),
-      childLowerLeft: mapToothNumbers(7, "asc"),
-      childLowerRight: mapToothNumbers(8, "asc"),
+      return {
+        upperRight: mapToothNumbers(1, "asc"),
+        upperLeft: mapToothNumbers(2, "asc"),
+        lowerLeft: mapToothNumbers(3, "asc"),
+        lowerRight: mapToothNumbers(4, "asc"),
+        childUpperRight: mapToothNumbers(5, "asc"),
+        childUpperLeft: mapToothNumbers(6, "asc"),
+        childLowerLeft: mapToothNumbers(7, "asc"),
+        childLowerRight: mapToothNumbers(8, "asc"),
+      };
     };
-
-  };
 
     const buildToothIdMap = (items = []) =>
       items.reduce((acc, item) => {
@@ -236,179 +268,7 @@ const DentalSection = forwardRef(
       ],
     };
 
-    const dentalHistoryData = [
-      {
-        id: 1,
-        date: "Jul 2026",
-        dds: 4,
-        missing: 0,
-        decayed: 1,
-        notes: "Stable condition",
-      },
-      {
-        id: 2,
-        date: "Mar 2026",
-        dds: 7,
-        missing: 1,
-        decayed: 2,
-        notes: "Needs follow-up",
-      },
-      {
-        id: 3,
-        date: "Nov 2025",
-        dds: 11,
-        missing: 2,
-        decayed: 4,
-        notes: "Multiple affected teeth",
-      },
-    ];
-
-    const procedureHistoryData = [
-      {
-        id: 1,
-        procedureName: "Dental Implant",
-        toothNo: "36",
-        status: "Completed",
-        firstSittingDate: "12-Aug-2026",
-        advisedBy: "Dr. Rao",
-        advisedDate: "05-Aug-2026",
-        plannedSittings: 4,
-        completedSittings: 4,
-        sittings: [
-          {
-            sittingNo: 1,
-            scheduledDateTime: "12-Aug-2026 09:00 AM",
-            performedDateTime: "12-Aug-2026 09:20 AM",
-            performedBy: "Dr. Rao",
-            status: "Completed",
-            findings: "Healed extraction site suitable for implant placement",
-            procedureNotes: "Implant placement completed successfully",
-            complication: "No",
-            postProcedureAdvice: "Medication advised",
-          },
-          {
-            sittingNo: 2,
-            scheduledDateTime: "19-Aug-2026 09:30 AM",
-            performedDateTime: "19-Aug-2026 09:45 AM",
-            performedBy: "Dr. Rao",
-            status: "Completed",
-            findings: "Healing satisfactory",
-            procedureNotes: "Healing assessment and implant stability checked",
-            complication: "No",
-            postProcedureAdvice: "Continue prescribed oral hygiene routine",
-          },
-        ],
-      },
-      {
-        id: 2,
-        procedureName: "Dental Filling",
-        toothNo: "14, 15",
-        status: "Completed",
-        firstSittingDate: "02-Aug-2026",
-        advisedBy: "Dr. Patel",
-        advisedDate: "30-Jul-2026",
-        plannedSittings: 1,
-        completedSittings: 1,
-        sittings: [
-          {
-            sittingNo: 1,
-            scheduledDateTime: "02-Aug-2026 11:00 AM",
-            performedDateTime: "02-Aug-2026 11:20 AM",
-            performedBy: "Dr. Patel",
-            status: "Completed",
-            findings: "Small occlusal caries lesions",
-            procedureNotes: "Composite restorations completed",
-            complication: "No",
-            postProcedureAdvice: "Avoid hard foods for the rest of the day",
-          },
-        ],
-      },
-      {
-        id: 3,
-        procedureName: "Root Canal Treatment",
-        toothNo: "24",
-        status: "In Progress",
-        firstSittingDate: "28-Jul-2026",
-        advisedBy: "Dr. Nair",
-        advisedDate: "25-Jul-2026",
-        plannedSittings: 3,
-        completedSittings: 2,
-        sittings: [
-          {
-            sittingNo: 1,
-            scheduledDateTime: "28-Jul-2026 02:00 PM",
-            performedDateTime: "28-Jul-2026 02:15 PM",
-            performedBy: "Dr. Nair",
-            status: "Completed",
-            findings: "Irreversible pulpitis suspected",
-            procedureNotes:
-              "Access opening and initial canal preparation completed",
-            complication: "No",
-            postProcedureAdvice: "Continue medication as prescribed",
-          },
-          {
-            sittingNo: 2,
-            scheduledDateTime: "06-Aug-2026 02:30 PM",
-            performedDateTime: "06-Aug-2026 02:45 PM",
-            performedBy: "Dr. Nair",
-            status: "Completed",
-            findings: "Canals cleaned and prepared",
-            procedureNotes: "Cleaning and shaping completed",
-            complication: "No",
-            postProcedureAdvice: "Return for obturation appointment",
-          },
-        ],
-      },
-      {
-        id: 4,
-        procedureName: "Scaling & Polishing",
-        toothNo: "11, 12, 21, 22, 31, 32",
-        status: "Completed",
-        firstSittingDate: "18-Jul-2026",
-        advisedBy: "Dr. Mehta",
-        advisedDate: "16-Jul-2026",
-        plannedSittings: 1,
-        completedSittings: 1,
-        sittings: [
-          {
-            sittingNo: 1,
-            scheduledDateTime: "18-Jul-2026 10:00 AM",
-            performedDateTime: "18-Jul-2026 10:25 AM",
-            performedBy: "Dr. Mehta",
-            status: "Completed",
-            findings: "Moderate calculus deposits",
-            procedureNotes: "Full mouth scaling and polishing completed",
-            complication: "No",
-            postProcedureAdvice:
-              "Brush twice daily and maintain regular follow-up",
-          },
-        ],
-      },
-      {
-        id: 5,
-        procedureName: "Crown Placement",
-        toothNo: "27",
-        status: "In Progress",
-        firstSittingDate: "10-Jul-2026",
-        advisedBy: "Dr. Patel",
-        advisedDate: "07-Jul-2026",
-        plannedSittings: 2,
-        completedSittings: 1,
-        sittings: [
-          {
-            sittingNo: 1,
-            scheduledDateTime: "10-Jul-2026 01:00 PM",
-            performedDateTime: "10-Jul-2026 01:25 PM",
-            performedBy: "Dr. Patel",
-            status: "Completed",
-            findings: "Extensive crown damage",
-            procedureNotes: "Tooth preparation and impression completed",
-            complication: "No",
-            postProcedureAdvice: "Temporary crown placed; avoid sticky foods",
-          },
-        ],
-      },
-    ];
+    const departmentId=sessionStorage.getItem("departmentId")||localStorage.getItem("departmentId")||"";
 
     // ==================== FETCH TOOTH CONDITIONS FROM API ====================
 
@@ -453,7 +313,7 @@ const DentalSection = forwardRef(
     const fetchProcedures = async () => {
       try {
         const response = await getRequest(
-          `${MAS_PROCEDURES_GET_ALL}?flag=1&page=0&size=20&opdStatus=Y`,
+          `${MAS_PROCEDURES_GET_ALL_WRT_DEPARTMENT}/${departmentId}?page=0&size=10`,
         );
 
         console.log("Procedure API response:", response);
@@ -479,6 +339,91 @@ const DentalSection = forwardRef(
       } catch (err) {
         console.error("Error fetching procedures:", err);
         setProcedures([]);
+      }
+    };
+
+    // ==================== DENTAL HISTORY / PROCEDURE HISTORY APIs ====================
+
+    const fetchDentalHistory = async (page = 1) => {
+      if (!patientId) {
+        setDentalHistoryRecords([]);
+        return;
+      }
+
+      setDentalHistoryLoading(true);
+      setDentalHistoryError(null);
+
+      try {
+        const response = await getRequest(
+          `${DENTAL_PREVIOUS_DETAILS}/${patientId}?page=${page - 1}&size=5`,
+        );
+
+        const resData = response?.response;
+        setDentalHistoryRecords(Array.isArray(resData?.content) ? resData.content : []);
+        setDentalHistoryTotalPages(resData?.totalPages || 1);
+        setDentalHistoryTotalElements(resData?.totalElements || 0);
+        setDentalHistoryPage(page);
+      } catch (err) {
+        console.error("Error fetching dental history:", err);
+        setDentalHistoryError("Failed to load dental history");
+        setDentalHistoryRecords([]);
+      } finally {
+        setDentalHistoryLoading(false);
+      }
+    };
+
+    const fetchProcedureHistory = async (page = 1) => {
+      if (!patientId) {
+        setProcedureHistoryRecords([]);
+        return;
+      }
+
+      setProcedureHistoryLoading(true);
+      setProcedureHistoryError(null);
+
+      try {
+        const response = await getRequest(
+          `${DENTAL_PROCEDURE_HISTORY}/${patientId}?page=${page - 1}&size=5`,
+        );
+
+        const resData = response?.response;
+        setProcedureHistoryRecords(Array.isArray(resData?.content) ? resData.content : []);
+        setProcedureHistoryTotalPages(resData?.totalPages || 1);
+        setProcedureHistoryTotalElements(resData?.totalElements || 0);
+        setProcedureHistoryPage(page);
+      } catch (err) {
+        console.error("Error fetching procedure history:", err);
+        setProcedureHistoryError("Failed to load procedure history");
+        setProcedureHistoryRecords([]);
+      } finally {
+        setProcedureHistoryLoading(false);
+      }
+    };
+
+    const fetchProcedureSessionHistory = async (procedureDtId) => {
+      if (!procedureDtId) {
+        setProcedureSessionHistory([]);
+        return;
+      }
+
+      setProcedureDetailLoading(true);
+      setProcedureDetailError(null);
+
+      try {
+        const response = await getRequest(
+          `${DENTAL_SESSION_HISTORY}/${procedureDtId}`,
+        );
+
+        const content = Array.isArray(response?.response)
+          ? response.response
+          : [];
+        setProcedureSessionHistory(content);
+      } catch (err) {
+        console.error("Error fetching procedure session history:", err);
+        setProcedureDetailError("Failed to load session history");
+        setProcedureSessionHistory([]);
+      } finally {
+        setProcedureDetailLoading(false);
       }
     };
 
@@ -642,6 +587,17 @@ const DentalSection = forwardRef(
 
     const hasExclusiveCondition = (conditions = []) =>
       conditions.some((condition) => isExclusiveToothCondition(condition));
+
+    // Null / undefined / blank -> "N/A" (used for plain, non-date fields)
+    const displayValue = (value) => {
+      if (value === null || value === undefined) return "N/A";
+      if (typeof value === "string" && value.trim() === "") return "N/A";
+      return value;
+    };
+
+    // "Y" -> Completed, anything else ("N") -> Pending
+    const isCompletedStatus = (status) =>
+      String(status ?? "").toUpperCase() === "Y";
 
     const getToothColor = (toothNumber, isAdult = true) => {
       const conditions = isAdult
@@ -1184,16 +1140,33 @@ const DentalSection = forwardRef(
       setTeethSelectRowId(null);
     };
 
+    // ---- Dental History / Procedure History open handlers ----
+
+    const openDentalHistoryModal = () => {
+      setShowDentalHistoryModal(true);
+      fetchDentalHistory(1); // Reset to page 1 on open
+    };
+
+    const openProcedureHistoryModal = () => {
+      setShowProcedureHistoryModal(true);
+      fetchProcedureHistory(1); // Reset to page 1 on open
+    };
+
     // ---- Dental Procedure History -> View Details ----
 
     const openProcedureDetail = (item) => {
       setSelectedProcedureHistory(item);
       setShowProcedureDetailModal(true);
+      setProcedureSessionHistory([]);
+      setProcedureDetailError(null);
+      fetchProcedureSessionHistory(item?.procedureDtId);
     };
 
     const closeProcedureDetail = () => {
       setShowProcedureDetailModal(false);
       setSelectedProcedureHistory(null);
+      setProcedureSessionHistory([]);
+      setProcedureDetailError(null);
     };
 
     // ==================== TOOTH BOX COMPONENT ====================
@@ -1603,11 +1576,6 @@ const DentalSection = forwardRef(
                       </select>
                     </td>
                     <td>
-                      {/* <div className="small text-muted">
-                      {row.sessions?.length
-                        ? `${row.sessions.length} row(s) configured`
-                        : "No sessions selected"}
-                    </div> */}
                       <button
                         type="button"
                         className="btn btn-outline-primary btn-sm w-100 mt-1"
@@ -1759,13 +1727,13 @@ const DentalSection = forwardRef(
             <div className="d-flex gap-2 mt-2 mt-sm-0 flex-wrap">
               <button
                 className="btn btn-sm btn-outline-info"
-                onClick={() => setShowDentalHistoryModal(true)}
+                onClick={openDentalHistoryModal}
               >
                 Dental History
               </button>
               <button
                 className="btn btn-sm btn-outline-dark"
-                onClick={() => setShowProcedureHistoryModal(true)}
+                onClick={openProcedureHistoryModal}
               >
                 Dental Procedure History
               </button>
@@ -2314,49 +2282,103 @@ const DentalSection = forwardRef(
                   </div>
                   <div className="modal-body">
                     <div className="card shadow-sm">
-                      <div className="card-header bg-secondary text-white py-2">
+                      <div className="card-header bg-secondary py-2">
                         <strong>Past Dental Visit Records</strong>
                       </div>
-                      <div className="card-body p-0">
-                        <div className="table-responsive">
-                          <table
-                            className="table table-bordered table-hover mb-0 align-middle"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            <thead className="table-light">
-                              <tr>
-                                <th>Date</th>
-                                <th>DDS</th>
-                                <th>Missing</th>
-                                <th>Decayed</th>
-                                <th>Notes</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {dentalHistoryData.length > 0 ? (
-                                dentalHistoryData.map((record) => (
-                                  <tr key={record.id}>
-                                    <td>{record.date}</td>
-                                    <td>{record.dds}</td>
-                                    <td>{record.missing}</td>
-                                    <td>{record.decayed}</td>
-                                    <td>{record.notes}</td>
+                      <div className="card-body p-1">
+                        {dentalHistoryLoading ? (
+                          <div className="text-center py-5">
+                            <div
+                              className="spinner-border text-primary"
+                              role="status"
+                            >
+                              <span className="visually-hidden">
+                                Loading...
+                              </span>
+                            </div>
+                            <p className="mt-2 mb-0 small text-muted">
+                              Loading dental history...
+                            </p>
+                          </div>
+                        ) : dentalHistoryError ? (
+                          <div className="alert alert-danger m-3 mb-3">
+                            {dentalHistoryError}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="table-responsive">
+                              <table
+                                className="table table-bordered table-hover mb-0 align-middle"
+                                style={{ fontSize: "0.8rem" }}
+                              >
+                                <thead className="table-light">
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>DDS</th>
+                                    <th>Missing</th>
+                                    <th>Unsalvageable</th>
+                                    <th>Affected</th>
+                                    <th>Notes</th>
                                   </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td
-                                    colSpan={5}
-                                    className="text-center text-muted py-3"
-                                  >
-                                    No dental history is available for this
-                                    patient yet.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                </thead>
+                                <tbody>
+                                  {dentalHistoryRecords.length > 0 ? (
+                                    dentalHistoryRecords.map((record) => (
+                                      <tr
+                                        key={
+                                          record.summaryId ?? record.visitId
+                                        }
+                                      >
+                                        <td>
+                                          {formatDateForDisplay(record.date)}
+                                        </td>
+                                        <td>
+                                          {displayValue(
+                                            record.dentalDigitScore,
+                                          )}
+                                        </td>
+                                        <td>
+                                          {displayValue(record.missingTeeth)}
+                                        </td>
+                                        <td>
+                                          {displayValue(
+                                            record.unsalvageableTeeth,
+                                          )}
+                                        </td>
+                                        <td>
+                                          {displayValue(record.affectedTeeth)}
+                                        </td>
+                                        <td>{displayValue(record.notes)}</td>
+                                      </tr>
+                                    ))
+                                  ) : (
+                                    <tr>
+                                      <td
+                                        colSpan={6}
+                                        className="text-center text-muted py-3"
+                                      >
+                                        No dental history is available for this
+                                        patient yet.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            {dentalHistoryTotalElements > 0 && (
+                              <div className="p-3 border-top">
+                                <Pagination
+                                  totalItems={dentalHistoryTotalElements}
+                                  itemsPerPage={5}
+                                  currentPage={dentalHistoryPage}
+                                  onPageChange={(page) => fetchDentalHistory(page)}
+                                  showEntriesText={true}
+                                  showGoToPage={true}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2426,64 +2448,120 @@ const DentalSection = forwardRef(
                         <strong>Procedures</strong>
                       </div>
                       <div className="card-body p-0">
-                        <div className="table-responsive">
-                          <table
-                            className="table table-bordered table-hover mb-0 align-middle"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            <thead className="table-light">
-                              <tr>
-                                <th>S.No.</th>
-                                <th>Procedure Name</th>
-                                <th>Tooth No.</th>
-                                <th>Status</th>
-                                <th>First Sitting Date</th>
-                                <th>Details</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {procedureHistoryData.length > 0 ? (
-                                procedureHistoryData.map((item, idx) => (
-                                  <tr key={item.id}>
-                                    <td>{idx + 1}</td>
-                                    <td className="fw-bold">
-                                      {item.procedureName}
-                                    </td>
-                                    <td>{item.toothNo}</td>
-                                    <td>
-                                      <span
-                                        className={`badge ${item.status === "Completed" ? "bg-success" : "bg-warning text-dark"}`}
-                                      >
-                                        {item.status}
-                                      </span>
-                                    </td>
-                                    <td>{item.firstSittingDate}</td>
-                                    <td>
-                                      <button
-                                        className="btn btn-link btn-sm p-0"
-                                        onClick={() =>
-                                          openProcedureDetail(item)
-                                        }
-                                      >
-                                        View Details
-                                      </button>
-                                    </td>
+                        {procedureHistoryLoading ? (
+                          <div className="text-center py-5">
+                            <div
+                              className="spinner-border text-primary"
+                              role="status"
+                            >
+                              <span className="visually-hidden">
+                                Loading...
+                              </span>
+                            </div>
+                            <p className="mt-2 mb-0 small text-muted">
+                              Loading procedure history...
+                            </p>
+                          </div>
+                        ) : procedureHistoryError ? (
+                          <div className="alert alert-danger m-3 mb-3">
+                            {procedureHistoryError}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="table-responsive">
+                              <table
+                                className="table table-bordered table-hover mb-0 align-middle"
+                                style={{ fontSize: "0.8rem" }}
+                              >
+                                <thead className="table-light">
+                                  <tr>
+                                    <th>S.No.</th>
+                                    <th>Procedure Name</th>
+                                    <th>Tooth No.</th>
+                                    <th>Status</th>
+                                    <th>First Sitting Date</th>
+                                    <th>Details</th>
                                   </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td
-                                    colSpan={6}
-                                    className="text-center text-muted py-3"
-                                  >
-                                    No dental procedure history is available for
-                                    this patient yet.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                </thead>
+                                <tbody>
+                                  {procedureHistoryRecords.length > 0 ? (
+                                    procedureHistoryRecords.map(
+                                      (item, idx) => {
+                                        const completed = isCompletedStatus(
+                                          item.status,
+                                        );
+
+                                        return (
+                                          <tr key={item.procedureDtId ?? idx}>
+                                            <td>{idx + 1}</td>
+                                            <td className="fw-bold">
+                                              {displayValue(
+                                                item.procedureName,
+                                              )}
+                                            </td>
+                                            <td>
+                                              {displayValue(item.teethNumber)}
+                                            </td>
+                                            <td>
+                                              <span
+                                                className={`badge ${
+                                                  completed
+                                                    ? "bg-success"
+                                                    : "bg-danger"
+                                                }`}
+                                              >
+                                                {completed
+                                                  ? "Completed"
+                                                  : "Pending"}
+                                              </span>
+                                            </td>
+                                            <td>
+                                              {formatDateForDisplay(
+                                                item.firstSittingDate,
+                                              )}
+                                            </td>
+                                            <td>
+                                              <button
+                                                className="btn btn-link btn-sm p-0"
+                                                onClick={() =>
+                                                  openProcedureDetail(item)
+                                                }
+                                              >
+                                                View Details
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      },
+                                    )
+                                  ) : (
+                                    <tr>
+                                      <td
+                                        colSpan={6}
+                                        className="text-center text-muted py-3"
+                                      >
+                                        No dental procedure history is available
+                                        for this patient yet.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            {procedureHistoryTotalElements > 0 && (
+                              <div className="p-3 border-top">
+                                <Pagination
+                                  totalItems={procedureHistoryTotalElements}
+                                  itemsPerPage={5}
+                                  currentPage={procedureHistoryPage}
+                                  onPageChange={(page) => fetchProcedureHistory(page)}
+                                  showEntriesText={true}
+                                  showGoToPage={true}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2549,82 +2627,142 @@ const DentalSection = forwardRef(
                     <div className="row mb-3">
                       <div className="col-md-6 mb-2">
                         <strong>Procedure:</strong>{" "}
-                        {selectedProcedureHistory.procedureName}
+                        {displayValue(selectedProcedureHistory.procedureName)}
                       </div>
                       <div className="col-md-6 mb-2">
                         <strong>Tooth No.:</strong>{" "}
-                        {selectedProcedureHistory.toothNo}
+                        {displayValue(selectedProcedureHistory.teethNumber)}
                       </div>
                       <div className="col-md-6 mb-2">
                         <strong>Advised By:</strong>{" "}
-                        {selectedProcedureHistory.advisedBy}
+                        {displayValue(selectedProcedureHistory.advisedBy)}
                       </div>
                       <div className="col-md-6 mb-2">
                         <strong>Advised Date:</strong>{" "}
-                        {selectedProcedureHistory.advisedDate}
+                        {formatDateForDisplay(
+                          selectedProcedureHistory.advisedDate,
+                        )}
                       </div>
                       <div className="col-md-4 mb-2">
                         <strong>Planned Sittings:</strong>{" "}
-                        {selectedProcedureHistory.plannedSittings}
+                        {displayValue(
+                          selectedProcedureHistory.plannedSittings,
+                        )}
                       </div>
                       <div className="col-md-4 mb-2">
                         <strong>Completed Sittings:</strong>{" "}
-                        {selectedProcedureHistory.completedSittings}
+                        {displayValue(
+                          selectedProcedureHistory.completedSittings,
+                        )}
                       </div>
                       <div className="col-md-4 mb-2">
                         <strong>Procedure Status:</strong>{" "}
                         <span
-                          className={`badge ${selectedProcedureHistory.status === "Completed" ? "bg-success" : "bg-warning text-dark"}`}
+                          className={`badge ${
+                            isCompletedStatus(
+                              selectedProcedureHistory.status,
+                            )
+                              ? "bg-success"
+                              : "bg-danger"
+                          }`}
                         >
-                          {selectedProcedureHistory.status}
+                          {isCompletedStatus(
+                            selectedProcedureHistory.status,
+                          )
+                            ? "Completed"
+                            : "Pending"}
                         </span>
                       </div>
                     </div>
 
                     <hr />
 
-                    <h6 className="fw-bold mb-3">Sitting History</h6>
-                    {selectedProcedureHistory.sittings.map((sitting) => (
-                      <div
-                        key={sitting.sittingNo}
-                        className="border rounded p-3 mb-3"
-                      >
-                        <h6 className="text-primary mb-2">
-                          Sitting {sitting.sittingNo}
-                        </h6>
-                        <div className="row small">
-                          <div className="col-md-6 mb-1">
-                            <strong>Scheduled Date/Time:</strong>{" "}
-                            {sitting.scheduledDateTime}
-                          </div>
-                          <div className="col-md-6 mb-1">
-                            <strong>Performed Date/Time:</strong>{" "}
-                            {sitting.performedDateTime}
-                          </div>
-                          <div className="col-md-6 mb-1">
-                            <strong>Performed By:</strong> {sitting.performedBy}
-                          </div>
-                          <div className="col-md-6 mb-1">
-                            <strong>Status:</strong> {sitting.status}
-                          </div>
-                          <div className="col-12 mb-1">
-                            <strong>Findings:</strong> {sitting.findings}
-                          </div>
-                          <div className="col-12 mb-1">
-                            <strong>Procedure Notes:</strong>{" "}
-                            {sitting.procedureNotes}
-                          </div>
-                          <div className="col-md-6 mb-1">
-                            <strong>Complication:</strong>{" "}
-                            {sitting.complication}
-                          </div>
-                          <div className="col-md-6 mb-1">
-                            <strong>Post Procedure Advice:</strong>{" "}
-                            {sitting.postProcedureAdvice}
+                    <h6 className="fw-bold mb-3">Session History</h6>
+
+                    {procedureDetailLoading ? (
+                      <div className="text-center py-4">
+                        <div
+                          className="spinner-border text-primary"
+                          role="status"
+                        >
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <p className="mt-2 mb-0 small text-muted">
+                          Loading session history...
+                        </p>
+                      </div>
+                    ) : procedureDetailError ? (
+                      <div className="alert alert-danger mb-0">
+                        {procedureDetailError}
+                      </div>
+                    ) : procedureSessionHistory.length > 0 ? (
+                      procedureSessionHistory.map((session) => (
+                        <div
+                          key={session.sessionId}
+                          className="border rounded p-3 mb-3"
+                        >
+                          <h6 className="text-primary mb-2">
+                            Session {displayValue(session.sessionNumber)}
+                          </h6>
+                          <div className="row small">
+                            <div className="col-md-6 mb-1">
+                              <strong>Scheduled Date/Time:</strong>{" "}
+                              {formatDateTimeForDisplay(
+                                session.sessionDateTime,
+                              )}
+                            </div>
+                            <div className="col-md-6 mb-1">
+                              <strong>Performed Date/Time:</strong>{" "}
+                              {formatDateTimeForDisplay(session.performedAt)}
+                            </div>
+                            <div className="col-md-6 mb-1">
+                              <strong>Performed By:</strong>{" "}
+                              {displayValue(session.performedBy)}
+                            </div>
+                            <div className="col-md-6 mb-1">
+                              <strong>Status:</strong>{" "}
+                              {displayValue(session.sessionStatus)}
+                            </div>
+                            <div className="col-md-6 mb-1">
+                              <strong>Final Session:</strong>{" "}
+                              {session.isFinalSession === "Y"
+                                ? "Yes"
+                                : session.isFinalSession === "N"
+                                  ? "No"
+                                  : "N/A"}
+                            </div>
+                            <div className="col-md-6 mb-1">
+                              <strong>Complication:</strong>{" "}
+                              {session.complicationFlag === "Y"
+                                ? `Yes${
+                                    session.complicationDetails
+                                      ? ` - ${session.complicationDetails}`
+                                      : ""
+                                  }`
+                                : session.complicationFlag === "N"
+                                  ? "No"
+                                  : "N/A"}
+                            </div>
+                            <div className="col-12 mb-1">
+                              <strong>Findings:</strong>{" "}
+                              {displayValue(session.procedureFindings)}
+                            </div>
+                            <div className="col-12 mb-1">
+                              <strong>Procedure Notes:</strong>{" "}
+                              {displayValue(session.procedureNotes)}
+                            </div>
+                            <div className="col-12 mb-1">
+                              <strong>Post Procedure Advice:</strong>{" "}
+                              {displayValue(session.postProcedureAdvise)}
+                            </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-muted py-3">
+                        No session history is available for this procedure.
                       </div>
-                    ))}
+                    )}
                   </div>
                   <div className="modal-footer">
                     <button

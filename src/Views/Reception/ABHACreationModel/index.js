@@ -68,6 +68,10 @@ const ABHACreationModal = ({
   const [timer, setTimer] = useState(0);
   const timerInterval = useRef(null);
 
+  const ABHA_ADDRESS_SUFFIX="@sbx"
+  // const ABHA_ADDRESS_SUFFIX="@abdm"
+
+
   useEffect(() => {
     if (show) {
       setCurrentTab(1);
@@ -276,7 +280,7 @@ const ABHACreationModal = ({
       return false;
     }
 
-    const cleanAddress = abhaAddress.replace(/@abdm$/i, "");
+    const cleanAddress = abhaAddress.replace(/@.*$/, "");
     if (!isValidAbhaAddress(cleanAddress)) {
       Swal.fire(
         "Validation Error",
@@ -740,13 +744,12 @@ const handleVerifyOtp = async () => {
     setIsCreatingAbha(true);
 
     try {
-      const finalAbhaAddress = abhaAddress.trim().includes("@")
-        ? abhaAddress.trim()
-        : `${abhaAddress.trim()}@abdm`;
+      // ABDM expects the bare address (no @sbx / @abdm) in the update call
+      const bareAbhaAddress = abhaAddress.trim().replace(/@.*$/, "");
 
       const response = await integrationService.updateAbhaAddress({
         tnxId: otpData.txnId,
-        abhaAddress: finalAbhaAddress,
+        abhaAddress: bareAbhaAddress,
       });
 
       if (response?.status === false) {
@@ -757,6 +760,10 @@ const handleVerifyOtp = async () => {
       if (otpData.xtoken) {
         fullProfile = await fetchAbhaDetails(otpData.xtoken, otpData.isType);
       }
+
+      // Full address for display and for onSuccess: prefer what ABDM returned
+      const finalAbhaAddress =
+        fullProfile?.abhaAddress || `${bareAbhaAddress}${ABHA_ADDRESS_SUFFIX}`;
 
       const abhaNumberResponse =
         fullProfile?.abhaNumber ||

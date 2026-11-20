@@ -16,8 +16,10 @@ import {
   SAVE_DISCHARGE_SUMMARY,
   GET_PAYMENT_STATUS,
   GET_DISCHARGE_SUMMARY,
-  GET_DISCHARGE_SUMMARY_REPORT_URL
+  GET_DISCHARGE_SUMMARY_REPORT_URL,
+  GET_MEDICATION_TREATMENT_BY_INPATIENT_ID
 } from "../../../config/apiConfig";
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -72,6 +74,132 @@ const DischargeFromWard = ({ selectedPatient }) => {
   // States for PDF report viewer
   const [reportPdfUrl, setReportPdfUrl] = useState(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // States for Active MAR Medications Modal
+  const [showMarModal, setShowMarModal] = useState(false);
+  const [activeMarMeds, setActiveMarMeds] = useState([]);
+  const [loadingMarMeds, setLoadingMarMeds] = useState(false);
+  const [selectedMarIds, setSelectedMarIds] = useState([]);
+
+  // Calculate total medication units based on dosage, frequency, and duration
+  const calculateMedicationTotal = (dosageVal, frequencyVal, durationDaysVal, freqOptions = frequencyOptions) => {
+    const dosage = parseFloat(dosageVal) || 0;
+    let duration = parseFloat(durationDaysVal);
+    duration = (duration > 0 && !isNaN(duration)) ? duration : 1;
+
+    const freq = freqOptions?.find(
+      (f) => (f.value && f.value.toLowerCase() === (frequencyVal || "").toLowerCase()) ||
+             (f.label && f.label.toLowerCase() === (frequencyVal || "").toLowerCase())
+    );
+
+    let multiplier = freq ? freq.multiplier : 0;
+    if (!multiplier && frequencyVal && frequencyVal.includes("-")) {
+      multiplier = frequencyVal
+        .split("-")
+        .reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
+    }
+
+    const total = dosage * multiplier * duration;
+    return total > 0 ? total.toFixed(2) : "";
+  };
+
+  // Fetch only active MAR medications (where stopDate is null)
+  const fetchActiveMarMedications = async () => {
+    if (!inpatientId) {
+      showConfirmationPopup("Inpatient ID not found for this patient.", "warning", () => {}, null, "OK", "");
+      return;
+    }
+    setLoadingMarMeds(true);
+    setShowMarModal(true);
+    try {
+      const res = await getRequest(`${GET_MEDICATION_TREATMENT_BY_INPATIENT_ID}/${inpatientId}`);
+      const data = res?.response || res?.data || res || [];
+      if (Array.isArray(data)) {
+        // filter only active medicines where stopDate is null
+        const active = data.filter(item => item.stopDate === null || item.stopDate === undefined || item.stopDate === "");
+        setActiveMarMeds(active);
+        setSelectedMarIds(active.map(m => m.prescriptionId || m.itemId));
+      } else {
+        setActiveMarMeds([]);
+        setSelectedMarIds([]);
+      }
+    } catch (err) {
+      console.error("Error fetching active MAR medications:", err);
+      setActiveMarMeds([]);
+      setSelectedMarIds([]);
+    } finally {
+      setLoadingMarMeds(false);
+    }
+  };
+
+  // Add selected active MAR medications into Medication on Discharge list
+  const handleAddMarMedsToDischarge = () => {
+    const medsToAdd = activeMarMeds.filter(m =>
+      selectedMarIds.includes(m.prescriptionId || m.itemId)
+    );
+
+    if (medsToAdd.length === 0) {
+      showConfirmationPopup("Please select at least one medication to add.", "warning", () => {}, null, "OK", "");
+      return;
+    }
+
+    const formattedRows = medsToAdd.map(item => {
+      const dosage = item.dose ? String(item.dose) : "1";
+      const frequency = item.frequencyName || "";
+      const durationDays = "1";
+      const route = item.routeName || "";
+      const total = calculateMedicationTotal(dosage, frequency, durationDays, frequencyOptions);
+
+      return {
+        medicineName: item.itemName || "",
+        dosage: dosage,
+        frequency: frequency,
+        durationDays: durationDays,
+        total: total,
+        route: route,
+        instruction: "",
+        dropdownOpen: false
+      };
+    });
+
+    setDischargeData(prev => {
+      const currentRows = prev.medicationOnDischarge || [];
+      const filteredCurrent = currentRows.filter(r => r.medicineName?.trim());
+
+      // If existing rows match any of the imported MAR medicines, update them and ensure instruction is blank
+      const updatedExisting = filteredCurrent.map(r => {
+        const matchingMar = formattedRows.find(
+          fr => fr.medicineName.trim().toLowerCase() === r.medicineName.trim().toLowerCase()
+        );
+        if (matchingMar) {
+          return {
+            ...r,
+            dosage: matchingMar.dosage,
+            frequency: matchingMar.frequency,
+            durationDays: matchingMar.durationDays,
+            total: matchingMar.total,
+            route: matchingMar.route,
+            instruction: "", // strictly blank
+          };
+        }
+        return r;
+      });
+
+      const existingNames = new Set(updatedExisting.map(r => r.medicineName.trim().toLowerCase()));
+      const newItemsToAdd = formattedRows.filter(
+        fr => !existingNames.has(fr.medicineName.trim().toLowerCase())
+      );
+
+      const finalRows = [...updatedExisting, ...newItemsToAdd];
+
+      return {
+        ...prev,
+        medicationOnDischarge: finalRows.length > 0 ? finalRows : formattedRows
+      };
+    });
+
+    setShowMarModal(false);
+  };
 
   // Confirmation Popup Helper Function
   const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
@@ -460,15 +588,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
 
       // Auto-calculate total if dosage, frequency, or durationDays are present
       if (field === "dosage" || field === "frequency" || field === "durationDays") {
-        const dosage = parseFloat(med.dosage) || 0;
-        let duration = parseFloat(med.durationDays);
-        duration = (duration > 0 && !isNaN(duration)) ? duration : 1;
-        const freq = frequencyOptions.find(
-          (f) => f.value === med.frequency
+        med.total = calculateMedicationTotal(
+          field === "dosage" ? value : med.dosage,
+          field === "frequency" ? value : med.frequency,
+          field === "durationDays" ? value : med.durationDays,
+          frequencyOptions
         );
-        const multiplier = freq ? freq.multiplier : 0;
-        const total = dosage * multiplier * duration;
-        updated[index].total = total > 0 ? total.toFixed(2) : "";
       }
       return { ...prev, medicationOnDischarge: updated, deleteMedicationIds: newDeleteIds };
     });
@@ -1021,12 +1146,21 @@ const DischargeFromWard = ({ selectedPatient }) => {
                     Medication on Discharge{" "}
                     <span className="text-danger">*</span>
                   </label>
-                  <button
-                    className="btn btn-success btn-sm"
-                    onClick={addMedicationRow}
-                  >
-                    <i className="fa fa-plus me-1"></i> Add Medication
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={fetchActiveMarMedications}
+                    >
+                      <i className="fa fa-list-alt me-1"></i> Current Active MAR Medications
+                    </button>
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={addMedicationRow}
+                    >
+                      <i className="fa fa-plus me-1"></i> Add Medication
+                    </button>
+                  </div>
                 </div>
                 <div className="table-responsive">
                   <table className="table table-bordered table-sm align-middle mb-0">
@@ -1651,6 +1785,158 @@ const DischargeFromWard = ({ selectedPatient }) => {
           onClose={() => setReportPdfUrl(null)}
           heading="Discharge Summary Report"
         />
+      )}
+
+      {/* Active MAR Medications Modal */}
+      {showMarModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1060 }}
+          onClick={() => setShowMarModal(false)}
+        >
+          <div
+            className="modal-dialog modal-lg modal-dialog-centered"
+            style={{ maxWidth: "800px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content shadow">
+              <div className="modal-header bg-primary text-white py-2">
+                <h6 className="modal-title mb-0">
+                  <i className="fa fa-medkit me-2"></i> Current Active MAR Medications
+                </h6>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowMarModal(false)}
+                />
+              </div>
+              <div className="modal-body p-3">
+                {loadingMarMeds ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <span className="text-muted">Loading active MAR medications...</span>
+                  </div>
+                ) : activeMarMeds.length === 0 ? (
+                  <div className="alert alert-info mb-0 text-center py-3">
+                    <i className="fa fa-info-circle me-1"></i> No active MAR medications found for this patient.
+                  </div>
+                ) : (
+                  <>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted small">
+                        Active Medications: <strong>{activeMarMeds.length}</strong> | Selected: <strong>{selectedMarIds.length}</strong>
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          style={{ fontSize: "0.75rem", padding: "0.15rem 0.4rem" }}
+                          onClick={() => {
+                            if (selectedMarIds.length === activeMarMeds.length) {
+                              setSelectedMarIds([]);
+                            } else {
+                              setSelectedMarIds(activeMarMeds.map(m => m.prescriptionId || m.itemId));
+                            }
+                          }}
+                        >
+                          {selectedMarIds.length === activeMarMeds.length ? "Deselect All" : "Select All"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="table-responsive" style={{ maxHeight: "350px" }}>
+                      <table className="table table-bordered table-sm table-hover align-middle mb-0" style={{ fontSize: "0.8rem" }}>
+                        <thead className="table-light sticky-top">
+                          <tr>
+                            <th style={{ width: "40px" }} className="text-center">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={activeMarMeds.length > 0 && selectedMarIds.length === activeMarMeds.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedMarIds(activeMarMeds.map(m => m.prescriptionId || m.itemId));
+                                  } else {
+                                    setSelectedMarIds([]);
+                                  }
+                                }}
+                              />
+                            </th>
+                            <th>Medicine Name</th>
+                            <th>Dosage</th>
+                            <th>Frequency</th>
+                            <th>Route</th>
+                            <th>Start Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeMarMeds.map((med, idx) => {
+                            const idKey = med.prescriptionId || med.itemId || idx;
+                            const isChecked = selectedMarIds.includes(idKey);
+                            return (
+                              <tr
+                                key={idKey}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setSelectedMarIds(prev =>
+                                    prev.includes(idKey) ? prev.filter(x => x !== idKey) : [...prev, idKey]
+                                  );
+                                }}
+                              >
+                                <td className="text-center" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedMarIds(prev => [...prev, idKey]);
+                                      } else {
+                                        setSelectedMarIds(prev => prev.filter(x => x !== idKey));
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td><strong>{med.itemName}</strong></td>
+                                <td>{med.dose || "-"}</td>
+                                <td>
+                                  <span className="badge bg-light text-dark border">{med.frequencyName || "-"}</span>
+                                </td>
+                                <td>{med.routeName || "-"}</td>
+                                <td>{formatDateTimeForDisplay(med.startDate, "-")}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer py-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowMarModal(false)}
+                >
+                  Close
+                </button>
+                {activeMarMeds.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm"
+                    disabled={selectedMarIds.length === 0}
+                    onClick={handleAddMarMedsToDischarge}
+                  >
+                    <i className="fa fa-plus-circle me-1"></i> Add to Medication on Discharge ({selectedMarIds.length})
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

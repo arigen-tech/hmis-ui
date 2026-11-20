@@ -115,7 +115,7 @@ const Pagination = ({
   if (totalItems === 0) return null;
 
   return (
-    <nav className="d-flex justify-content-between align-items-center mt-3">
+    <nav className="d-flex justify-content-between align-items-center">
       {showEntriesText && (
         <div>
           <span className="text-muted">
@@ -149,7 +149,7 @@ const Pagination = ({
       </ul>
       
       {showGoToPage && (
-        <div className="d-flex align-items-center">
+        <div className="d-flex align-items-center gotoPage">
           <span className="me-2">Go to:</span>
           <input
             type="number"
@@ -158,15 +158,9 @@ const Pagination = ({
             value={pageInput}
             onChange={handlePageInputChange}
             onKeyPress={handleKeyPress}
-            className="form-control me-2"
-            style={{ width: "80px" }}
+            className="form-control me-2"            
           />
-          <button
-            className="btn btn-primary"
-            onClick={handlePageNavigation}
-          >
-            Go
-          </button>
+          <button className="btn btn-primary" onClick={handlePageNavigation}>Go</button>
         </div>
       )}
     </nav>

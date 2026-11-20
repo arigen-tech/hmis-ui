@@ -4,8 +4,8 @@ import { CKEditor } from "@ckeditor/ckeditor5-react"
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document"
 import Popup from "../../../Components/popup"
 import { getRequest } from "../../../service/apiService"
-import { RADIOLOGY_TEMPLATE_LIST_GET_BY_ID } from "../../../config/apiConfig"
-import { FETCH_RADIOLOGY_TEMPLATE_ERR_MSG } from "../../../config/constants"
+import { LABORATORY_TEMPLATE_TYPE, TEMPLATE_LIST_GET_BY_ID } from "../../../config/apiConfig"
+import { FETCH_PACS_TEMPLATE_ERR_MSG } from "../../../config/constants"
 
 
 const HEADER_SELECTOR = ".navbar.fixed-top, .navbar, header"
@@ -170,7 +170,7 @@ const TemplateResultEditor = ({
     try {
       setTemplateLoading(true)
       const response = await getRequest(
-        `${RADIOLOGY_TEMPLATE_LIST_GET_BY_ID}/${modalityId}`
+        `${TEMPLATE_LIST_GET_BY_ID}/${modalityId}/${LABORATORY_TEMPLATE_TYPE}`
       )
       if (response?.status === 200 && response?.response) {
         setTemplateData(response.response)
@@ -179,7 +179,7 @@ const TemplateResultEditor = ({
       }
     } catch (error) {
       console.error("Error fetching template data:", error)
-      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG || "Failed to fetch templates", "error")
+      showPopup(FETCH_PACS_TEMPLATE_ERR_MSG || "Failed to fetch templates", "error")
       setTemplateData([])
     } finally {
       setTemplateLoading(false)
@@ -217,13 +217,14 @@ const TemplateResultEditor = ({
     setFormData((prev) => ({ ...prev, reportContent: data }))
   }
 
+  // Save only the report content (previous behaviour).
+  // The template search / selection is only used to prefill the editor
+  // and the Code / Name display fields.
   const handleSave = () => {
     setSaving(true)
     try {
       onSave?.({
         templateResult: formData.reportContent || "",
-        templateCode: formData.templateCode || "",
-        templateName: formData.templateName || "",
       })
       showPopup("Template result saved.", "success", true)
     } finally {
@@ -299,10 +300,7 @@ const TemplateResultEditor = ({
                             onClick={() => handleTemplateSelect(template)}
                             style={{ cursor: "pointer" }}
                           >
-                            <div className="fw-bold">{template.templateName}</div>
-                            <small className="text-muted">
-                              Code: {template.templateCode}
-                            </small>
+                            {template.templateName} ({template.templateCode})
                           </div>
                         ))
                       ) : (

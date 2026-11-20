@@ -1,21 +1,36 @@
-export const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "N/A";
+export const formatDateForDisplay = (dateString, fallback = "N/A") => {
+    if (!dateString) return fallback;
     try {
+        if (typeof dateString === 'string') {
+            const trimmed = dateString.trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+                const [year, month, day] = trimmed.split('-');
+                return `${day}/${month}/${year}`;
+            }
+        }
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return fallback;
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     } catch (error) {
         console.error("Error formatting date:", error);
-        return "N/A";
+        return fallback;
     }
 };
 
-export const formatDateTimeForDisplay = (dateTimeString) => {
-    if (!dateTimeString) return "N/A";
+export const formatDateTimeForDisplay = (dateTimeString, fallback = "N/A") => {
+    if (!dateTimeString) return fallback;
     try {
+        if (typeof dateTimeString === 'string') {
+            const trimmed = dateTimeString.trim();
+            if (!trimmed.includes(':')) {
+                return formatDateForDisplay(trimmed, fallback);
+            }
+        }
         const date = new Date(dateTimeString);
+        if (isNaN(date.getTime())) return fallback;
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -24,14 +39,21 @@ export const formatDateTimeForDisplay = (dateTimeString) => {
         return `${day}/${month}/${year} ${hours}:${minutes}`;
     } catch (error) {
         console.error("Error formatting date time:", error);
-        return "N/A";
+        return fallback;
     }
 };
 
-export const formatDateTimeWithSecondsForDisplay = (dateTimeString) => {
-    if (!dateTimeString) return "N/A";
+export const formatDateTimeWithSecondsForDisplay = (dateTimeString, fallback = "N/A") => {
+    if (!dateTimeString) return fallback;
     try {
+        if (typeof dateTimeString === 'string') {
+            const trimmed = dateTimeString.trim();
+            if (!trimmed.includes(':')) {
+                return formatDateForDisplay(trimmed, fallback);
+            }
+        }
         const date = new Date(dateTimeString);
+        if (isNaN(date.getTime())) return fallback;
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -41,6 +63,6 @@ export const formatDateTimeWithSecondsForDisplay = (dateTimeString) => {
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     } catch (error) {
         console.error("Error formatting date time with seconds:", error);
-        return "N/A";
+        return fallback;
     }
 };
