@@ -814,7 +814,7 @@ const WardManagement = () => {
                                 )}
 
                                 {activeTab === "Patient Consent" && (
-                                  <PatientConsentForm />
+                                  <PatientConsentForm selectedPatient={selectedPatient} />
                                 )}
 
                                 {/* 
