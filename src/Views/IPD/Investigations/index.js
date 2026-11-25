@@ -955,7 +955,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeTab === "lab" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("lab")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
           type="button"
         >
           Lab Investigation
@@ -963,7 +963,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeTab === "radiology" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("radiology")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
           type="button"
         >
           Radiology Investigation
@@ -971,7 +971,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeTab === "tracking" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("tracking")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
           type="button"
         >
           Order Tracking

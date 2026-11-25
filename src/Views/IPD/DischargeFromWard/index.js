@@ -63,7 +63,7 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 const DischargeFromWard = ({ selectedPatient }) => {
   const navigate = useNavigate();
   const { id } = useParams();
-  
+
   const inpatientId = selectedPatient?.ipdPatientId || selectedPatient?.inpatientId || id;
 
   const [missingFields, setMissingFields] = useState([]);
@@ -89,7 +89,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
 
     const freq = freqOptions?.find(
       (f) => (f.value && f.value.toLowerCase() === (frequencyVal || "").toLowerCase()) ||
-             (f.label && f.label.toLowerCase() === (frequencyVal || "").toLowerCase())
+        (f.label && f.label.toLowerCase() === (frequencyVal || "").toLowerCase())
     );
 
     let multiplier = freq ? freq.multiplier : 0;
@@ -106,7 +106,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
   // Fetch only active MAR medications (where stopDate is null)
   const fetchActiveMarMedications = async () => {
     if (!inpatientId) {
-      showConfirmationPopup("Inpatient ID not found for this patient.", "warning", () => {}, null, "OK", "");
+      showConfirmationPopup("Inpatient ID not found for this patient.", "warning", () => { }, null, "OK", "");
       return;
     }
     setLoadingMarMeds(true);
@@ -139,7 +139,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
     );
 
     if (medsToAdd.length === 0) {
-      showConfirmationPopup("Please select at least one medication to add.", "warning", () => {}, null, "OK", "");
+      showConfirmationPopup("Please select at least one medication to add.", "warning", () => { }, null, "OK", "");
       return;
     }
 
@@ -774,7 +774,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
     if (missing.length > 0) {
       setMissingFields(missing);
       showConfirmationPopup(`Please fill all required fields: ${missing.join(", ")}`, "warning", () => { }, null, "OK", "");
-      
+
       setTimeout(() => {
         const firstMissingId = `field-${missing[0]}`;
         const el = document.getElementById(firstMissingId);
@@ -913,7 +913,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
   }, []);
 
   return (
-    <div>
+    <div className="innerCard">
       <style>{`
         .blink-error {
           animation: blinker 1s linear infinite;
@@ -1326,17 +1326,10 @@ const DischargeFromWard = ({ selectedPatient }) => {
                               />
                             </td>
                             <td className="text-center">
-                              <button
-                                className="btn btn-danger btn-sm"
-                                onClick={() => removeMedicationRow(index)}
-                                disabled={
-                                  dischargeData.medicationOnDischarge
-                                    .length === 1
-                                }
-                                title="Remove this medication"
-                              >
-                                <i className="fa fa-times"></i>
-                              </button>
+                              <div className="btnCenter">
+                                <button type="button" className="btn btn-outline-danger btnDel" title="Remove this medication" onClick={() => removeMedicationRow(index)}
+                                  disabled={dischargeData.medicationOnDischarge.length === 1}><i class="icofont-trash"></i></button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1511,10 +1504,11 @@ const DischargeFromWard = ({ selectedPatient }) => {
                           type="radio"
                           name="dischargeTo"
                           value="home"
+                          id="homeId"
                           checked={dischargeData.dischargeTo === "home"}
                           onChange={handleDischargeChange}
                         />
-                        <label className="form-check-label">Home</label>
+                        <label htmlFor="homeId" className="fw-semibold">Home</label>
                       </div>
                       <div className="form-check">
                         <input
@@ -1522,14 +1516,13 @@ const DischargeFromWard = ({ selectedPatient }) => {
                           type="radio"
                           name="dischargeTo"
                           value="otherHospital"
+                          id="otherHospital"
                           checked={
                             dischargeData.dischargeTo === "otherHospital"
                           }
                           onChange={handleDischargeChange}
                         />
-                        <label className="form-check-label">
-                          Other Hospital
-                        </label>
+                        <label htmlFor="otherHospital" className="fw-semibold">Other Hospital</label>
                       </div>
                     </div>
                   </div>
@@ -1571,7 +1564,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
                 </button>
               </div>
               <button
-                className="btn btn-danger btn-sm"
+                className="btn btn-primary btn-sm"
                 onClick={handleSubmitDischarge}
                 disabled={isSubmitDisabled || isSaving}
                 title={isSubmitDisabled ? "Payment not completed" : ""}

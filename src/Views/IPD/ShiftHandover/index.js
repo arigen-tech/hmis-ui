@@ -173,7 +173,7 @@ const ShiftHandover = ({ selectedPatient }) => {
   }, []);
 
   return (
-    <div>
+    <div className="innerCard">
       <div className="body">
         <label className="form-label small fw-bold">Handover Notes <span className="text-danger">*</span></label>
 
@@ -207,7 +207,7 @@ const ShiftHandover = ({ selectedPatient }) => {
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-2">
-          <button className="btn btn-outline-secondary btn-sm" onClick={handleClear}>
+          <button className="btn btn btn-secondary btn-sm" onClick={handleClear}>
             Clear
           </button>
           <button className="btn btn-primary btn-sm" onClick={handleSaveHandover}>

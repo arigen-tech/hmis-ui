@@ -902,14 +902,14 @@ const MedicationModule = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeView === "medications" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("medications")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Medications
         </button>
         <button
           className={`btn btn-sm ${activeView === "adverse" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("adverse")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Adverse Events ({adverseEvents.length})
         </button>

@@ -114,13 +114,13 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     bookingData?.preferredDate
       ? formatDateForDisplay(bookingData.preferredDate)
       : bookingData?.bookedDate
-      ? formatDateForDisplay(bookingData.bookedDate)
-      : (bookingData ? "-" : formatDateForDisplay(DUMMY_BOOKING.surgeryDate))
+        ? formatDateForDisplay(bookingData.bookedDate)
+        : (bookingData ? "-" : formatDateForDisplay(DUMMY_BOOKING.surgeryDate))
   const scheduledTime =
     bookingData?.preferredStartTime && bookingData?.preferredEndTime
       ? `${bookingData.preferredStartTime} - ${bookingData.preferredEndTime}`
       : bookingData?.preferredStartTime ||
-        (bookingData ? "-" : DUMMY_BOOKING.scheduledTime)
+      (bookingData ? "-" : DUMMY_BOOKING.scheduledTime)
   const otStatus =
     bookingData?.statusName ||
     bookingData?.bookingStatus ||
@@ -241,11 +241,11 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
             setBookingData((prev) =>
               prev
                 ? {
-                    ...prev,
-                    statusName: "Sent to OT",
-                    status: "SENT_TO_OT",
-                    bookingStatusId: 4,
-                  }
+                  ...prev,
+                  statusName: "Sent to OT",
+                  status: "SENT_TO_OT",
+                  bookingStatusId: 4,
+                }
                 : prev
             )
 
@@ -318,377 +318,405 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   }
 
   return (
-    <div>
-      {/* ─── SURGERY / BOOKING (read-only) ─── */}
-      <div className="mb-4">
-        <div className="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <h6 className="fw-bold mb-0">Surgery / Booking</h6>
-            {bookingData?.bookingNo && (
-              <span
-                className="badge bg-secondary font-weight-normal"
-                style={{ fontSize: "0.75rem" }}
-              >
-                Booking No: {bookingData.bookingNo}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            className="btn btn-warning btn-sm fw-semibold"
-            disabled={!isScheduled || isSendingToOT}
-            onClick={handleSendToOT}
-            title={
-              !isScheduled
-                ? "Available only when OT Status is Scheduled"
-                : "Send patient to OT"
-            }
-          >
-            {isSendingToOT ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-1"
-                  role="status"
-                />
-                Sending to OT...
-              </>
-            ) : (
-              <>
-                <i className="fa fa-paper-plane me-1" />
-                Send to OT
-              </>
-            )}
-          </button>
-        </div>
+    <>
+      <div>
+        {/* ─── SURGERY / BOOKING (read-only) ─── */}
+        <div className="mb-4">
 
-        {loadingBooking ? (
-          <div className="py-3 text-center text-muted">
-            <span
-              className="spinner-border spinner-border-sm me-2"
-              role="status"
-            />
-            Loading booking details...
-          </div>
-        ) : (
-          <>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery
-                </label>
-                <div className="fw-semibold">{surgeryName}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery Type
-                </label>
-                <div className="fw-semibold">{surgeryType}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Major / Minor
-                </label>
-                <div className="fw-semibold">{majorMinor}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgeon
-                </label>
-                <div className="fw-semibold">{surgeon}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">OT</label>
-                <div className="fw-semibold">{otRoom}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Priority
-                </label>
-                <div>{priority}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery Date
-                </label>
-                <div className="fw-semibold">{surgeryDate}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Scheduled Time
-                </label>
-                <div className="fw-semibold">{scheduledTime}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  OT Status
-                </label>
-                <div>
-                  {otStatus && otStatus !== "-" ? (
-                    <span className={`badge bg-${getStatusBadge(otStatus)}`}>
-                      {otStatus}
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </div>
+          <div className="patient-header d-flex justify-content-between align-items-center mb-3">
+            <div className="h4Title">
+              <h4>Surgery / Booking</h4>
+              {bookingData?.bookingNo && (
+                <p>Booking No: <strong> {bookingData.bookingNo}</strong></p>
+              )}
             </div>
-
-            {/* If multiple surgeries scheduled in the top booking */}
-            {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
-              <div className="mt-3">
-                <label className="form-label small text-muted mb-1">
-                  Surgeries List ({bookingData.surgeries.length})
-                </label>
-                <div className="table-responsive">
-                  <table
-                    className="table table-bordered table-sm mb-0"
-                    style={{ fontSize: "0.8rem" }}
-                  >
-                    <thead className="table-light">
-                      <tr>
-                        <th style={{ width: "40px" }} className="text-center">
-                          #
-                        </th>
-                        <th>Surgery Name</th>
-                        <th>Surgery Type</th>
-                        <th>Level</th>
-                        <th className="text-center">Anesthesia Required</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookingData.surgeries.map((surg, idx) => (
-                        <tr
-                          key={
-                            surg.otBookingRequestDtId ||
-                            surg.surgeryId ||
-                            idx
-                          }
-                        >
-                          <td className="text-center">{idx + 1}</td>
-                          <td className="fw-semibold">
-                            {surg.surgeryName || "-"}
-                          </td>
-                          <td>{surg.surgeryTypeName || "-"}</td>
-                          <td>{surg.surgeryLevel || "-"}</td>
-                          <td className="text-center">
-                            <span
-                              className={`badge ${
-                                surg.anesthesiaRequired === "Y"
-                                  ? "bg-warning text-dark"
-                                  : "bg-secondary"
-                              }`}
-                            >
-                              {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
-      <div className="mb-4">
-        <h6 className="fw-bold border-bottom pb-1 mb-3">Pre-Anaesthesia</h6>
-        <div className="row g-3 mb-2">
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthesia Type
-            </label>
-            <div className="fw-semibold">
-              {DUMMY_ANAESTHESIA.anaesthesiaType}
-            </div>
-          </div>
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthetist
-            </label>
-            <div className="fw-semibold">{DUMMY_ANAESTHESIA.anaesthetist}</div>
-          </div>
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthesia Status
-            </label>
-            <div>{DUMMY_ANAESTHESIA.anaesthesiaStatus}</div>
-          </div>
-        </div>
-        <label className="form-label small text-muted mb-1">
-          Pre-Anaesthesia Instructions
-        </label>
-        <ul className="mb-0 small">
-          {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => (
-            <li key={idx}>{ins}</li>
-          ))}
-        </ul>
-      </div>
-
-      {/* ─── OT PREPARATION (editable) ─── */}
-      <div className="mb-4">
-        <h6 className="fw-bold border-bottom pb-1 mb-3">OT Preparation</h6>
-        <div className="row g-3">
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              NPO Since Date <span className="text-danger">*</span>
-            </label>
-            <input
-              type="date"
-              className="form-control form-control-sm"
-              value={preparation.npoSinceDate}
-              onChange={(e) =>
-                handlePreparationChange("npoSinceDate", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              NPO Since Time <span className="text-danger">*</span>
-            </label>
-            <input
-              type="time"
-              className="form-control form-control-sm"
-              value={preparation.npoSinceTime}
-              onChange={(e) =>
-                handlePreparationChange("npoSinceTime", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Consent Available <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.consentAvailable}
-              onChange={(e) =>
-                handlePreparationChange("consentAvailable", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Patient Prepared <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.patientPrepared}
-              onChange={(e) =>
-                handlePreparationChange("patientPrepared", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Pre-Op Medication <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.preOpMedication}
-              onChange={(e) =>
-                handlePreparationChange("preOpMedication", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Given">Given</option>
-              <option value="Not Given">Not Given</option>
-              <option value="N/A">N/A</option>
-            </select>
-          </div>
-          <div className="col-md-9">
-            <label className="form-label small fw-bold">Remarks</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Optional remarks"
-              value={preparation.remarks}
-              onChange={(e) =>
-                handlePreparationChange("remarks", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-12">
             <button
-              className="btn btn-primary btn-sm"
-              onClick={handleSavePreparation}
-              disabled={preparationSaved}
+              type="button"
+              className="btn btn-warning btn-sm fw-semibold"
+              disabled={!isScheduled || isSendingToOT}
+              onClick={handleSendToOT}
+              title={
+                !isScheduled
+                  ? "Available only when OT Status is Scheduled"
+                  : "Send patient to OT"
+              }
             >
-              {preparationSaved ? "Preparation Saved" : "Save Preparation"}
+              {isSendingToOT ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-1"
+                    role="status"
+                  />
+                  Sending to OT...
+                </>
+              ) : (
+                <>
+                  <i className="fa fa-paper-plane me-1" />
+                  Send to OT
+                </>
+              )}
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* ─── EMERGENCY OVERRIDE ─── */}
-      <div className="mb-4">
-        {isEmergency && (
-          <div className="mt-2">
-            <label className="form-label small fw-bold">
-              Override Reason <span className="text-danger">*</span>
-            </label>
-            <textarea
-              className="form-control form-control-sm"
-              rows={2}
-              placeholder="Enter reason for overriding readiness checks..."
-              value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
-            />
+          {loadingBooking ? (
+            <div className="py-3 text-center text-muted">
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                role="status"
+              />
+              Loading booking details...
+            </div>
+          ) : (
+            <>
+
+              <section className="patient-card ">
+                <div className="details-grid grid-col-3">
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery</span>
+                    <span className="detail-value">{surgeryName}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery Type</span>
+                    <span className="detail-value">{surgeryType}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Major / Minor</span>
+                    <span className="detail-value">{majorMinor}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgeon</span>
+                    <span className="detail-value">{surgeon}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">OT</span>
+                    <span className="detail-value">{otRoom}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Priority</span>
+                    <span className="detail-value">{priority}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery Date</span>
+                    <span className="detail-value">{surgeryDate}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Scheduled Time</span>
+                    <span className="detail-value" style={{ color: "#059669" }}>{scheduledTime}</span>
+                  </div>
+
+                  <div class="detail-item">
+                    <span class="detail-label">OT Status</span>
+                    {otStatus && otStatus !== "-" ? (
+                      <span className={`badgeCustom badge bg-${getStatusBadge(otStatus)}`}>{otStatus}</span>
+                    ) : (
+                      "-"
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* If multiple surgeries scheduled in the top booking */}
+              {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
+                <div className="mt-3">
+                  <label className="form-label small text-muted mb-1">
+                    Surgeries List ({bookingData.surgeries.length})
+                  </label>
+                  <div className="table-responsive">
+                    <table
+                      className="table table-bordered table-sm mb-0"
+                      style={{ fontSize: "0.8rem" }}
+                    >
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "40px" }} className="text-center">
+                            #
+                          </th>
+                          <th>Surgery Name</th>
+                          <th>Surgery Type</th>
+                          <th>Level</th>
+                          <th className="text-center">Anesthesia Required</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookingData.surgeries.map((surg, idx) => (
+                          <tr
+                            key={
+                              surg.otBookingRequestDtId ||
+                              surg.surgeryId ||
+                              idx
+                            }
+                          >
+                            <td className="text-center">{idx + 1}</td>
+                            <td className="fw-semibold">
+                              {surg.surgeryName || "-"}
+                            </td>
+                            <td>{surg.surgeryTypeName || "-"}</td>
+                            <td>{surg.surgeryLevel || "-"}</td>
+                            <td className="text-center">
+                              <span
+                                className={`badge ${surg.anesthesiaRequired === "Y"
+                                  ? "bg-warning text-dark"
+                                  : "bg-secondary"
+                                  }`}
+                              >
+                                {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
+        <div className="mb-4">
+
+          <section className="patient-card ">
+            <div className="patient-header h4Title">
+              <h4 className="mb-0">Pre-Anaesthesia</h4>
+            </div>
+
+            <div className="details-grid grid-col-3">
+              <div className="detail-item">
+                <span className="detail-label">Anaesthesia Type</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthesiaType}</span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Anaesthetist</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthetist}</span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Anaesthesia Status</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthesiaStatus}</span>
+              </div>
+
+              <div className="detail-item col-span-3">
+                <span className="detail-label">Pre-Anaesthesia Instructions</span>
+                <ul className="listStyle mb-0">
+                  {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => (
+                    <li key={idx}>{ins}</li>
+                  ))}
+                </ul>
+              </div>
+
+            </div>
+          </section>
+        </div>
+
+        {/* ─── OT PREPARATION (editable) ─── */}
+        <div className="mb-4">
+         <div className="patient-header mb-3">
+            <div className="h4Title">
+              <h4 className="mb-0">OT Preparation</h4>
+            </div>
+          </div>
+                    
+          <div className="row g-3">
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                NPO Since Date <span className="text-danger">*</span>
+              </label>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={preparation.npoSinceDate}
+                onChange={(e) =>
+                  handlePreparationChange("npoSinceDate", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                NPO Since Time <span className="text-danger">*</span>
+              </label>
+              <input
+                type="time"
+                className="form-control form-control-sm"
+                value={preparation.npoSinceTime}
+                onChange={(e) =>
+                  handlePreparationChange("npoSinceTime", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Consent Available <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.consentAvailable}
+                onChange={(e) =>
+                  handlePreparationChange("consentAvailable", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Patient Prepared <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.patientPrepared}
+                onChange={(e) =>
+                  handlePreparationChange("patientPrepared", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Pre-Op Medication <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.preOpMedication}
+                onChange={(e) =>
+                  handlePreparationChange("preOpMedication", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Given">Given</option>
+                <option value="Not Given">Not Given</option>
+                <option value="N/A">N/A</option>
+              </select>
+            </div>
+            <div className="col-md-9">
+              <label className="form-label small fw-bold">Remarks</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Optional remarks"
+                value={preparation.remarks}
+                onChange={(e) =>
+                  handlePreparationChange("remarks", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-12">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSavePreparation}
+                disabled={preparationSaved}
+              >
+                {preparationSaved ? "Preparation Saved" : "Save Preparation"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── EMERGENCY OVERRIDE ─── */}
+        <div className="mb-4">
+          {isEmergency && (
+            <div className="mt-2">
+              <label className="form-label small fw-bold">
+                Override Reason <span className="text-danger">*</span>
+              </label>
+              <textarea
+                className="form-control form-control-sm"
+                rows={2}
+                placeholder="Enter reason for overriding readiness checks..."
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
+        {movementHistory.length > 0 && (
+          <div className="mt-4">
+            <h6 className="fw-bold border-bottom pb-1 mb-3">
+              Movement / Audit Trail
+            </h6>
+            <div className="table-responsive">
+              <table
+                className="table table-bordered table-sm"
+                style={{ fontSize: "0.72rem" }}
+              >
+                <thead className="table-light">
+                  <tr>
+                    <th>Event</th>
+                    <th>By</th>
+                    <th>Date/Time</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movementHistory.map((h, idx) => (
+                    <tr key={idx}>
+                      <td>{h.event}</td>
+                      <td>{h.by}</td>
+                      <td>{h.dateTime}</td>
+                      <td>{h.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
-
-      {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
-      {movementHistory.length > 0 && (
-        <div className="mt-4">
-          <h6 className="fw-bold border-bottom pb-1 mb-3">
-            Movement / Audit Trail
-          </h6>
-          <div className="table-responsive">
-            <table
-              className="table table-bordered table-sm"
-              style={{ fontSize: "0.72rem" }}
-            >
-              <thead className="table-light">
-                <tr>
-                  <th>Event</th>
-                  <th>By</th>
-                  <th>Date/Time</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movementHistory.map((h, idx) => (
-                  <tr key={idx}>
-                    <td>{h.event}</td>
-                    <td>{h.by}</td>
-                    <td>{h.dateTime}</td>
-                    <td>{h.details}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
+      <style>
+        {`
+          .badgeCustom {
+            align-self: flex-start;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 30px;
+            padding: 4px 10px;
+          }
+          .h4Title h4{
+            font-size:14px !important;
+          }
+          .h4Title p{
+            font-weight:600;
+          }
+          .h4Title p strong{
+            font-weight:700;
+          }
+          .listStyle {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            padding: 0;
+            font-size:12px;
+            color: rgb(0 0 0/0.70);
+            padding-left:15px
+          }
+          .listStyle li::marker {
+            font-size: 16px;
+            color: rgb(0 0 0/0.70);
+          }
+        `}
+      </style>
+    </>
   )
 }
 
