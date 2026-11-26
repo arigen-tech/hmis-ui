@@ -132,12 +132,6 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     (String(otStatus).trim().toLowerCase() === "scheduled" ||
       bookingData?.bookingStatusId === 3)
 
-  // PAC pending check: PAC required is 'Y' and PAC done is not 'Y'
-  const isPacPending =
-    Boolean(bookingData) &&
-    String(bookingData?.pacRequired || "").trim().toUpperCase() === "Y" &&
-    String(bookingData?.pacDone || "").trim().toUpperCase() !== "Y"
-
   // ─── OT PREPARATION FORM ─────────────────────────────────
   const [preparation, setPreparation] = useState({
     npoSinceDate: "",
@@ -200,15 +194,6 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   const canSendToOT = allReady || (isEmergency && overrideReason.trim().length > 0)
 
   const handleSendToOT = () => {
-    if (isPacPending) {
-      Swal.fire({
-        title: "Warning",
-        text: "Pls PAC form submit first",
-        icon: "warning",
-      })
-      return
-    }
-
     const otBookingId = bookingData?.otBookingId
     if (!otBookingId) {
       Swal.fire({
@@ -333,18 +318,172 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   }
 
   return (
-    <div>
-      {/* ─── SURGERY / BOOKING (read-only) ─── */}
-      <div className="mb-4">
-        <div className="d-flex align-items-center gap-2 border-bottom pb-1 mb-3">
-          <h6 className="fw-bold mb-0">Surgery / Booking</h6>
-          {bookingData?.bookingNo && (
-            <span
-              className="badge bg-secondary font-weight-normal"
-              style={{ fontSize: "0.75rem" }}
+    <>
+      <div>
+        {/* ─── SURGERY / BOOKING (read-only) ─── */}
+        <div className="mb-4">
+
+          <div className="patient-header d-flex justify-content-between align-items-center">
+            <div className="h4Title">
+              <h4>Surgery / Booking</h4>
+              {bookingData?.bookingNo && (
+                <p>Booking No: <strong> {bookingData.bookingNo}</strong></p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-warning btn-sm fw-semibold"
+              disabled={!isScheduled || isSendingToOT}
+              onClick={handleSendToOT}
+              title={
+                !isScheduled
+                  ? "Available only when OT Status is Scheduled"
+                  : "Send patient to OT"
+              }
             >
-              Booking No: {bookingData.bookingNo}
-            </span>
+              {isSendingToOT ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-1"
+                    role="status"
+                  />
+                  Sending to OT...
+                </>
+              ) : (
+                <>
+                  <i className="fa fa-paper-plane me-1" />
+                  Send to OT
+                </>
+              )}
+            </button>
+          </div>
+
+
+          {loadingBooking ? (
+            <div className="py-3 text-center text-muted">
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                role="status"
+              />
+              Loading booking details...
+            </div>
+          ) : (
+            <>
+
+              <section className="patient-card">
+
+                <div className="details-grid grid-col-3">
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery</span>
+                    <span className="detail-value">{surgeryName}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery Type</span>
+                    <span className="detail-value">{surgeryType}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Major / Minor</span>
+                    <span className="detail-value">{majorMinor}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgeon</span>
+                    <span className="detail-value">{surgeon}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">OT</span>
+                    <span className="detail-value">{otRoom}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Priority</span>
+                    <span className="detail-value">{priority}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Surgery Date</span>
+                    <span className="detail-value">{surgeryDate}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">Scheduled Time</span>
+                    <span className="detail-value" style={{ color: "#059669" }}>{scheduledTime}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <span className="detail-label">OT Status</span>
+                    {otStatus && otStatus !== "-" ? (
+                      <span className={`badgeCustom badge bg-${getStatusBadge(otStatus)}`}>
+                        {otStatus}
+                      </span>
+                    ) : (
+                      "-"
+                    )}
+                  </div>
+                </div>
+              </section>
+
+
+              {/* If multiple surgeries scheduled in the top booking */}
+              {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
+                <div className="mt-3">
+                  <label className="form-label small text-muted mb-1">
+                    Surgeries List ({bookingData.surgeries.length})
+                  </label>
+                  <div className="table-responsive">
+                    <table
+                      className="table table-bordered table-sm mb-0"
+                      style={{ fontSize: "0.8rem" }}
+                    >
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "40px" }} className="text-center">
+                            #
+                          </th>
+                          <th>Surgery Name</th>
+                          <th>Surgery Type</th>
+                          <th>Level</th>
+                          <th className="text-center">Anesthesia Required</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookingData.surgeries.map((surg, idx) => (
+                          <tr
+                            key={
+                              surg.otBookingRequestDtId ||
+                              surg.surgeryId ||
+                              idx
+                            }
+                          >
+                            <td className="text-center">{idx + 1}</td>
+                            <td className="fw-semibold">
+                              {surg.surgeryName || "-"}
+                            </td>
+                            <td>{surg.surgeryTypeName || "-"}</td>
+                            <td>{surg.surgeryLevel || "-"}</td>
+                            <td className="text-center">
+                              <span
+                                className={`badge ${surg.anesthesiaRequired === "Y"
+                                  ? "bg-warning text-dark"
+                                  : "bg-secondary"
+                                  }`}
+                              >
+                                {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -372,120 +511,28 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
                 <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthesiaStatus}</span>
               </div>
 
-            {/* If multiple surgeries scheduled in the top booking */}
-            {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
-              <div className="mt-3">
-                <label className="form-label small text-muted mb-1">
-                  Surgeries List ({bookingData.surgeries.length})
-                </label>
-                <div className="table-responsive">
-                  <table
-                    className="table table-bordered table-sm mb-0"
-                    style={{ fontSize: "0.8rem" }}
-                  >
-                    <thead className="table-light">
-                      <tr>
-                        <th style={{ width: "40px" }} className="text-center">
-                          #
-                        </th>
-                        <th>Surgery Name</th>
-                        <th>Surgery Type</th>
-                        <th>Level</th>
-                        <th className="text-center">Anesthesia Required</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookingData.surgeries.map((surg, idx) => (
-                        <tr
-                          key={
-                            surg.otBookingRequestDtId ||
-                            surg.surgeryId ||
-                            idx
-                          }
-                        >
-                          <td className="text-center">{idx + 1}</td>
-                          <td className="fw-semibold">
-                            {surg.surgeryName || "-"}
-                          </td>
-                          <td>{surg.surgeryTypeName || "-"}</td>
-                          <td>{surg.surgeryLevel || "-"}</td>
-                          <td className="text-center">
-                            <span
-                              className={`badge ${surg.anesthesiaRequired === "Y"
-                                  ? "bg-warning text-dark"
-                                  : "bg-secondary"
-                                }`}
-                            >
-                              {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="detail-item col-span-3">
+                <span className="detail-label">Pre-Anaesthesia Instructions</span>
+                <ul className="listStyle mb-0">
+                  {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => (
+                    <li key={idx}>{ins}</li>
+                  ))}
+                </ul>
               </div>
 
-      {/* ─── SEND TO OT BUTTON (Above Pre-Anaesthesia) ─── */}
-      <div className="d-flex align-items-center gap-2 mb-3">
-        <button
-          type="button"
-          className="btn btn-warning btn-sm fw-semibold"
-          disabled={!isScheduled || isSendingToOT || isPacPending}
-          onClick={handleSendToOT}
-          title={
-            isPacPending
-              ? "Pls PAC form submit first"
-              : !isScheduled
-              ? "Available only when OT Status is Scheduled"
-              : "Send patient to OT"
-          }
-        >
-          {isSendingToOT ? (
-            <>
-              <span
-                className="spinner-border spinner-border-sm me-1"
-                role="status"
-              />
-              Sending to OT...
-            </>
-          ) : (
-            <>
-              <i className="fa fa-paper-plane me-1" />
-              Send to OT
-            </>
-          )}
-        </button>
-        {isPacPending && (
-          <span className="text-danger small fw-semibold">
-            <i className="fa fa-exclamation-circle me-1" />
-            Pls PAC form submit first
-          </span>
-        )}
-      </div>
-
-      {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
-      <div className="mb-4">
-        <h6 className="fw-bold border-bottom pb-1 mb-3">Pre-Anaesthesia</h6>
-        <div className="row g-3 mb-2">
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthesia Type
-            </label>
-            <div className="fw-semibold">
-              {DUMMY_ANAESTHESIA.anaesthesiaType}
             </div>
           </section>
+
         </div>
 
         {/* ─── OT PREPARATION (editable) ─── */}
         <div className="mb-4">
-         <div className="patient-header mb-3">
+          <div className="patient-header mb-3">
             <div className="h4Title">
               <h4 className="mb-0">OT Preparation</h4>
             </div>
           </div>
-                    
+
           <div className="row g-3">
             <div className="col-md-3">
               <label className="form-label small fw-bold">
@@ -644,6 +691,7 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
           </div>
         )}
       </div>
+
       <style>
         {`
           .badgeCustom {
@@ -677,8 +725,9 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
           }
         `}
       </style>
+
     </>
   )
 }
 
-export default OTDetails
+export default OTDetails;
