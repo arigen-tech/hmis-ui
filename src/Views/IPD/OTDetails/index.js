@@ -348,78 +348,29 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
           )}
         </div>
 
-        {loadingBooking ? (
-          <div className="py-3 text-center text-muted">
-            <span
-              className="spinner-border spinner-border-sm me-2"
-              role="status"
-            />
-            Loading booking details...
-          </div>
-        ) : (
-          <>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery
-                </label>
-                <div className="fw-semibold">{surgeryName}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery Type
-                </label>
-                <div className="fw-semibold">{surgeryType}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Major / Minor
-                </label>
-                <div className="fw-semibold">{majorMinor}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgeon
-                </label>
-                <div className="fw-semibold">{surgeon}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">OT</label>
-                <div className="fw-semibold">{otRoom}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Priority
-                </label>
-                <div>{priority}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Surgery Date
-                </label>
-                <div className="fw-semibold">{surgeryDate}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  Scheduled Time
-                </label>
-                <div className="fw-semibold">{scheduledTime}</div>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small text-muted mb-1">
-                  OT Status
-                </label>
-                <div>
-                  {otStatus && otStatus !== "-" ? (
-                    <span className={`badge bg-${getStatusBadge(otStatus)}`}>
-                      {otStatus}
-                    </span>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </div>
+        {/* ─── PRE-ANAESTHESIA (read-only) ─── */}
+        <div className="mb-4">
+
+          <section className="patient-card ">
+            <div className="patient-header h4Title">
+              <h4 className="mb-0">Pre-Anaesthesia</h4>
             </div>
+
+            <div className="details-grid grid-col-3">
+              <div className="detail-item">
+                <span className="detail-label">Anaesthesia Type</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthesiaType}</span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Anaesthetist</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthetist}</span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">Anaesthesia Status</span>
+                <span className="detail-value">{DUMMY_ANAESTHESIA.anaesthesiaStatus}</span>
+              </div>
 
             {/* If multiple surgeries scheduled in the top booking */}
             {bookingData?.surgeries && bookingData.surgeries.length > 1 && (
@@ -474,10 +425,6 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
                   </table>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
 
       {/* ─── SEND TO OT BUTTON (Above Pre-Anaesthesia) ─── */}
       <div className="d-flex align-items-center gap-2 mb-3">
@@ -528,191 +475,209 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
             <div className="fw-semibold">
               {DUMMY_ANAESTHESIA.anaesthesiaType}
             </div>
+          </section>
+        </div>
+
+        {/* ─── OT PREPARATION (editable) ─── */}
+        <div className="mb-4">
+         <div className="patient-header mb-3">
+            <div className="h4Title">
+              <h4 className="mb-0">OT Preparation</h4>
+            </div>
           </div>
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthetist
-            </label>
-            <div className="fw-semibold">{DUMMY_ANAESTHESIA.anaesthetist}</div>
-          </div>
-          <div className="col-md-4">
-            <label className="form-label small text-muted mb-1">
-              Anaesthesia Status
-            </label>
-            <div>{DUMMY_ANAESTHESIA.anaesthesiaStatus}</div>
+                    
+          <div className="row g-3">
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                NPO Since Date <span className="text-danger">*</span>
+              </label>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={preparation.npoSinceDate}
+                onChange={(e) =>
+                  handlePreparationChange("npoSinceDate", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                NPO Since Time <span className="text-danger">*</span>
+              </label>
+              <input
+                type="time"
+                className="form-control form-control-sm"
+                value={preparation.npoSinceTime}
+                onChange={(e) =>
+                  handlePreparationChange("npoSinceTime", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Consent Available <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.consentAvailable}
+                onChange={(e) =>
+                  handlePreparationChange("consentAvailable", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Patient Prepared <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.patientPrepared}
+                onChange={(e) =>
+                  handlePreparationChange("patientPrepared", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small fw-bold">
+                Pre-Op Medication <span className="text-danger">*</span>
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={preparation.preOpMedication}
+                onChange={(e) =>
+                  handlePreparationChange("preOpMedication", e.target.value)
+                }
+                disabled={preparationSaved}
+              >
+                <option value="">Select</option>
+                <option value="Given">Given</option>
+                <option value="Not Given">Not Given</option>
+                <option value="N/A">N/A</option>
+              </select>
+            </div>
+            <div className="col-md-9">
+              <label className="form-label small fw-bold">Remarks</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Optional remarks"
+                value={preparation.remarks}
+                onChange={(e) =>
+                  handlePreparationChange("remarks", e.target.value)
+                }
+                disabled={preparationSaved}
+              />
+            </div>
+            <div className="col-12">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSavePreparation}
+                disabled={preparationSaved}
+              >
+                {preparationSaved ? "Preparation Saved" : "Save Preparation"}
+              </button>
+            </div>
           </div>
         </div>
-        <label className="form-label small text-muted mb-1">
-          Pre-Anaesthesia Instructions
-        </label>
-        <ul className="mb-0 small">
-          {DUMMY_ANAESTHESIA.instructions.map((ins, idx) => (
-            <li key={idx}>{ins}</li>
-          ))}
-        </ul>
-      </div>
 
-      {/* ─── OT PREPARATION (editable) ─── */}
-      <div className="mb-4">
-        <h6 className="fw-bold border-bottom pb-1 mb-3">OT Preparation</h6>
-        <div className="row g-3">
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              NPO Since Date <span className="text-danger">*</span>
-            </label>
-            <input
-              type="date"
-              className="form-control form-control-sm"
-              value={preparation.npoSinceDate}
-              onChange={(e) =>
-                handlePreparationChange("npoSinceDate", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              NPO Since Time <span className="text-danger">*</span>
-            </label>
-            <input
-              type="time"
-              className="form-control form-control-sm"
-              value={preparation.npoSinceTime}
-              onChange={(e) =>
-                handlePreparationChange("npoSinceTime", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Consent Available <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.consentAvailable}
-              onChange={(e) =>
-                handlePreparationChange("consentAvailable", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Patient Prepared <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.patientPrepared}
-              onChange={(e) =>
-                handlePreparationChange("patientPrepared", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div className="col-md-3">
-            <label className="form-label small fw-bold">
-              Pre-Op Medication <span className="text-danger">*</span>
-            </label>
-            <select
-              className="form-select form-select-sm"
-              value={preparation.preOpMedication}
-              onChange={(e) =>
-                handlePreparationChange("preOpMedication", e.target.value)
-              }
-              disabled={preparationSaved}
-            >
-              <option value="">Select</option>
-              <option value="Given">Given</option>
-              <option value="Not Given">Not Given</option>
-              <option value="N/A">N/A</option>
-            </select>
-          </div>
-          <div className="col-md-9">
-            <label className="form-label small fw-bold">Remarks</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Optional remarks"
-              value={preparation.remarks}
-              onChange={(e) =>
-                handlePreparationChange("remarks", e.target.value)
-              }
-              disabled={preparationSaved}
-            />
-          </div>
-          <div className="col-12">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleSavePreparation}
-              disabled={preparationSaved}
-            >
-              {preparationSaved ? "Preparation Saved" : "Save Preparation"}
-            </button>
-          </div>
+        {/* ─── EMERGENCY OVERRIDE ─── */}
+        <div className="mb-4">
+          {isEmergency && (
+            <div className="mt-2">
+              <label className="form-label small fw-bold">
+                Override Reason <span className="text-danger">*</span>
+              </label>
+              <textarea
+                className="form-control form-control-sm"
+                rows={2}
+                placeholder="Enter reason for overriding readiness checks..."
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* ─── EMERGENCY OVERRIDE ─── */}
-      <div className="mb-4">
-        {isEmergency && (
-          <div className="mt-2">
-            <label className="form-label small fw-bold">
-              Override Reason <span className="text-danger">*</span>
-            </label>
-            <textarea
-              className="form-control form-control-sm"
-              rows={2}
-              placeholder="Enter reason for overriding readiness checks..."
-              value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
-            />
+        {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
+        {movementHistory.length > 0 && (
+          <div className="mt-4">
+            <h6 className="fw-bold border-bottom pb-1 mb-3">
+              Movement / Audit Trail
+            </h6>
+            <div className="table-responsive">
+              <table
+                className="table table-bordered table-sm"
+                style={{ fontSize: "0.72rem" }}
+              >
+                <thead className="table-light">
+                  <tr>
+                    <th>Event</th>
+                    <th>By</th>
+                    <th>Date/Time</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movementHistory.map((h, idx) => (
+                    <tr key={idx}>
+                      <td>{h.event}</td>
+                      <td>{h.by}</td>
+                      <td>{h.dateTime}</td>
+                      <td>{h.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
-
-      {/* ─── MOVEMENT / AUDIT TRAIL ─── */}
-      {movementHistory.length > 0 && (
-        <div className="mt-4">
-          <h6 className="fw-bold border-bottom pb-1 mb-3">
-            Movement / Audit Trail
-          </h6>
-          <div className="table-responsive">
-            <table
-              className="table table-bordered table-sm"
-              style={{ fontSize: "0.72rem" }}
-            >
-              <thead className="table-light">
-                <tr>
-                  <th>Event</th>
-                  <th>By</th>
-                  <th>Date/Time</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movementHistory.map((h, idx) => (
-                  <tr key={idx}>
-                    <td>{h.event}</td>
-                    <td>{h.by}</td>
-                    <td>{h.dateTime}</td>
-                    <td>{h.details}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
+      <style>
+        {`
+          .badgeCustom {
+            align-self: flex-start;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 30px;
+            padding: 4px 10px;
+          }
+          .h4Title h4{
+            font-size:14px !important;
+          }
+          .h4Title p{
+            font-weight:600;
+          }
+          .h4Title p strong{
+            font-weight:700;
+          }
+          .listStyle {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            padding: 0;
+            font-size:12px;
+            color: rgb(0 0 0/0.70);
+            padding-left:15px
+          }
+          .listStyle li::marker {
+            font-size: 16px;
+            color: rgb(0 0 0/0.70);
+          }
+        `}
+      </style>
+    </>
   )
 }
 

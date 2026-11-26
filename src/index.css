@@ -6325,6 +6325,7 @@ fieldset:disabled .btn {
 }
 
 .modal-title {
+  font-weight: 600;
   margin-bottom: 0;
   line-height: 1.5;
 }
@@ -22939,9 +22940,17 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   height: 100%;
 }
 
-.modal .modal-header,
+.modal .modal-header {
+  border-bottom: solid 2px rgb(0 0 0/0.15);
+}
+
 .modal .modal-footer {
-  border-color: var(--border-color);
+  border-top: solid 2px rgb(0 0 0/0.15);
+  gap: 10px;
+  padding: 10px 12px;
+}
+.modal .modal-footer button{
+  margin: 0;
 }
 
 /* .modal .modal-content {
@@ -25512,7 +25521,8 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   color: var(--white-color);
   border-color: #1D8B58;
 }
-.btnSm{
+
+.btnSm {
   width: 30px;
   height: 30px;
 }
@@ -26225,7 +26235,7 @@ table td .status {
   background-color: rgb(0 0 0 / 0.15);
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border-radius: 30px;
 }
 
@@ -26484,7 +26494,8 @@ table td .status {
   padding: 14px 16px;
 }
 
-.popupModal .modal-header button, .modal-header button {
+.popupModal .modal-header button,
+.modal-header button {
   background-color: rgb(0 0 0 / 0.08);
   width: 20px;
   height: 20px;
@@ -26493,7 +26504,8 @@ table td .status {
   right: 20px;
 }
 
-.popupModal .modal-header button:hover, .modal-header button:hover {
+.popupModal .modal-header button:hover,
+.modal-header button:hover {
   background-color: rgb(0 0 0 / 0.12);
 }
 
@@ -26557,10 +26569,11 @@ table td .status {
 }
 
 .col-span-2 {
-    grid-column: span 2;
+  grid-column: span 2;
 }
+
 .col-span-3 {
-    grid-column: span 3;
+  grid-column: span 3;
 }
 
 .detail-item {
@@ -26650,15 +26663,17 @@ table td .status {
   font-size: 11px;
   white-space: nowrap;
   padding: 5px 10px;
+  letter-spacing: 0.3px;
 }
 
 .wardTabs button.active {
   background-color: #0a58ca !important;
+  background-color: #448AFF !important;
   border-color: #0a58ca !important;
   color: var(--white-color) !important;
 }
 
-.patientInfoMain h5{
+.patientInfoMain h5 {
   font-weight: 600;
   line-height: normal;
 }
@@ -26673,18 +26688,39 @@ table td .status {
   gap: 6px;
   line-height: normal;
 }
-.patientInfo div i{
+
+.patientInfo div i {
   font-size: 13px;
   opacity: 0.80;
 }
 
 .status-badge {
-  background: rgba(255,255,255,0.17);
+  background: rgba(255, 255, 255, 0.17);
   color: #ffffff;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.subTitle {
+  background: rgb(0 0 0/0.12);
+  padding: 5px 10px;
+  margin-bottom: 15px;
+}
+
+.subTitle h4 {
+  font-size: 14px !important;
+  font-weight: 600;
+}
+
+.innerCard .card-header {
+  background-color: #5b5b5b !important;
+}
+
+.innerCard .card-header h6 {
+  font-size: 13px !important;
+  margin-bottom: 0;
 }

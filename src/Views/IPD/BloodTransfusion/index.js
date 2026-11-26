@@ -224,12 +224,12 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
         Array.isArray(request.allocationIds) && request.allocationIds.length > 0
           ? request.allocationIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id))
           : request.allocationId != null
-          ? [Number(request.allocationId)]
-          : request.bloodAllocationId != null
-          ? [Number(request.bloodAllocationId)]
-          : request.requestDtId != null
-          ? [Number(request.requestDtId)]
-          : []
+            ? [Number(request.allocationId)]
+            : request.bloodAllocationId != null
+              ? [Number(request.bloodAllocationId)]
+              : request.requestDtId != null
+                ? [Number(request.requestDtId)]
+                : []
 
       if (allocationIds.length === 0) {
         throw new Error("No allocation ID found for this blood request.")
@@ -254,8 +254,8 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
       if (!isSuccess && response?.status >= 400) {
         throw new Error(
           response?.data?.message ||
-            response?.message ||
-            "Failed to acknowledge blood request.",
+          response?.message ||
+          "Failed to acknowledge blood request.",
         )
       }
 
@@ -390,7 +390,7 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
     const wardIdNum = Number(selectedWard?.wardId)
     const requestDepartment = Number(
       sessionStorage.getItem("departmentId") ||
-        localStorage.getItem("departmentId"),
+      localStorage.getItem("departmentId"),
     )
     const selectedBloodGroupId = Number(bloodGroupId)
 
@@ -549,33 +549,33 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
   /*  Render                                                           */
   /* ================================================================ */
   return (
-    <div>
+    <div className="innerCard">
       <div className="d-flex gap-2 mb-3 flex-wrap">
         <button
           className={`btn btn-sm ${activeView === "request" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("request")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Blood Request
         </button>
         <button
           className={`btn btn-sm ${activeView === "tracking" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("tracking")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Tracking Request ({trackingTotal})
         </button>
         <button
           className={`btn btn-sm ${activeView === "pending" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("pending")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Pending for Receiving ({pendingUnits.length})
         </button>
         <button
           className={`btn btn-sm ${activeView === "transfusion" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("transfusion")}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          style={{ fontSize: "11px", padding: "0.1rem 0.3rem" }}
         >
           Transfusion ({receivedUnits.length})
         </button>
@@ -585,11 +585,11 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
       {activeView === "request" && (
         <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong style={{ fontSize: "0.8rem" }}>Blood Requirement Details</strong>
+            <h6>Blood Requirement Details</h6>
           </div>
           <div className="card-body">
             <div className="row g-2 mb-3">
-              <div className="col-md-4">
+              <div className="col-md-3">
                 <label className="form-label mb-1" style={{ fontSize: "0.7rem" }}>
                   Blood Group <span className="text-danger">*</span>
                 </label>
@@ -619,7 +619,7 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
                     <th>Required Date &amp; Time <span className="text-danger">*</span></th>
                     <th>Indication <span className="text-danger">*</span></th>
                     <th>Remarks</th>
-                    <th>Action</th>
+                    <th className="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -704,14 +704,10 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
                         />
                       </td>
                       <td className="text-center">
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleRemoveRow(row.id)}
-                          disabled={requestRows.length === 1 || isSubmitting}
-                        >
-                          ✕
-                        </button>
+                        <div className="btnCenter">
+                          <button type="button" className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleRemoveRow(row.id)}
+                          disabled={requestRows.length === 1 || isSubmitting}><i class="icofont-trash"></i></button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -816,8 +812,8 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
                           {request.fulfilledUnits != null
                             ? request.fulfilledUnits
                             : request.issuedUnits != null
-                            ? request.issuedUnits
-                            : 0}
+                              ? request.issuedUnits
+                              : 0}
                         </td>
                         <td className="text-center fw-bold">
                           {request.acknowledgedUnits != null
@@ -853,11 +849,10 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
                           ) : (
                             <button
                               type="button"
-                              className={`btn btn-sm ${
-                                canAck
+                              className={`btn btn-sm ${canAck
                                   ? "btn-primary shadow-sm"
                                   : "btn-outline-secondary opacity-60"
-                              }`}
+                                }`}
                               style={{
                                 fontSize: "12px",
                                 padding: "4px 10px",
@@ -1193,9 +1188,8 @@ const BloodTransfusion = ({ selectedPatient, selectedWard }) => {
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm px-3 fw-semibold ${
-                    selectedAction === "Reject" ? "btn-danger" : "btn-success"
-                  }`}
+                  className={`btn btn-sm px-3 fw-semibold ${selectedAction === "Reject" ? "btn-danger" : "btn-success"
+                    }`}
                   style={{ fontSize: "12.5px", borderRadius: "5px" }}
                   onClick={handleModalSubmit}
                   disabled={isSubmittingAck || !selectedAction}

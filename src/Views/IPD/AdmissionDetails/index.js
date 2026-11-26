@@ -95,7 +95,7 @@ const AdmissionDetails = ({ selectedPatient }) => {
 
   return (
     <>
-      <div className="admission-details">
+      <div className="admission-details innerCard">
         <div className="row">
           {/* Section 1: Patient Information */}
           <div className="col-md-6 mb-3">

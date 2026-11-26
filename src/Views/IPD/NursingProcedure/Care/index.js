@@ -731,10 +731,10 @@ const NursingCareModule = ({ selectedPatient }) => {
   };
 
   return (
-    <div>
-      <div className="d-flex gap-2 mb-3">
-        <button className={`btn btn-sm ${activeTab === 'procedures' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setActiveTab('procedures')} style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}>Procedures</button>
-        <button className={`btn btn-sm ${activeTab === 'consumables' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setActiveTab('consumables')} style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}>Consumables</button>
+    <div className='innerCard'>
+      <div className="d-flex gap-2 mb-2">
+        <button className={`btn btn-sm ${activeTab === 'procedures' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setActiveTab('procedures')} style={{ fontSize: '11px', padding: '0.1rem 0.3rem' }}>Procedures</button>
+        <button className={`btn btn-sm ${activeTab === 'consumables' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setActiveTab('consumables')} style={{ fontSize: '11px', padding: '0.1rem 0.3rem' }}>Consumables</button>
       </div>
 
       {activeTab === 'procedures' && (

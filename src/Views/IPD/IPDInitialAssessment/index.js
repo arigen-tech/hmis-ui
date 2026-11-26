@@ -409,7 +409,8 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
   };
 
   return (
-    <div>
+    <>
+      <div className="innerCard">
       {reportPdfUrl && (
         <PdfViewer
           pdfUrl={reportPdfUrl}
@@ -425,10 +426,7 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
         <div className="col-12 col-lg-6">
           <div className="card shadow-sm h-100">
             <div className="card-header text-white ">
-              <strong>
-                <i className="mdi mdi-account-heart me-1"></i>
-                A. NURSING ASSESSMENT
-              </strong>
+              <h6 className="mb-0">A. Nursing Assessment</h6>
             </div>
             <div className="card-body">
               <div className="row g-3">
@@ -765,10 +763,7 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
         <div className="col-12 col-lg-6">
           <div className="card shadow-sm h-100">
             <div className="card-header bg-light">
-              <strong className="text-white">
-                <i className="mdi mdi-stethoscope me-1"></i>
-                B. MEDICAL ASSESSMENT
-              </strong>
+            <h6 className="mb-0">B. Medical Assessment</h6>
             </div>
             <div className="card-body">
               <div className="row g-3">
@@ -1043,6 +1038,8 @@ const IPDInitialAssessment = ({ selectedPatient, onAssessmentSubmit }) => {
         </div>
       </div>
     </div>
+
+    </>
   );
 };
 

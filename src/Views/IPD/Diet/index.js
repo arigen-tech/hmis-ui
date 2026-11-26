@@ -251,7 +251,7 @@ const DietOrderHistory = ({ selectedPatient }) => {
 
   return (
     <>
-      <div>
+      <div className='innerCard'>
         {/* ─── CURRENT ACTIVE DIET ORDER CARD ─── */}
         <div className="card mb-3">
           <div className="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center">

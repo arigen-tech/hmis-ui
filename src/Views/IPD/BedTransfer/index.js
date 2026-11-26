@@ -761,24 +761,25 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
 
       {/* ─── NEW REQUEST FORM ─── */}
       {activeView === "request" && (
-        <div className="card">
+        <div className="innerCard">
+          <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong>WARD / BED TRANSFER REQUEST</strong>
-            <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTimeForDisplay(new Date().toISOString())}</span>
+            <strong>Ward / Bed Transfer Request</strong>
+            <span className="ms-2 opacity-75" style={{fontSize:"11px"}}>[{generateTRFNo()}] | {formatDateTimeForDisplay(new Date().toISOString())}</span>
           </div>
           <div className="card-body">
             {selectedPatient && (
-              <div className="row g-2 mb-3 p-2 bg-light rounded">
-                <div className="col-md-12 small">
-                  <strong>Patient:</strong> {selectedPatient.patientName} ({selectedPatient.ageGender}) |
-                  <strong> UHID:</strong> {selectedPatient.uhidNo || ""} |
-                  <strong> Current Location:</strong> {selectedPatient.ward} / {selectedPatient.bedNo}
+              <>
+                <div class="patient-header">
+                  <h4>{selectedPatient.patientName} ({selectedPatient.ageGender})</h4>
+                  <p>UHID: <strong> {selectedPatient.uhidNo || ""}</strong> | Current Location: <strong> {selectedPatient.ward} / {selectedPatient.bedNo}</strong></p>
                 </div>
-              </div>
+              </>
+              
             )}
 
             <div className="row g-3">
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Target Ward</label>
                 <select className="form-select form-select-sm" name="targetWardId" value={requestForm.targetWardId} onChange={handleRequestFormChange}>
                   <option value="">Select Ward </option>
@@ -790,7 +791,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Preferred Bed</label>
                 <select
                   className="form-select form-select-sm"
@@ -810,7 +811,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Target Department <span className="text-danger">*</span></label>
                 <select className="form-select form-select-sm" name="departmentId" value={requestForm.departmentId} onChange={handleRequestFormChange}>
                   <option value="">Select Department</option>
@@ -822,7 +823,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Doctor In Charge <span className="text-danger">*</span></label>
                 <select className="form-select form-select-sm" name="doctorInCharge" value={requestForm.doctorInCharge} onChange={handleRequestFormChange}>
                   <option value=""> Select Doctor </option>
@@ -837,7 +838,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Priority</label>
                 <div className="d-flex gap-3">
                   {["Normal", "Emergency"].map(p => (
@@ -856,7 +857,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </div>
               </div>
 
-              <div className="col-12">
+              <div className="col-md-12">
                 <label className="form-label small fw-bold">Reason for Transfer</label>
                 <div className="d-flex gap-3 flex-wrap mb-2">
                   {transferReasonsList.map(r => (
@@ -901,12 +902,13 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 <button className="btn btn-primary btn-sm me-2" onClick={handleSubmitRequest}>
                   Submit Request
                 </button>
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
                   Clear
                 </button>
               </div>
             </div>
           </div>
+        </div>
         </div>
       )}
 
