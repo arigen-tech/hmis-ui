@@ -377,7 +377,7 @@ const StockStatusReport = () => {
             <div className="card-body">
 
               {/* Filters Section */}
-              <div className="row mb-4">
+              <div className="row mb-2">
                 <div className="col-md-3">
                   <label className="form-label">Item Type</label>
                   <select
@@ -531,9 +531,7 @@ const StockStatusReport = () => {
                 </div>
               </div>
 
-              {/* Report Type Selection + Action Buttons */}
-              <div className="row mb-4">
-                <div className="col-md-6">
+              <div className="d-flex align-items-center mb-4">
                   <div className="form-check form-check-inline">
                     <input
                       className="form-check-input"
@@ -547,9 +545,7 @@ const StockStatusReport = () => {
                         setReportGenerated(false);
                       }}
                     />
-                    <label className="form-check-label" htmlFor="summary">
-                      Summary
-                    </label>
+                    <label className="form-check-label" htmlFor="summary">Summary</label>
                   </div>
                   <div className="form-check form-check-inline">
                     <input
@@ -564,13 +560,23 @@ const StockStatusReport = () => {
                         setReportGenerated(false);
                       }}
                     />
-                    <label className="form-check-label" htmlFor="details">
-                      Detail
-                    </label>
+                    <label className="form-check-label" htmlFor="details">Detail</label>
                   </div>
                 </div>
 
-                <div className="col-md-6 d-flex justify-content-end align-items-end">
+              {/* Report Type Selection + Action Buttons */}
+              <div className="d-flex justify-content-between align-items-end mb-4">
+              <div className="">
+                <button
+                    type="button"
+                    className="btn btn-secondary me-2"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </button>
+              </div>                
+
+                <div className="d-flex">
                   <button
                     type="button"
                     className="btn btn-primary me-2"
@@ -583,16 +589,7 @@ const StockStatusReport = () => {
                         Searching...
                       </>
                     ) : "Search"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary me-2"
-                    onClick={handleReset}
-                  >
-                    Reset
-                  </button>
-
+                  </button>  
                   <button
                     type="button"
                     className="btn btn-success me-2"
@@ -605,10 +602,9 @@ const StockStatusReport = () => {
                         Generating...
                       </>
                     ) : (
-                      <><i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD</>
+                      <><i className="fa fa-eye me-2"></i> View/Download</>
                     )}
                   </button>
-
                   <button
                     type="button"
                     className="btn btn-warning"
@@ -621,7 +617,7 @@ const StockStatusReport = () => {
                         Printing...
                       </>
                     ) : (
-                      <><i className="fa fa-print me-2"></i> PRINT</>
+                      <><i className="fa fa-print me-2"></i> Print</>
                     )}
                   </button>
                 </div>

@@ -2,6 +2,50 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, putRequest } from "../../../service/apiService";
+import {
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
+  OT_PATIENT_RECEIPT_LIST,
+  SENT_TO_OT,
+} from "../../../config/apiConfig";
+
+// Helper to get logged in user's name from sessionStorage / localStorage
+const getLoggedInUserName = () => {
+  try {
+    return (
+      sessionStorage.getItem("loggedInUserName") ||
+      localStorage.getItem("loggedInUserName") ||
+      sessionStorage.getItem("name") ||
+      localStorage.getItem("name") ||
+      sessionStorage.getItem("userName") ||
+      localStorage.getItem("userName") ||
+      ""
+    );
+  } catch (e) {
+    return "";
+  }
+};
+
+// Helper to format scheduled date and start/end time
+const formatScheduleDateTime = (item) => {
+  const date = item.preferredDate || item.date || "";
+  const startTime = item.preferredStartTime || item.time || "";
+  const endTime = item.preferredEndTime || item.endTime || "";
+  if (!date && !startTime) return "-";
+  if (startTime && endTime) {
+    return `${date} (${startTime} - ${endTime})`.trim();
+  }
+  return `${date} ${startTime}`.trim();
+};
+
+// Helper to format sent to OT timestamp
+const formatSentToOTTime = (item) => {
+  if (item.sentToOTTime) return item.sentToOTTime;
+  if (item.bookedDate) {
+    return item.bookedDate.replace("T", " ").split(".")[0];
+  }
+  return "-";
+};
 
 const OTPatientReceiptPending = () => {
   const [data, setData] = useState([]);
@@ -11,127 +55,145 @@ const OTPatientReceiptPending = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [department, setDepartment] = useState("");
+  const [departmentList, setDepartmentList] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({ search: "", departmentId: "" });
 
+  // Modal
   const [showModal, setShowModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [receivedBy, setReceivedBy] = useState("");
+  const [receivedBy, setReceivedBy] = useState(getLoggedInUserName);
   const [remarks, setRemarks] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ================= NEW DUMMY DATA (only this array changed) =================
-  const dummyData = [
-    {
-      id: 1,
-      uhidOrIp: "IPD/26/00215",
-      patientName: "Ramesh Patel",
-      ageGender: "52 / M",
-      department: "Cardiology",
-      wardBed: "Cardiac Ward / A-03",
-      surgery: "Coronary Artery Bypass Grafting",
-      surgeon: "Dr. Desai",
-      ot: "OT-02",
-      scheduledDateTime: "21-Aug-2026 09:00 AM",
-      sentToOTTime: "08:20 AM",
-      sentBy: "Nurse Meena",
-    },
-    {
-      id: 2,
-      uhidOrIp: "IPD/26/00218",
-      patientName: "Anita Sharma",
-      ageGender: "37 / F",
-      department: "Ophthalmology",
-      wardBed: "Eye Ward / B-08",
-      surgery: "Cataract Surgery",
-      surgeon: "Dr. Iyer",
-      ot: "OT-05",
-      scheduledDateTime: "21-Aug-2026 10:30 AM",
-      sentToOTTime: "09:45 AM",
-      sentBy: "Nurse Ritu",
-    },
-    {
-      id: 3,
-      uhidOrIp: "IPD/26/00225",
-      patientName: "Suresh Reddy",
-      ageGender: "68 / M",
-      department: "Urology",
-      wardBed: "Urology Ward / D-07",
-      surgery: "Transurethral Resection of Prostate",
-      surgeon: "Dr. Rao",
-      ot: "OT-03",
-      scheduledDateTime: "21-Aug-2026 12:00 PM",
-      sentToOTTime: "11:10 AM",
-      sentBy: "Nurse Kavita",
-    },
-    {
-      id: 4,
-      uhidOrIp: "IPD/26/00230",
-      patientName: "Priya Nair",
-      ageGender: "29 / F",
-      department: "Gynaecology",
-      wardBed: "Gynae Ward / C-11",
-      surgery: "Laparoscopic Ovarian Cystectomy",
-      surgeon: "Dr. Menon",
-      ot: "OT-01",
-      scheduledDateTime: "21-Aug-2026 01:30 PM",
-      sentToOTTime: "12:40 PM",
-      sentBy: "Nurse Anita",
-    },
-    {
-      id: 5,
-      uhidOrIp: "IPD/26/00241",
-      patientName: "Arjun Singh",
-      ageGender: "44 / M",
-      department: "Orthopaedics",
-      wardBed: "Ortho Ward / B-05",
-      surgery: "ACL Reconstruction",
-      surgeon: "Dr. Kulkarni",
-      ot: "OT-04",
-      scheduledDateTime: "21-Aug-2026 03:00 PM",
-      sentToOTTime: "02:15 PM",
-      sentBy: "Nurse Priya",
-    },
-  ];
-  // =====================================================================
+  // ----- Fetch Department Dropdown -----
+  const fetchDepartments = async () => {
+    try {
+      const res = await getRequest(
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?departmentTypeCode=OPD`
+      );
+      if (res?.response && Array.isArray(res.response)) {
+        setDepartmentList(res.response);
+      } else {
+        setDepartmentList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching department dropdown:", error);
+      setDepartmentList([]);
+    }
+  };
+
+  // ----- Fetch Patient Receipt List -----
+  const fetchPatientReceiptList = async (
+    page = 0,
+    search = appliedFilters.search,
+    departmentId = appliedFilters.departmentId
+  ) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+      });
+
+      if (search && search.trim()) {
+        params.append("search", search.trim());
+      }
+      if (departmentId !== "" && departmentId !== undefined && departmentId !== null) {
+        params.append("departmentId", departmentId);
+      }
+
+      const res = await getRequest(`${OT_PATIENT_RECEIPT_LIST}?${params.toString()}`);
+
+      if (res?.response?.content) {
+        const normalized = res.response.content.map((item, idx) => {
+          const surgeryNames =
+            Array.isArray(item.surgeries) && item.surgeries.length > 0
+              ? item.surgeries.map((s) => s.surgeryName).filter(Boolean)
+              : item.surgeryName
+                ? [item.surgeryName]
+                : [];
+          const surgeryString =
+            surgeryNames.length > 0 ? surgeryNames.join(", ") : (item.surgery || "-");
+
+          return {
+            ...item,
+            id: item.otBookingId ?? item.id ?? (page * DEFAULT_ITEMS_PER_PAGE + idx + 1),
+            otBookingId: item.otBookingId,
+            uhidOrIp: item.uhidNo || item.uhid || item.ipNo || "-",
+            patientName: item.patientName || "-",
+            ageGender:
+              item.ageGender ||
+              (item.age || item.gender
+                ? `${item.age ? item.age + " Y" : ""} ${item.gender ? "/ " + item.gender : ""}`.trim()
+                : "-"),
+            department: item.departmentName || item.department || "-",
+            wardBed:
+              item.wardBed ||
+              (item.wardName
+                ? `${item.wardName}${item.bedName ? " / " + item.bedName : ""}`
+                : "-"),
+            surgery: surgeryString,
+            surgeon: item.surgeonName || item.primarySurgeon || item.surgeon || "-",
+            ot: item.otName || item.ot || "-",
+            scheduledDateTime: formatScheduleDateTime(item),
+            sentToOTTime: formatSentToOTTime(item),
+            sentBy:
+              item.sentBy || item.bookedBy || item.primarySurgeonName || item.surgeonName || "-",
+          };
+        });
+
+        setData(normalized);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalItems(res.response.totalElements || 0);
+      } else {
+        setData([]);
+        setTotalPages(0);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching OT patient receipt list:", error);
+      showPopup("Failed to fetch pending patient receipt list.", "error");
+      setData([]);
+      setTotalPages(0);
+      setTotalItems(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setData(dummyData);
-      setTotalItems(dummyData.length);
-      setTotalPages(Math.ceil(dummyData.length / DEFAULT_ITEMS_PER_PAGE));
-      setLoading(false);
-    }, 300);
+    fetchDepartments();
+    fetchPatientReceiptList(0, "", "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredData = data.filter((item) => {
-    const matchSearch =
-      item.uhidOrIp.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgery.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surgeon.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchDepartment = department ? item.department === department : true;
-    return matchSearch && matchDepartment;
-  });
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchPatientReceiptList(page - 1, appliedFilters.search, appliedFilters.departmentId);
+  };
 
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageChange = (page) => setCurrentPage(page);
-
-  const handleSearch = () => setCurrentPage(1);
+  const handleSearch = () => {
+    setCurrentPage(1);
+    const newFilters = { search: searchQuery, departmentId: department };
+    setAppliedFilters(newFilters);
+    fetchPatientReceiptList(0, searchQuery, department);
+  };
 
   const handleReset = () => {
     setSearchQuery("");
     setDepartment("");
     setCurrentPage(1);
+    const resetFilters = { search: "", departmentId: "" };
+    setAppliedFilters(resetFilters);
+    fetchPatientReceiptList(0, "", "");
   };
 
   const openModal = (record) => {
     setSelectedRecord(record);
-    setReceivedBy("");
+    setReceivedBy(getLoggedInUserName());
     setRemarks("");
     setShowModal(true);
   };
@@ -139,27 +201,47 @@ const OTPatientReceiptPending = () => {
   const closeModal = () => {
     setShowModal(false);
     setSelectedRecord(null);
-    setReceivedBy("");
+    setReceivedBy(getLoggedInUserName());
     setRemarks("");
   };
 
- 
-  const handleConfirm = () => {
-    if (!receivedBy.trim()) {
-      showPopup("Please enter the Received By name.", "error");
+  const handleConfirm = async () => {
+    const otBookingId = selectedRecord?.otBookingId || selectedRecord?.id;
+    if (!otBookingId) {
+      showPopup("OT Booking ID not found.", "error");
       return;
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
-      const updatedData = data.filter((item) => item.id !== selectedRecord.id);
-      setData(updatedData);
-      setTotalItems(updatedData.length);
-      setTotalPages(Math.ceil(updatedData.length / DEFAULT_ITEMS_PER_PAGE));
+    try {
+      const remarkParam = remarks?.trim() || "Received";
+      const params = new URLSearchParams({
+        otBookingId: otBookingId,
+        status: "RECEIVED_IN_OT",
+        remark: remarkParam,
+      });
+
+      const res = await putRequest(`${SENT_TO_OT}?${params.toString()}`);
+
+      if (
+        res?.status === 200 ||
+        res?.status === 201 ||
+        res?.statuss === "success" ||
+        res?.message === "success" ||
+        res?.response
+      ) {
+        closeModal();
+        showPopup("Patient received in OT successfully!", "success");
+        fetchPatientReceiptList(currentPage - 1, appliedFilters.search, appliedFilters.departmentId);
+      } else {
+        showPopup(res?.message || "Failed to receive patient in OT.", "error");
+      }
+    } catch (error) {
+      console.error("Error receiving patient in OT:", error);
+      showPopup(error?.message || "Failed to confirm receipt.", "error");
+    } finally {
       setIsProcessing(false);
-      closeModal();
-      showPopup("Patient received in OT successfully!", "success");
-    }, 500);
+    }
   };
 
   const showPopup = (message, type, onCloseCallback = null) => {
@@ -173,15 +255,7 @@ const OTPatientReceiptPending = () => {
     });
   };
 
-  const departmentOptions = [
-    "Orthopaedics",
-    "Gynaecology",
-    "General Surgery",
-    "Urology",
-    "Cardiology",
-  ];
-
-   return (
+  return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
       <div className="row">
@@ -199,12 +273,17 @@ const OTPatientReceiptPending = () => {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="UHID/IP No., Patient, Surgery or Surgeon"
+                      placeholder="UHID, Patient, Surgery, Surgeon..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSearch();
+                        }
+                      }}
                     />
                   </div>
-                  <div className="col-md-2">
+                  <div className="col-md-3">
                     <label className="form-label fw-bold">Department</label>
                     <select
                       className="form-select"
@@ -212,17 +291,19 @@ const OTPatientReceiptPending = () => {
                       onChange={(e) => setDepartment(e.target.value)}
                     >
                       <option value="">All</option>
-                      {departmentOptions.map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
+                      {departmentList.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.departmentName}
+                        </option>
                       ))}
                     </select>
                   </div>
-                  <div className="col-md-2 d-flex gap-2">
-                    <button className="btn btn-primary" onClick={handleSearch}>
-                      Search
+                  <div className="col-md-3 d-flex gap-2">
+                    <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+                      <i className="fa fa-search me-1"></i> Search
                     </button>
-                    <button className="btn btn-secondary" onClick={handleReset}>
-                      Reset
+                    <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                      <i className="fa fa-refresh me-1"></i> Reset
                     </button>
                   </div>
                 </div>
@@ -248,8 +329,8 @@ const OTPatientReceiptPending = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((item) => (
+                    {data.length > 0 ? (
+                      data.map((item) => (
                         <tr key={item.id}>
                           <td>{item.uhidOrIp}</td>
                           <td>{item.patientName}</td>
@@ -258,9 +339,7 @@ const OTPatientReceiptPending = () => {
                           <td>{item.wardBed}</td>
                           <td>{item.surgery}</td>
                           <td>{item.surgeon}</td>
-                          <td>
-                            {item.ot}
-                          </td>
+                          <td>{item.ot}</td>
                           <td>{item.scheduledDateTime}</td>
                           <td>{item.sentToOTTime}</td>
                           <td>{item.sentBy}</td>
@@ -270,15 +349,15 @@ const OTPatientReceiptPending = () => {
                               onClick={() => openModal(item)}
                               title="Receive Patient"
                             >
-                              Receive 
+                              Receive
                             </button>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="12" className="text-center">
-                          No patients pending receipt.
+                        <td colSpan="12" className="text-center py-4 text-muted">
+                          <i className="fa fa-info-circle me-1"></i> No patients pending receipt.
                         </td>
                       </tr>
                     )}
@@ -286,12 +365,15 @@ const OTPatientReceiptPending = () => {
                 </table>
               </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-              />
+              {totalItems > 0 && (
+                <Pagination
+                  totalItems={totalItems}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  totalPages={totalPages}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -336,20 +418,21 @@ const OTPatientReceiptPending = () => {
                   <strong>Scheduled Date/Time:</strong> {selectedRecord.scheduledDateTime}
                 </p>
                 <p>
-                  <strong>Sent to OT Time:</strong> {selectedRecord.sentToOTTime} by {selectedRecord.sentBy}
+                  <strong>Sent to OT Time:</strong> {selectedRecord.sentToOTTime}{" "}
+                  {selectedRecord.sentBy && selectedRecord.sentBy !== "-"
+                    ? `by ${selectedRecord.sentBy}`
+                    : ""}
                 </p>
 
                 <div className="mb-3">
-                  <label className="form-label fw-bold">
-                    Received By <span className="text-danger">*</span>
-                  </label>
+                  <label className="form-label fw-bold">Received By</label>
                   <input
                     type="text"
-                    className="form-control"
-                    value={receivedBy}
-                    onChange={(e) => setReceivedBy(e.target.value)}
-                    placeholder="Enter receiving nurse/staff name"
-                    disabled={isProcessing}
+                    className="form-control fw-semibold"
+                    value={receivedBy || getLoggedInUserName()}
+                    readOnly
+                    disabled
+                    style={{ backgroundColor: "#e9ecef", cursor: "not-allowed" }}
                   />
                 </div>
 
@@ -396,10 +479,14 @@ const OTPatientReceiptPending = () => {
       )}
 
       {popupMessage && (
-        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
       )}
     </div>
   );
 };
 
-export default OTPatientReceiptPending; 
+export default OTPatientReceiptPending;

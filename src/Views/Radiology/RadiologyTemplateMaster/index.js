@@ -4,15 +4,15 @@ import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { RADIOLOGY_TEMPLATE, RADIOLOGY_DEPARTMENT_CODE, GET_MODALITY_DROPDOWN_WRT_DEPARTMENT } from "../../../config/apiConfig";
+import { RADIOLOGY_TEMPLATE, RADIOLOGY_DEPARTMENT_CODE, GET_MODALITY_DROPDOWN_WRT_DEPARTMENT, RADIOLOGY_TEMPLATE_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { 
-  ADD_RADIOLOGY_TEMPLATE_SUCC_MSG, 
-  DUPLICATE_RADIOLOGY_TEMPLATE, 
+  ADD_PACS_TEMPLATE_SUCC_MSG, 
+  DUPLICATE_PACS_TEMPLATE, 
   FAIL_TO_SAVE_CHANGES, 
   FAIL_TO_UPDATE_STS, 
-  FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, 
-  UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG,
+  FETCH_PACS_TEMPLATE_ERR_MSG, 
+  UPDATE_PACS_TEMPLATE_SUCC_MSG,
   FETCH_MODALITY_ERR_MSG 
 } from "../../../config/constants";
 
@@ -78,7 +78,7 @@ const RadiologyTemplateMaster = () => {
   const fetchRadiologyTemplateData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${RADIOLOGY_TEMPLATE}/getAll/${flag}`);
+      const response = await getRequest(`${RADIOLOGY_TEMPLATE}/getAll/${RADIOLOGY_TEMPLATE_TYPE}/${flag}`);
       if (response && response.response) {
         const mappedData = response.response.map(item => ({
           id: item.pacsTemplateId, // FIXED: Changed from item.templateId to item.pacsTemplateId
@@ -94,7 +94,7 @@ const RadiologyTemplateMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching radiology template data:", err);
-      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+      showPopup(FETCH_PACS_TEMPLATE_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -185,7 +185,7 @@ const RadiologyTemplateMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup(DUPLICATE_RADIOLOGY_TEMPLATE, "error");
+        showPopup(DUPLICATE_PACS_TEMPLATE, "error");
         setLoading(false);
         return;
       }
@@ -207,7 +207,7 @@ const RadiologyTemplateMaster = () => {
 
         if (response && response.status === 200) {
           fetchRadiologyTemplateData();
-          showPopup(UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG, "success");
+          showPopup(UPDATE_PACS_TEMPLATE_SUCC_MSG, "success");
         }
       } else {
         // Add new template
@@ -220,7 +220,7 @@ const RadiologyTemplateMaster = () => {
 
         if (response && response.status === 200) {
           fetchRadiologyTemplateData();
-          showPopup(ADD_RADIOLOGY_TEMPLATE_SUCC_MSG, "success");
+          showPopup(ADD_PACS_TEMPLATE_SUCC_MSG, "success");
         }
       }
 

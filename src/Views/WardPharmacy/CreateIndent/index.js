@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import {  GET_CURRENT_DEPARTMENT, GET_INDENT_APPLICABLE_DEPARTEMENTS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_REQUESTED_DEPT_ID, REQUEST_PARAM_CURRENT_DEPT_ID, GET_ROL_ITEMS, SAVE_INDENT, SUBMIT_INDENT, INDENT_REPORT_URL, REQUERST_PARAM_INDENT_M_ID, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS } from "../../../config/apiConfig";
+import { GET_CURRENT_DEPARTMENT, GET_INDENT_APPLICABLE_DEPARTEMENTS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_REQUESTED_DEPT_ID, REQUEST_PARAM_CURRENT_DEPT_ID, GET_ROL_ITEMS, SAVE_INDENT, SUBMIT_INDENT, INDENT_REPORT_URL, REQUERST_PARAM_INDENT_M_ID, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
@@ -84,8 +84,8 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 
 const IndentCreation = () => {
   const [loading, setLoading] = useState(false);
-  const[isSaving, setIsSaving] = useState(false);
-  const[isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
   const [confirmationPopup, setConfirmationPopup] = useState(null);
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
@@ -323,7 +323,7 @@ const IndentCreation = () => {
 
     // Get current department ID from session/local storage
     const currentDeptId = departmentId;
-    
+
     // Get requested department ID from selected department
     const requestedDeptId = department;
 
@@ -334,7 +334,7 @@ const IndentCreation = () => {
 
       // Use requestedDeptStocks for requested department stock
       const requestedDeptStock = itemDetails.requestedDeptStocks !== null && itemDetails.requestedDeptStocks !== undefined ? itemDetails.requestedDeptStocks : 0;
-      
+
       // Use currentDeptStocks for current department stock
       const currentDeptStock = itemDetails.currentDeptStocks !== null && itemDetails.currentDeptStocks !== undefined ? itemDetails.currentDeptStocks : 0;
 
@@ -377,7 +377,7 @@ const IndentCreation = () => {
   const handleDepartmentChange = (deptId) => {
     // Check if there are existing items with stock data
     const hasItemsWithStock = indentEntries.some(entry => entry.drugId && (entry.requestedDeptStock !== "" || entry.currentDeptStock !== ""));
-    
+
     if (hasItemsWithStock && deptId !== department) {
       // Show confirmation popup before changing department
       setPendingDepartment(deptId);
@@ -391,7 +391,7 @@ const IndentCreation = () => {
   // Perform the actual department change and stock refresh
   const performDepartmentChange = async (deptId) => {
     setDepartment(deptId);
-    
+
     if (errors.department) {
       const newErrors = { ...errors };
       delete newErrors.department;
@@ -407,8 +407,8 @@ const IndentCreation = () => {
           if (entry.drugId) {
             const itemDetails = await fetchItemDetails(entry.drugId, deptId, currentDeptId);
             if (itemDetails) {
-              return { 
-                ...entry, 
+              return {
+                ...entry,
                 requestedDeptStock: itemDetails.requestedDeptStocks || 0,
                 currentDeptStock: itemDetails.currentDeptStocks || 0
               };
@@ -937,7 +937,7 @@ const IndentCreation = () => {
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
-      
+
       {/* Stock refresh spinner overlay */}
       {isRefreshingStock && (
         <div style={{
@@ -970,7 +970,7 @@ const IndentCreation = () => {
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
         type={confirmationPopup?.type || 'info'}
-        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onConfirm={confirmationPopup?.onConfirm || (() => { })}
         onCancel={confirmationPopup?.onCancel}
         confirmText={confirmationPopup?.confirmText || 'OK'}
         cancelText={confirmationPopup?.cancelText}
@@ -1001,7 +1001,7 @@ const IndentCreation = () => {
           <div className="card form-card">
             {/* Header Section */}
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">INDENT CREATION</h4>
+              <h4 className="card-title p-2 mb-0">Indent Creation</h4>
             </div>
 
             <div className="card-body">
@@ -1092,12 +1092,7 @@ const IndentCreation = () => {
                       <th style={{ width: "160px", minWidth: "160px" }}>
                         Reason for Indent
                       </th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
-                        Add
-                      </th>
-                      <th style={{ width: "80px", minWidth: "80px", textAlign: "center" }}>
-                        Delete
-                      </th>
+                      <th style={{ width: "80px", textAlign: "center" }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1267,24 +1262,12 @@ const IndentCreation = () => {
                         </td>
 
                         {/* Add button cell */}
-                        <td style={{ textAlign: "center" }}>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={handleAddRow}
-                          >
-                            <i className="fa fa-plus"></i>
-                          </button>
-                        </td>
-
-                        {/* Delete button cell */}
-                        <td style={{ textAlign: "center" }}>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => handleDeleteRow(entry.id)}
-                            disabled={indentEntries.length <= 1}
-                          >
-                            <i className="fa fa-minus"></i>
-                          </button>
+                        <td>
+                          <div className="btnCenter">
+                            <button type="button" className="btn btn-primary btnAdd" title="Add" onClick={handleAddRow}><i class="icofont-plus"></i></button>
+                            <button type="button" className="btn btn-outline-danger btnDel" title="Delete" onClick={() => handleDeleteRow(entry.id)}
+                              disabled={indentEntries.length <= 1}><i class="icofont-trash"></i></button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1296,7 +1279,7 @@ const IndentCreation = () => {
               <div className="d-flex justify-content-end gap-2 mt-3 mb-4">
                 <button
                   type="button"
-                  className="btn btn-success"
+                  className="btn btn-success- btn-info"
                   onClick={handleImportROL}
                   disabled={loading}
                 >
@@ -1304,7 +1287,7 @@ const IndentCreation = () => {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-success"
+                  className="btn btn-success- btn-info"
                   onClick={handleImportPreviousIndent}
                 >
                   Import from Previous Indent
@@ -1315,7 +1298,7 @@ const IndentCreation = () => {
               <div className="d-flex justify-content-end gap-2 mt-4">
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-success"
                   onClick={handleSave}
                   disabled={loading || isSaving || isSubmitting}
                 >
@@ -1330,7 +1313,7 @@ const IndentCreation = () => {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-success"
+                  className="btn btn-primary"
                   onClick={handleSubmit}
                   disabled={loading || isSaving || isSubmitting}
                 >
@@ -1371,7 +1354,7 @@ const IndentCreation = () => {
           >
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Import from ROL (Reorder Level)</h5>
+                <h4 className="modal-title fw-semibold">Import from ROL (Reorder Level)</h4>
                 <button
                   type="button"
                   className="btn-close"
@@ -1419,7 +1402,7 @@ const IndentCreation = () => {
                                 <strong>{item.itemName}</strong>
                                 <div className="mt-1">
                                   <span className="badge bg-info me-2" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-                                    <i className="fas fa-hashtag me-1"></i>{item.pvmsNo}
+                                    <i className="fa fa-hashtag me-1"></i>{item.pvmsNo}
                                   </span>
                                 </div>
                               </div>

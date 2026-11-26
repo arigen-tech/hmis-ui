@@ -312,11 +312,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #fff;
   border-radius: 0.85rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  border: solid 1px rgb(0 0 0/0.2);
 }
 
 .input-group-custom:focus-within {
@@ -327,11 +327,13 @@
 .input-icon {
   position: absolute;
   left: 1rem;
-  color: #94a3b8;
+  /* color: #94a3b8; */
+  color: rgb(0 0 0/0.70);
   display: flex;
   align-items: center;
   pointer-events: none;
-  font-size: 1.1rem;
+  font-size: 1.2rem;  
+  margin-top: -4px;
 }
 
 .form-input-custom {
@@ -346,7 +348,7 @@
 }
 
 .form-input-custom::placeholder {
-  color: #94a3b8;
+  color: rgb(0 0 0/0.50);
 }
 
 /* Custom dropdown arrow reset */
@@ -374,6 +376,7 @@
   justify-content: center;
   font-size: 1.1rem;
   transition: color 0.15s ease;
+  color: rgb(0 0 0/0.70);
 }
 
 .password-toggle-btn:hover {

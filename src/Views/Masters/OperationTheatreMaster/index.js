@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import { MAS_OPERATION_THEATRE } from "../../../config/apiConfig";
+import { MAS_OPERATION_THEATRE, MAS_OT_TYPE } from "../../../config/apiConfig";
 import {
   FETCH_OT,
   ADD_OT,
@@ -19,9 +19,11 @@ const OperationTheatre = () => {
   const [formData, setFormData] = useState({
     otCode: "",
     otName: "",
+    otTypeId: "",
     otType: "",
     location: ""
   });
+  const [otTypeList, setOtTypeList] = useState([]);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -45,7 +47,6 @@ const OperationTheatre = () => {
   // ----- Constants for validation -----
   const OT_CODE_MAX_LENGTH = 10;
   const OT_NAME_MAX_LENGTH = 100;
-  const OT_TYPE_MAX_LENGTH = 50;
   const LOCATION_MAX_LENGTH = 100;
 
   // ----- Fetch data (all records, flag=0) -----
@@ -65,24 +66,47 @@ const OperationTheatre = () => {
     }
   };
 
+  // ----- Fetch OT Type Master data (active records, flag=1) -----
+  const fetchOtTypes = async () => {
+    try {
+      const { response } = await getRequest(`${MAS_OT_TYPE}/getAll/1`);
+      setOtTypeList(response || []);
+    } catch (error) {
+      console.error("Fetch OT Type error:", error);
+      setOtTypeList([]);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchOtTypes();
   }, []);
 
   // ----- Form validation -----
   useEffect(() => {
-    const { otCode, otName, otType, location } = formData;
+    const { otCode, otName, otTypeId, location } = formData;
+    const hasOtType = Boolean(otTypeId) && String(otTypeId).trim() !== "";
     if (editingItem) {
-      setIsFormValid(otName.trim() !== "" && otType.trim() !== "" && location.trim() !== "");
+      setIsFormValid(otName.trim() !== "" && hasOtType && location.trim() !== "");
     } else {
       setIsFormValid(
         otCode.trim() !== "" &&
         otName.trim() !== "" &&
-        otType.trim() !== "" &&
+        hasOtType &&
         location.trim() !== ""
       );
     }
   }, [formData, editingItem]);
+
+  // Options for OT Type dropdown (preserves inactive/current type on edit)
+  const otTypeOptions = (() => {
+    if (!editingItem || !formData.otTypeId) return otTypeList;
+    const exists = otTypeList.some((t) => String(t.otTypeId) === String(formData.otTypeId));
+    if (!exists && formData.otType) {
+      return [...otTypeList, { otTypeId: formData.otTypeId, otTypeName: formData.otType }];
+    }
+    return otTypeList;
+  })();
 
   // ----- Filtered data (search) -----
   const filteredData = data.filter(item =>
@@ -105,6 +129,16 @@ const OperationTheatre = () => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
+  const handleOtTypeChange = (e) => {
+    const selectedId = e.target.value;
+    const selected = otTypeList.find((item) => String(item.otTypeId) === String(selectedId));
+    setFormData((prev) => ({
+      ...prev,
+      otTypeId: selectedId ? Number(selectedId) : "",
+      otType: selected ? (selected.otTypeName || "") : ""
+    }));
+  };
+
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -113,7 +147,7 @@ const OperationTheatre = () => {
   const resetForm = () => {
     setEditingItem(null);
     setShowForm(false);
-    setFormData({ otCode: "", otName: "", otType: "", location: "" });
+    setFormData({ otCode: "", otName: "", otTypeId: "", otType: "", location: "" });
     setPopupMessage(null);
   };
 
@@ -124,10 +158,28 @@ const OperationTheatre = () => {
   // ----- Edit -----
   const handleEdit = (item) => {
     setEditingItem(item);
+    let matchedId = item.otTypeId ? String(item.otTypeId) : "";
+    let matchedName = item.otType || "";
+    if (!matchedId && matchedName) {
+      const found = otTypeList.find(
+        (t) => t.otTypeName?.toLowerCase() === matchedName.toLowerCase() ||
+               t.otTypeCode?.toLowerCase() === matchedName.toLowerCase()
+      );
+      if (found) {
+        matchedId = String(found.otTypeId);
+        matchedName = found.otTypeName;
+      }
+    } else if (matchedId && !matchedName) {
+      const found = otTypeList.find((t) => String(t.otTypeId) === String(matchedId));
+      if (found) {
+        matchedName = found.otTypeName;
+      }
+    }
     setFormData({
       otCode: item.otCode || "",
       otName: item.otName || "",
-      otType: item.otType || "",
+      otTypeId: matchedId ? Number(matchedId) : "",
+      otType: matchedName,
       location: item.location || ""
     });
     setShowForm(true);
@@ -159,7 +211,8 @@ const OperationTheatre = () => {
         await putRequest(`${MAS_OPERATION_THEATRE}/update/${editingItem.otId}`, {
           otCode: formData.otCode.trim(),
           otName: formData.otName.trim(),
-          otType: formData.otType.trim(),
+          otTypeId: Number(formData.otTypeId) || 0,
+          otType: formData.otType ? formData.otType.trim() : "",
           location: formData.location.trim(),
         });
         showPopup(UPDATE_OT, "success", () => {
@@ -170,7 +223,8 @@ const OperationTheatre = () => {
         await postRequest(`${MAS_OPERATION_THEATRE}/create`, {
           otCode: formData.otCode.trim(),
           otName: formData.otName.trim(),
-          otType: formData.otType.trim(),
+          otTypeId: Number(formData.otTypeId) || 0,
+          otType: formData.otType ? formData.otType.trim() : "",
           location: formData.location.trim(),
         });
         showPopup(ADD_OT, "success", () => {
@@ -235,6 +289,7 @@ const OperationTheatre = () => {
     setSearchQuery("");
     setCurrentPage(1);
     fetchData();
+    fetchOtTypes();
   };
 
   // ----- Popup helper -----
@@ -283,7 +338,7 @@ const OperationTheatre = () => {
                       className="btn btn-success"
                       onClick={() => {
                         setEditingItem(null);
-                        setFormData({ otCode: "", otName: "", otType: "", location: "" });
+                        setFormData({ otCode: "", otName: "", otTypeId: "", otType: "", location: "" });
                         setShowForm(true);
                       }}
                     >
@@ -412,17 +467,21 @@ const OperationTheatre = () => {
                       <label>
                         OT Type <span className="text-danger">*</span>
                       </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="otType"
-                        placeholder="Enter OT type"
-                        onChange={handleInputChange}
-                        value={formData.otType}
-                        maxLength={OT_TYPE_MAX_LENGTH}
+                      <select
+                        className="form-select"
+                        id="otTypeId"
+                        value={formData.otTypeId}
+                        onChange={handleOtTypeChange}
                         required
                         disabled={process}
-                      />
+                      >
+                        <option value="">Select OT Type</option>
+                        {otTypeOptions.map((item) => (
+                          <option key={item.otTypeId} value={item.otTypeId}>
+                            {item.otTypeName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group col-md-4 mt-3">
                       <label>

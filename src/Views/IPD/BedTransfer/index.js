@@ -435,9 +435,9 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
 
     try {
       const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
-      const isSuccess = response && 
-                        (response.status === 200 || response.status === 201) && 
-                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+      const isSuccess = response &&
+        (response.status === 200 || response.status === 201) &&
+        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
 
       if (isSuccess) {
         Swal.fire({
@@ -456,7 +456,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
               ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: reviewAllocatedBed }
               : t
           ))
-          
+
           if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === reviewTransfer.admissionNo) {
             const updatedPatient = {
               ...selectedPatient,
@@ -465,7 +465,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
             }
             setSelectedPatient(updatedPatient)
           }
-          
+
           setShowReviewModal(false)
           setReviewTransfer(null)
           setActiveView("pendingList")
@@ -508,15 +508,15 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
       })
       return
     }
-    
+
     const targetTransfer = transfers.find(t => t.id === cancelTargetId)
     const inpatientId = targetTransfer?.raw?.inpatientId || cancelTargetId || 0
 
     try {
       const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/R`)
-      const isSuccess = response && 
-                        (response.status === 200 || response.status === 201) && 
-                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+      const isSuccess = response &&
+        (response.status === 200 || response.status === 201) &&
+        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
 
       if (isSuccess) {
         Swal.fire({
@@ -556,27 +556,19 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
   }
 
   const handleAcceptTransfer = async (transfer, allocatedBed) => {
-    if (!allocatedBed) {
-      Swal.fire({
-        title: "Warning",
-        text: BED_TRANSFER_ALLOCATE_BED_WARN,
-        icon: "warning"
-      })
-      return
-    }
-    
+    const finalBed = allocatedBed || transfer?.targetBed || ""
     const inpatientId = transfer.raw?.inpatientId || transfer.id || 0
 
     try {
       const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
-      const isSuccess = response && 
-                        (response.status === 200 || response.status === 201) && 
-                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+      const isSuccess = response &&
+        (response.status === 200 || response.status === 201) &&
+        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
 
       if (isSuccess) {
         Swal.fire({
           title: "Success",
-          html: `Transfer <b>${transfer.trfNo}</b> ACCEPTED. Bed <b>${allocatedBed}</b> allocated.<br/><br/>
+          html: `Transfer <b>${transfer.trfNo}</b> ACCEPTED.${finalBed ? ` Bed <b>${finalBed}</b> allocated.` : ""}<br/><br/>
                  <div class="text-start ps-4">
                    ✓ Main inpatient table Ward/Bed updated
                  </div>`,
@@ -584,10 +576,10 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
         }).then(() => {
           setTransfers(prev => prev.map(t =>
             t.id === transfer.id
-              ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
+              ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: finalBed }
               : t
           ))
-          
+
           if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === transfer.admissionNo) {
             const updatedPatient = {
               ...selectedPatient,
@@ -596,7 +588,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
             }
             setSelectedPatient(updatedPatient)
           }
-          
+
           setActiveView("pendingList")
           setSelectedPendingTransfer(null)
           if (onTransferSuccess) onTransferSuccess()
@@ -653,81 +645,85 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
 
   // Detail view for a pending transfer
   const renderPendingDetail = (transfer) => {
-    const currentSelectedBed = selectedBedForTransfer || transfer.targetBed || ""
-
     return (
-      <div>
-        <div className="mb-3">
-          <button 
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => {
-              setSelectedPendingTransfer(null)
-              setActiveView("pendingList")
-              setSelectedBedForTransfer("")
-            }}
-          >
-            ← Back to Pending List
-          </button>
-        </div>
+      <div className="">
         <div className="card">
-          <div className="card-header bg-info text-white">
-            <strong>TRANSFER DETAILS</strong>
-            <span className="ms-2 small opacity-75">{transfer.trfNo}</span>
-          </div>
-          <div className="card-body">
-            <div className="row g-2">
-              <div className="col-md-6">
-                <p className="mb-1"><strong>Transfer No:</strong> {transfer.trfNo}</p>
-                <p className="mb-1"><strong>Date/Time:</strong> {formatDateTime(transfer.transferDate)}</p>
-                <p className="mb-1"><strong>Patient:</strong> {transfer.patientName}</p>
-                <p className="mb-1"><strong>UHID:</strong> {transfer.uhidNo || ""}</p>
-              </div>
-              <div className="col-md-6">
-                <p className="mb-1"><strong>From:</strong> {transfer.fromWard} / {transfer.fromBed}</p>
-                <p className="mb-1"><strong>To (Requested):</strong> {transfer.targetWard} / {transfer.targetBed || "TBD"}</p>
-                <p className="mb-1"><strong>Doctor:</strong> {transfer.doctorInCharge}</p>
-                <p className="mb-1"><strong>Reason:</strong> {transfer.reason}</p>
-              </div>
-              <div className="col-12">
-                <strong>Clinical Notes:</strong>
-                <p className="text-muted mb-2">{transfer.clinicalNotes || "—"}</p>
-              </div>
-              
-              <div className="col-12 mt-2">
-                <div className="border rounded p-3 bg-light">
-                  <label className="form-label fw-bold mb-2">
-                    Allocate Bed in {transfer.targetWard}
-                  </label>
-                  <select
-                    className="form-select form-select-sm mb-2"
-                    value={currentSelectedBed}
-                    onChange={(e) => setSelectedBedForTransfer(e.target.value)}
-                  >
-                    <option value="">Select Bed</option>
-                    {detailWardBeds.map(b => (
-                      <option key={b.bedId || b.bedNo} value={b.bedNo || b.bedId}>
-                        {b.bedNo || b.bedId}
-                      </option>
-                    ))}
-                  </select>
+          <div className="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <div className="">
+              <div className="d-flex align-items-center gap-1">
+                <button className="btn-back" title="Back to Pending List" onClick={() => {
+                  setSelectedPendingTransfer(null)
+                  setActiveView("pendingList")
+                  setSelectedBedForTransfer("")
+                }}>
+                  <i class="icofont-arrow-left"></i>
+                </button>
+                <div className="d-flex align-items-center ms-2">
+                  <h4 className="mb-0">Transfer Details</h4>
+                  <span className="ms-2 small opacity-75" style={{ fontSize: '12px' }}>{transfer.trfNo}</span>
                 </div>
               </div>
             </div>
+
+            <span class="status-badge">Pending Acceptance</span>
+          </div>
+          <div className="card-body">
+
+            <section className="patient-card mb-0">
+              <div className="patient-header">
+                <h4>{transfer.patientName}</h4>
+                <p>UHID: <strong> {transfer.uhidNo || ""}</strong></p>
+              </div>
+
+              <div className="details-grid grid-col-3">
+                <div className="detail-item">
+                  <span className="detail-label">Transfer No:</span>
+                  <span className="detail-value">{transfer.trfNo}</span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">Date/Time:</span>
+                  <span className="detail-value">{formatDateTime(transfer.transferDate)}</span>
+                </div>
+
+                <div className="detail-item">
+                  <span className="detail-label">From:</span>
+                  <span className="detail-value">{transfer.fromWard} / {transfer.fromBed}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">To (Requested):</span>
+                  <span className="detail-value">{transfer.targetWard} / {transfer.targetBed || "TBD"}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Doctor:</span>
+                  <span className="detail-value">{transfer.doctorInCharge}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Reason:</span>
+                  <span className="detail-value">{transfer.reason}</span>
+                </div>
+
+                <div className="detail-item col-span-3">
+                  <span className="detail-label">Clinical Notes:</span>
+                  <span className="detail-value">{transfer.clinicalNotes || "—"}</span>
+                </div>
+              </div>
+            </section>
           </div>
           <div className="card-footer bg-white">
             {transfer.status === TRANSFER_STATUS.PENDING && (
-              <button 
+              <button
                 className="btn btn-success btn-sm me-2"
-                onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
+                onClick={() => handleAcceptTransfer(transfer, transfer.targetBed)}
               >
-                Accept Transfer
+               <sapn>✓ </sapn> Accept Transfer
               </button>
             )}
-            <button 
+            <button
               className="btn btn-danger btn-sm"
               onClick={() => handleOpenCancel(transfer.id)}
             >
-              Reject Transfer
+              <span>✕ </span> Reject Transfer
             </button>
           </div>
         </div>
@@ -746,7 +742,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
               setActiveView("pendingList")
               setSelectedPendingTransfer(null)
             }}
-            style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+            style={{ fontSize: "12px", padding: "0.2rem 0.5rem" }}
           >
             Pending for Transfer ({pendingTransfers.length})
           </button>
@@ -756,7 +752,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
               setActiveView("transferredList")
               setSelectedPendingTransfer(null)
             }}
-            style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+            style={{ fontSize: "12px", padding: "0.2rem 0.5rem" }}
           >
             Transferred List ({transferredList.length})
           </button>
@@ -765,24 +761,25 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
 
       {/* ─── NEW REQUEST FORM ─── */}
       {activeView === "request" && (
-        <div className="card">
+        <div className="innerCard">
+          <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong>WARD / BED TRANSFER REQUEST</strong>
-            <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTimeForDisplay(new Date().toISOString())}</span>
+            <strong>Ward / Bed Transfer Request</strong>
+            <span className="ms-2 opacity-75" style={{fontSize:"11px"}}>[{generateTRFNo()}] | {formatDateTimeForDisplay(new Date().toISOString())}</span>
           </div>
           <div className="card-body">
             {selectedPatient && (
-              <div className="row g-2 mb-3 p-2 bg-light rounded">
-                <div className="col-md-12 small">
-                  <strong>Patient:</strong> {selectedPatient.patientName} ({selectedPatient.ageGender}) | 
-                  <strong> UHID:</strong> {selectedPatient.uhidNo || ""} | 
-                  <strong> Current Location:</strong> {selectedPatient.ward} / {selectedPatient.bedNo}
+              <>
+                <div class="patient-header">
+                  <h4>{selectedPatient.patientName} ({selectedPatient.ageGender})</h4>
+                  <p>UHID: <strong> {selectedPatient.uhidNo || ""}</strong> | Current Location: <strong> {selectedPatient.ward} / {selectedPatient.bedNo}</strong></p>
                 </div>
-              </div>
+              </>
+              
             )}
 
             <div className="row g-3">
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Target Ward</label>
                 <select className="form-select form-select-sm" name="targetWardId" value={requestForm.targetWardId} onChange={handleRequestFormChange}>
                   <option value="">Select Ward </option>
@@ -794,7 +791,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Preferred Bed</label>
                 <select
                   className="form-select form-select-sm"
@@ -814,7 +811,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Target Department <span className="text-danger">*</span></label>
                 <select className="form-select form-select-sm" name="departmentId" value={requestForm.departmentId} onChange={handleRequestFormChange}>
                   <option value="">Select Department</option>
@@ -826,7 +823,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Doctor In Charge <span className="text-danger">*</span></label>
                 <select className="form-select form-select-sm" name="doctorInCharge" value={requestForm.doctorInCharge} onChange={handleRequestFormChange}>
                   <option value=""> Select Doctor </option>
@@ -841,7 +838,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </select>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label small fw-bold">Priority</label>
                 <div className="d-flex gap-3">
                   {["Normal", "Emergency"].map(p => (
@@ -860,7 +857,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 </div>
               </div>
 
-              <div className="col-12">
+              <div className="col-md-12">
                 <label className="form-label small fw-bold">Reason for Transfer</label>
                 <div className="d-flex gap-3 flex-wrap mb-2">
                   {transferReasonsList.map(r => (
@@ -905,12 +902,13 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                 <button className="btn btn-primary btn-sm me-2" onClick={handleSubmitRequest}>
                   Submit Request
                 </button>
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
                   Clear
                 </button>
               </div>
             </div>
           </div>
+        </div>
         </div>
       )}
 
@@ -918,7 +916,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
       {activeView === "pendingList" && !selectedPendingTransfer && (
         <div>
           <div className="table-responsive">
-            <table className="table table-bordered table-sm table-hover" style={{ fontSize: "0.72rem" }}>
+            <table className="table table-bordered table-sm table-hover mb-0" style={{ fontSize: "0.72rem" }}>
               <thead className="">
                 <tr>
                   <th>TRF No</th>
@@ -929,7 +927,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                   <th>From Ward/Bed</th>
                   <th>To Ward/Bed</th>
                   <th>Reason</th>
-                  <th>Status</th>
+                  <th className="text-center">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -952,9 +950,9 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                   </tr>
                 ) : (
                   pendingTransfers.map(t => (
-                    <tr 
-                      key={t.id} 
-                      style={{ cursor: "pointer" }} 
+                    <tr
+                      key={t.id}
+                      style={{ cursor: "pointer" }}
                       onClick={() => {
                         setSelectedPendingTransfer(t)
                         setSelectedBedForTransfer(t.targetBed || "")
@@ -968,9 +966,9 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                       <td>{t.fromWard} / {t.fromBed}</td>
                       <td>{t.targetWard} / {t.targetBed || "TBD"}</td>
                       <td>{t.reason}</td>
-                      <td>
+                      <td className="text-center">
                         <span className={`badge bg-${getStatusBadge(t.status)}`}>
-                           {t.status}
+                          {t.status}
                         </span>
                         {t.cancelRemarks && <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>Note: {t.cancelRemarks}</div>}
                       </td>
@@ -1035,7 +1033,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
                       <td>{t.reason}</td>
                       <td>
                         <span >
-                           {t.status}
+                          {t.status}
                         </span>
                         {t.cancelRemarks && <div className="text-muted mt-1" >Note: {t.cancelRemarks}</div>}
                       </td>

@@ -3,7 +3,7 @@ export const API_HOST = 'https://api.arigenhmis.com/hims';
 // export const API_HOST = 'https://103.133.215.182:9090/hims';
 // export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
-//  export const API_HOST = 'http://192.168.31.188:8080';
+// export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
@@ -99,15 +99,20 @@ export const DASHBOARD_INPATIENT_SUMMARY_API = `/dashboard/inpatient-summary`;
 export const DEPARTMENT = `/department`;
 
 export const MAS_OPERATION_THEATRE = `${MASTERS}/operationTheatre`;
+export const MAS_OT_TYPE = `${MASTERS}/masOtType`;
 export const MAS_OT_DAY_ALLOCATION = `${MASTERS}/otDayAllocation`;
 export const MAS_ANAESTHESIA_TYPE = `${MASTERS}/masAnaesthesiaType`;
 export const MAS_ANAESTHESIA_INSTRUCTION = `${MASTERS}/masAnaesthesiaInstruction`;
+export const MAS_ASA_GRADE = `${MASTERS}/masAsaGrade`;
 export const MAS_OT_SCHEDULE_CHANGE_REASON = `${MASTERS}/masOtScheduleChangeReason`;
 export const MAS_OT_TEAM_ROLE = `${MASTERS}/otTeamRole`;
+export const MAS_OT_TEAM_ROLE_GET_ALL = `${MAS_OT_TEAM_ROLE}/getAll/1`;
 export const MAS_OT_BOOKING_STATUS = `${MASTERS}/otBookingStatus`;
+export const MAS_OT_BOOKING_STATUS_GET_ALL = `${MAS_OT_BOOKING_STATUS}/getAll/1`;
 
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
+export const GET_USERS_BY_USER_TYPE = `/users/byUserTypeOrDesignation`;
 export const SESSION = `/opd-session`;
 export const APPOINTMENT = `/admin`;
 export const LOGIN = `/authController/login`;
@@ -201,6 +206,7 @@ export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 export const CANCEL_OR_COMPLETE_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/cancelOrCompleteInvestigationRadiology`;
 
+export const LAB_INVESTIGATIONS_REPORT_ALL_URL = `${LAB}/investigationsReport/all`;
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
 export const RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID = `${RADIOLOGY}/orderTrackingByInpatientIdOrAccesionNo`;
@@ -302,6 +308,25 @@ export const CHECK_DAY_AVAILABLE_VALIDITY = `/opd/otDayAllocation/checkAvailabil
 export const SAVE_OT_REQUEST = `/otController/saveOtRequest`;
 export const PENDING_FOR_REVIEW_OT_LIST = `/otController/pendingForReviewOtList`;
 export const SAVE_ACCEPT_REJECT_OT = `/otController/saveAcceptAndReject`;
+export const OT_BOOKING_HISTORY = `/otController/bookingHistory`;
+export const OT_TEAM_MEMBER = `/otController/teamMember`;
+export const GET_OT_DASHBOARD = `/otController/dashboard`;
+export const GET_OT_DEPARTMENTS = `/otController/departments`;
+export const SENT_TO_OT = `/otController/otPatientTransaction`;
+export const OT_PATIENT_RECEIPT_LIST = `/otController/patientReceiptList`;
+export const PATIENT_RECEIVED_IN_OT_LIST = `/otController/patientReceivedInOtList`;
+export const SUBMIT_OT_CHECKLIST = `/otController/submitOtChecklist`;
+export const GET_OT_CHECKLIST = `/otController/getOtChecklist`;
+export const PAC_PENDING_LIST = `/otController/pacPendingList`;
+export const PAC_ASSESSMENT = `/otController/pacAssessment`;
+export const PAC_ASSESSMENT_BY_BOOKING = `${PAC_ASSESSMENT}/booking`;
+export const RESCHEDULE_OT_BOOKING = `/otController/reschedule`;
+export const CANCEL_OT_BOOKING = `/otController/cancel`;
+export const PATIENT_SURGERY_WORKLIST = `/otController/patientSurgeryWorklist`;
+export const SURGERY_ANAESTHESIA = `/otController/surgeryAnaesthesia`;
+export const SURGERY_DRUG_CONSUMABLE_TEMPLATE = `/otController/surgeryDrugConsumableTemplate`;
+export const MAS_OT_CHECKLIST = `${MASTERS}/otChecklist`;
+export const MAS_CONSENT_TYPE = `${MASTERS}/consentType`;
 export const MAS_SURGERY_GET_ALL = `${MASTERS}/masSurgery/getAll`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
@@ -511,6 +536,8 @@ export const GENERAL = "/general";
 export const GET_MODALITY_DROPDOWN_WRT_DEPARTMENT = `${GENERAL}/getModalityDetailsByDepartment`;
 export const REQUEST_PARAM_CODE = "code";
 export const RADIOLOGY_DEPARTMENT_CODE = "RAD";
+export const LABORATORY_DEPARTMENT_CODE = "LAB";
+
 
 export const RADIOLOGY_REPORT_END_URL = `${ALL_REPORTS}/radiologyReport`;
 export const REQUEST_PARAM_FLAG = `flag`;
@@ -521,7 +548,7 @@ export const STATUS_S = `S`;
 export const STATUS_P = `P`;
 export const STATUS_D = `D`;
 export const STATUS_X = `x`;
-export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
+export const TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/templateList`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
 export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;
 export const REQUEST_PARAM_STATUS = "status";
@@ -835,6 +862,7 @@ export const GET_PREVIOUS_DIET_ORDER_HISTORY = '/ipd/getPreviousDietOrderHistory
 export const SAVE_DIET_ORDER_BY_INPATIENT = '/ipd/saveDietOrderByInpatient';
 export const SAVE_CURRENT_ACTIVE_DIET_SCHEDULE = '/ipd/saveCurrentActiveDietSchedule';
 export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
+export const MAS_PROCEDURES_GET_ALL_WRT_DEPARTMENT = '/master/masProcedures';
 export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`;
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
 export const IP_INVESTIGATION_REPORT_URL = `${ALL_REPORTS}/ipInvestigationReport`;
@@ -888,6 +916,9 @@ export const GET_CURRENT_ACTIVE_DIET_SCHEDULE = "/ipd/getCurrentActiveDietSchedu
 export const SAVE_SHIFT_HANDOVER = '/ipd/saveShiftHandover';
 export const GET_SHIFT_HANDOVER = '/ipd/getShiftHandover';
 export const ACTIVE_ADMISSION_LIST_OT = '/otController/activeAdmissionList';
+export const INPATIENT_SURGERIES_OT = '/otController/inpatient';
+export const PATIENT_CONSENT_OT = '/otController/patientConsent';
+export const SAVE_PATIENT_CONSENT_OT = '/otController/patientConsent';
 
 export const MAS_TOOTH_BY_TYPE = `${MASTERS}/masToothByToothType`;
 export const GET_PROCEDURE_WORKLIST = `/procedure/getProcedureWorkList`;
@@ -906,4 +937,43 @@ export const DETECT_RESULT_FLAG_END_URL = "/lab/detect-flag"
 export const REQUEST_PARAM_RESULT = "result"
 export const REQUEST_PARAM_NORMAL_RANGE = "normalRange"
 export const RESULT_FLAG_DETECT_DEBOUNCE_MS = 600
+
+export const DOCTOR_SUMMARY = "/doctor/summary";
+export const PATIENT_VISIT_QUEUE = "/visit/queue";
+
+export const LABORATORY_TEMPLATE_TYPE = 'L';
+export const RADIOLOGY_TEMPLATE_TYPE = 'R';
+
+export const DENTAL_PREVIOUS_DETAILS = "/opd/dental/previous-details";
+export const DENTAL_PROCEDURE_HISTORY = "/opd/dental/procedure-history";
+export const DENTAL_SESSION_HISTORY = "/opd/dental/session-history";
+
+export const BLOOD_INVENTORY_STOCK_SUMMARY_REPORT_URL = `${API_HOST}/report/bloodInventoryStockSummary`;
+export const BLOOD_INVENTORY_STOCK_DETAIL_REPORT_URL = `${API_HOST}/report/bloodInventoryStockDetail`;
+export const COMPONENT_WISE_STOCK_REPORT_URL = `${API_HOST}/report/componentWiseStockReport`;
+export const USAGE_BY_WARD_OT_REPORT_URL = `${API_HOST}/report/bloodWardOT`;
+export const BLOOD_GROUPS_API = "/master/blood-group/getAll/1";
+export const BLOOD_COMPONENTS_API = "/master/masBloodComponent/getAll/1";
+export const INVENTORY_STATUS_API = "/master/masBloodInventoryStatus/getAll/1";
+export const COMPONENT_EXPIRY_API = "/bloodBank/component-expiry";
+
+export const WARDS_API = "/master/masWard/getAll/1";
+export const OT_USAGE_API = "/bloodBank/ot-usage";
+export const DONOR_DEFERRAL_API = "/bloodBank/donor-deferral";
+
+export const BLOOD_DONOR_DEFERRAL_REPORT_URL = `${API_HOST}/report/bloodDonorDeferral`;
+export const BLOOD_USAGE_BY_WARD_OT_REPORT_URL = `${API_HOST}/report/bloodWardOT`;
+export const BLOOD_COMPONENT_EXPIRY_REPORT_URL = `${API_HOST}/report/bloodComponentExpiry`;
+
+
+export const DISCARD_REASONS_API = "/master/discard-reason/getAll/1";
+export const STOCK_DETAIL_API = "/bloodBank/stocks";
+export const BLOOD_COMPONENT_DISCARD_API = "/bloodBank/discard";
+
+export const EXPIRED_REASON_CODE = "EXPIRED";
+export const OTHER_REASON_CODE = "OTHER";
+
+
+
+
 

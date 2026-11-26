@@ -539,12 +539,12 @@ const ReceivingReport = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header">
-                            <h4 className="card-title p-2 mb-0">ITEM RECEIVING REPORT AGAINST INDENT</h4>
+                            <h4 className="card-title p-2 mb-0">Item Receiving Report Against Indent</h4>
                         </div>
                         <div className="card-body">
                             <div className="row mb-4">
                                 {/* Report Type Selection */}
-                                <div className="col-md-12 mb-3">
+                                <div className="d-flex align-items-center gap-3 mb-3">
                                     <div className="form-check form-check-inline">
                                         <input
                                             className="form-check-input"
@@ -555,9 +555,7 @@ const ReceivingReport = () => {
                                             checked={reportType === "itemwise"}
                                             onChange={(e) => setReportType(e.target.value)}
                                         />
-                                        <label className="form-check-label fw-bold" htmlFor="itemwise">
-                                            ITEM-WISE RECEIVING REPORT
-                                        </label>
+                                        <label className="form-check-label fw-semibold" htmlFor="itemwise">Item-Wise Receiving Report </label>
                                     </div>
                                     <div className="form-check form-check-inline">
                                         <input
@@ -569,9 +567,7 @@ const ReceivingReport = () => {
                                             checked={reportType === "datewise"}
                                             onChange={(e) => setReportType(e.target.value)}
                                         />
-                                        <label className="form-check-label fw-bold" htmlFor="datewise">
-                                            DATE-WISE RECEIVING REPORT
-                                        </label>
+                                        <label className="form-check-label fw-semibold" htmlFor="datewise">Date-Wise Receiving Report</label>
                                     </div>
                                 </div>
 
@@ -737,11 +733,19 @@ const ReceivingReport = () => {
 
                             {/* Action Buttons */}
                             <div className="row">
-                                <div className="col-12 d-flex justify-content-between gap-2">
+                                <div className="d-flex justify-content-between gap-2">
+                                <div className="">
+                                    <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={handleReset}
+                                            disabled={isGenerating || isPrinting}
+                                        >Reset</button>
+                                </div>
                                     <div className="d-flex gap-2">
                                         <button
                                             type="button"
-                                            className="btn btn-success"
+                                            className="btn btn-info"
                                             onClick={handleViewReport}
                                             disabled={!areMandatoryFieldsFilled() || isGenerating || isPrinting}
                                         >
@@ -753,7 +757,7 @@ const ReceivingReport = () => {
                                             ) : (
                                                 <>
                                                     <i className="fa fa-eye me-2"></i>
-                                                    VIEW / DOWNLOAD
+                                                    View / Download
                                                 </>
                                             )}
                                         </button>
@@ -772,19 +776,12 @@ const ReceivingReport = () => {
                                             ) : (
                                                 <>
                                                     <i className="fa fa-print me-2"></i>
-                                                    PRINT
+                                                    Print
                                                 </>
                                             )}
                                         </button>
 
-                                        <button
-                                            type="button"
-                                            className="btn btn-secondary"
-                                            onClick={handleReset}
-                                            disabled={isGenerating || isPrinting}
-                                        >
-                                            Reset
-                                        </button>
+                                        
                                     </div>
                                 </div>
                             </div>

@@ -4,9 +4,9 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination from "../../../Components/Pagination";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { 
-  ACTIVE_ADMISSION_LIST_OT, 
-  MAS_WARD_GET_ALL_ACTIVE, 
+import {
+  ACTIVE_ADMISSION_LIST_OT,
+  MAS_WARD_GET_ALL_ACTIVE,
   MAS_SURGERY_TYPE_GET_ALL,
   MAS_SURGERY_BY_SURGERY_TYPE,
   SAVE_OT_REQUEST,
@@ -224,7 +224,7 @@ const OTRequestFromIPD = () => {
   // ----- Row click -> Detail view -----
   const handleRowClick = async (admission) => {
     setSelectedAdmission(admission);
-    
+
     setLoading(true);
     let finalDiagnosis = admission.diagnosis || "";
 
@@ -237,7 +237,7 @@ const OTRequestFromIPD = () => {
         }
         res.response.forEach(item => {
           if (item.diagnosis && !diagnosesList.includes(item.diagnosis)) {
-             diagnosesList.push(item.diagnosis);
+            diagnosesList.push(item.diagnosis);
           }
         });
         finalDiagnosis = diagnosesList.join(", ");
@@ -245,7 +245,7 @@ const OTRequestFromIPD = () => {
     } catch (err) {
       console.error("Error fetching IP diagnosis entry", err);
     }
-    
+
     setLoading(false);
 
     // Pre-fill detail form with any existing data (dummy for now)
@@ -288,8 +288,8 @@ const OTRequestFromIPD = () => {
       if (field === "surgery") {
         const selectedSurgery = surgeriesList.find(s => s.surgeryId.toString() === value.toString());
         if (selectedSurgery) {
-          updated.majorMinor = selectedSurgery.surgeryLevel 
-            ? selectedSurgery.surgeryLevel.charAt(0).toUpperCase() + selectedSurgery.surgeryLevel.slice(1).toLowerCase() 
+          updated.majorMinor = selectedSurgery.surgeryLevel
+            ? selectedSurgery.surgeryLevel.charAt(0).toUpperCase() + selectedSurgery.surgeryLevel.slice(1).toLowerCase()
             : "";
         } else {
           updated.majorMinor = "";
@@ -388,17 +388,25 @@ const OTRequestFromIPD = () => {
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
+
+              
+
+
+
+
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">OT Request – {selectedAdmission.patientName}</h4>
-                <button className="btn btn-secondary" onClick={handleBackToList}>
-                  <i className="mdi mdi-arrow-left"></i> Back
-                </button>
+
+              <div class="d-flex align-items-center gap-1">
+                <button class="btn-back" title="Back" onClick={handleBackToList}><i class="icofont-arrow-left"></i></button>
+                <h4 class="card-title p-2 mb-0">OT Request – {selectedAdmission.patientName}</h4>
               </div>
-              <div className="card-body">
+
+              </div>
+              <div className="card-body innerCard">
                 {/* ===== PATIENT DETAILS ===== */}
                 <div className="card mb-4">
                   <div className="card-header">
-                    <h5 className="mb-0">PATIENT DETAILS</h5>
+                    <h5 className="mb-0">Patient Details</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
@@ -474,11 +482,11 @@ const OTRequestFromIPD = () => {
                 {/* ===== SURGERY DETAILS ===== */}
                 <div className="card mb-4">
                   <div className="card-header">
-                    <h5 className="mb-0">SURGERY DETAILS</h5>
+                    <h5 className="mb-0">Surgery Details</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Surgery Type *</label>
                         <select
                           className="form-select"
@@ -491,7 +499,7 @@ const OTRequestFromIPD = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Surgery *</label>
                         <select
                           className="form-select"
@@ -504,7 +512,7 @@ const OTRequestFromIPD = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Major / Minor</label>
                         <input
                           type="text"
@@ -513,7 +521,7 @@ const OTRequestFromIPD = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Diagnosis *</label>
                         <input
                           type="text"
@@ -523,7 +531,7 @@ const OTRequestFromIPD = () => {
                           onChange={(e) => handleDetailChange("diagnosis", e.target.value)}
                         />
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Department *</label>
                         <select
                           className="form-select"
@@ -536,7 +544,7 @@ const OTRequestFromIPD = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Primary Surgeon *</label>
                         <select
                           className="form-select"
@@ -550,7 +558,7 @@ const OTRequestFromIPD = () => {
                           ))}
                         </select>
                       </div>
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-3 mb-3">
                         <label className="form-label fw-bold">Priority *</label>
                         <select
                           className="form-select"
@@ -569,7 +577,7 @@ const OTRequestFromIPD = () => {
                 {/* ===== PREFERRED OT SCHEDULE & REMARKS ===== */}
                 <div className="card mb-4">
                   <div className="card-header">
-                    <h5 className="mb-0">PREFERRED OT SCHEDULE & REMARKS</h5>
+                    <h5 className="mb-0">Preferred OT Schedule & Remarks</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">

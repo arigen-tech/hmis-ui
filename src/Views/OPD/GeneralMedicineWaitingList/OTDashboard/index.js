@@ -1,14 +1,55 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { getRequest } from "../../../../service/apiService";
+import {
+  GET_OT_DASHBOARD,
+  GET_OT_DEPARTMENTS,
+  MAS_OPERATION_THEATRE_GET_ALL,
+  OT_BOOKING_HISTORY,
+} from "../../../../config/apiConfig";
+
+const months = [
+  { label: "January", value: "1" },
+  { label: "February", value: "2" },
+  { label: "March", value: "3" },
+  { label: "April", value: "4" },
+  { label: "May", value: "5" },
+  { label: "June", value: "6" },
+  { label: "July", value: "7" },
+  { label: "August", value: "8" },
+  { label: "September", value: "9" },
+  { label: "October", value: "10" },
+  { label: "November", value: "11" },
+  { label: "December", value: "12" },
+];
+
+const now = new Date();
+const currentMonth = String(now.getMonth() + 1);
+const currentYear = String(now.getFullYear());
+
+// Generate dynamic year options around current year (e.g. currentYear - 3 to currentYear + 3)
+const years = Array.from({ length: 7 }, (_, i) =>
+  String(now.getFullYear() - 3 + i)
+);
 
 const OTDashboard = () => {
-  // ----- State -----
+  // ----- Filters State (auto-selected to current month and year) -----
   const [filters, setFilters] = useState({
-    month: "August",
-    year: "2026",
-    otType: "All OT",
-    department: "All Departments",
+    month: currentMonth,
+    year: currentYear,
+    otId: "",
+    departmentId: "",
   });
 
+  // Dropdown options
+  const [otOptions, setOtOptions] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
+
+  // Dashboard Data State
+  const [dashboardData, setDashboardData] = useState([]);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  // Summary State
   const [summary, setSummary] = useState({
     totalCases: 0,
     scheduled: 0,
@@ -16,98 +57,193 @@ const OTDashboard = () => {
     cancelled: 0,
   });
 
+  // Calendar Weeks Data
   const [weeksData, setWeeksData] = useState([]);
+
+  // Modal State
   const [selectedDay, setSelectedDay] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalBookings, setModalBookings] = useState([]);
+  const [loadingModalBookings, setLoadingModalBookings] = useState(false);
 
-  const getRandomTimeSlot = () => {
-    const slots = [
-      "08:00-10:00",
-      "10:30-12:00",
-      "12:30-14:00",
-      "14:00-16:00",
-      "16:30-18:00",
-    ];
-    return slots[Math.floor(Math.random() * slots.length)];
+  // Helper for hospitalId
+  const getHospitalId = () => {
+    return (
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId") ||
+      sessionStorage.getItem("hospital_id") ||
+      localStorage.getItem("hospital_id") ||
+      12
+    );
   };
 
-  const generateDummyData = (month, year, otFilter, deptFilter) => {
-    const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  // ----- Fetch OT & Department Dropdowns on Mount -----
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        setLoadingDropdowns(true);
 
-    const patientNames = [
-      "Rajesh Kumar",
-      "Amit Kumar",
-      "Sunita Devi",
-      "Ravi Shankar",
-      "Priya Singh",
-      "Vikram Patel",
-      "Neha Gupta",
-      "Suresh Reddy",
-      "Anita Sharma",
-      "Mohan Das",
-    ];
-    const surgeries = [
-      "Knee Replacement",
-      "Hernia Repair",
-      "XXXXX",
-      "Heart Bypass",
-      "Spinal Fusion",
-      "Cataract Surgery",
-      "Appendectomy",
-      "Gallbladder Removal",
-      "Hip Replacement",
-      "Tonsillectomy",
-    ];
-    const surgeons = [
-      "Dr. Sharma",
-      "Dr. Gupta",
-      "Dr. Verma",
-      "Dr. Patel",
-      "Dr. Reddy",
-      "Dr. Singh",
-      "Dr. Kumar",
-      "Dr. Das",
-    ];
-    const statuses = ["Scheduled", "Completed", "Cancelled"];
+        // Fetch OT List
+        try {
+          const otRes = await getRequest(`${MAS_OPERATION_THEATRE_GET_ALL}/1`);
+          if (otRes?.response && Array.isArray(otRes.response)) {
+            const activeOts = otRes.response.filter(
+              (o) => !o.status || o.status.toLowerCase() === "y"
+            );
+            setOtOptions(activeOts);
+          } else {
+            setOtOptions([]);
+          }
+        } catch (otErr) {
+          console.error("Error fetching OT list:", otErr);
+          setOtOptions([]);
+        }
 
-    const daysData = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateObj = new Date(year, monthIndex, d);
-      const dayOfWeek = dateObj.getDay(); 
-      const numSurgeries = Math.floor(Math.random() * 4) + 1;
-      const surgeriesForDay = [];
-      for (let i = 0; i < numSurgeries; i++) {
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
-        surgeriesForDay.push({
-          time: getRandomTimeSlot(),
-          ot: `OT-${String(Math.floor(Math.random() * 5) + 1).padStart(2, "0")}`,
-          uhid: `IPD/26/${String(Math.floor(Math.random() * 10000) + 1000).padStart(5, "0")}`,
-          patient: patientNames[Math.floor(Math.random() * patientNames.length)],
-          surgery: surgeries[Math.floor(Math.random() * surgeries.length)],
-          surgeon: surgeons[Math.floor(Math.random() * surgeons.length)],
-          status: status,
-        });
+        // Fetch Departments List
+        try {
+          const hospitalId = getHospitalId();
+          const deptRes = await getRequest(
+            `${GET_OT_DEPARTMENTS}?hospitalId=${encodeURIComponent(hospitalId)}`
+          );
+          if (deptRes?.response && Array.isArray(deptRes.response)) {
+            setDepartmentOptions(deptRes.response);
+          } else {
+            setDepartmentOptions([]);
+          }
+        } catch (deptErr) {
+          console.error("Error fetching OT departments:", deptErr);
+          setDepartmentOptions([]);
+        }
+      } finally {
+        setLoadingDropdowns(false);
+      }
+    };
+
+    fetchDropdowns();
+  }, []);
+
+  // ----- Fetch Dashboard Data -----
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoadingDashboard(true);
+      let url = `${GET_OT_DASHBOARD}?month=${encodeURIComponent(
+        filters.month
+      )}&year=${encodeURIComponent(filters.year)}`;
+
+      if (filters.otId) {
+        url += `&otId=${encodeURIComponent(filters.otId)}`;
+      }
+      if (filters.departmentId) {
+        url += `&departmentId=${encodeURIComponent(filters.departmentId)}`;
       }
 
-      const scheduled = surgeriesForDay.filter(s => s.status === "Scheduled").length;
-      const completed = surgeriesForDay.filter(s => s.status === "Completed").length;
-      const cancelled = surgeriesForDay.filter(s => s.status === "Cancelled").length;
-      const otList = [...new Set(surgeriesForDay.map(s => s.ot))];
+      const res = await getRequest(url);
+      const data = Array.isArray(res?.response) ? res.response : [];
+      setDashboardData(data);
+    } catch (error) {
+      console.error("Error fetching OT dashboard data:", error);
+      setDashboardData([]);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  }, [filters]);
 
-      daysData.push({
-        date: `${d}-${month.substring(0, 3)}-${year}`,
-        scheduled,
-        completed,
-        cancelled,
-        otList,
-        surgeries: surgeriesForDay,
-        dayOfWeek, 
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // ----- Build Calendar and Summary from Dashboard Data -----
+  useEffect(() => {
+    const monthNum = parseInt(filters.month, 10) || 8;
+    const yearNum = parseInt(filters.year, 10) || 2026;
+    const monthIndex = monthNum - 1;
+    const daysInMonth = new Date(yearNum, monthIndex + 1, 0).getDate();
+
+    // Map API data by scheduledDate (e.g. "2026-08-24")
+    const dataMap = {};
+    let totalCases = 0;
+    let scheduled = 0;
+    let completed = 0;
+    let cancelled = 0;
+
+    if (Array.isArray(dashboardData)) {
+      dashboardData.forEach((item) => {
+        if (item.scheduledDate) {
+          dataMap[item.scheduledDate] = item;
+        }
+        if (Array.isArray(item.statuses)) {
+          item.statuses.forEach((st) => {
+            const cnt = Number(st.count || 0);
+            totalCases += cnt;
+            const sName = (st.statusName || "").toLowerCase();
+            if (sName.includes("schedule")) {
+              scheduled += cnt;
+            } else if (sName.includes("complete")) {
+              completed += cnt;
+            } else if (sName.includes("cancel") || sName.includes("reject")) {
+              cancelled += cnt;
+            }
+          });
+        }
       });
     }
 
-    let firstDay = new Date(year, monthIndex, 1).getDay(); // 0=Sun
-    let firstMondayOffset = (firstDay === 0) ? 6 : firstDay - 1; // days to subtract to get Monday
+    setSummary({ totalCases, scheduled, completed, cancelled });
+
+    // Build days array
+    const monthObj = months.find((m) => m.value === String(monthNum));
+    const monthLabel = monthObj ? monthObj.label : "August";
+    const daysData = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(yearNum, monthIndex, d);
+      const dayOfWeek = dateObj.getDay();
+      const dateStr = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(
+        d
+      ).padStart(2, "0")}`;
+      const displayDate = `${d}-${monthLabel.substring(0, 3)}-${yearNum}`;
+
+      const apiDay = dataMap[dateStr];
+
+      let dayScheduled = 0;
+      let dayCompleted = 0;
+      let dayCancelled = 0;
+      let dayStatuses = [];
+      let dayOtNames = "";
+
+      if (apiDay) {
+        dayStatuses = apiDay.statuses || [];
+        dayOtNames = apiDay.otNames || "";
+        dayStatuses.forEach((st) => {
+          const cnt = Number(st.count || 0);
+          const sName = (st.statusName || "").toLowerCase();
+          if (sName.includes("schedule")) {
+            dayScheduled += cnt;
+          } else if (sName.includes("complete")) {
+            dayCompleted += cnt;
+          } else if (sName.includes("cancel") || sName.includes("reject")) {
+            dayCancelled += cnt;
+          }
+        });
+      }
+
+      daysData.push({
+        date: displayDate,
+        dateStr: dateStr,
+        scheduled: dayScheduled,
+        completed: dayCompleted,
+        cancelled: dayCancelled,
+        statuses: dayStatuses,
+        otNames: dayOtNames,
+        otList: dayOtNames ? [dayOtNames] : [],
+        dayOfWeek,
+        hasData: !!apiDay,
+      });
+    }
+
+    // Build weeks array (Monday to Sunday)
+    const firstDay = new Date(yearNum, monthIndex, 1).getDay(); // 0=Sun, 1=Mon
+    const firstMondayOffset = firstDay === 0 ? 6 : firstDay - 1;
 
     const weeks = [];
     let currentWeek = [];
@@ -128,34 +264,8 @@ const OTDashboard = () => {
       weeks.push(currentWeek);
     }
 
-    let totalCases = 0,
-      scheduled = 0,
-      completed = 0,
-      cancelled = 0;
-    daysData.forEach((day) => {
-      totalCases += day.scheduled;
-      scheduled += day.scheduled;
-      completed += day.completed;
-      cancelled += day.cancelled;
-    });
-
-    return {
-      weeks,
-      summary: { totalCases, scheduled, completed, cancelled },
-    };
-  };
-
-  // ----- Load data on filter change -----
-  useEffect(() => {
-    const { weeks, summary } = generateDummyData(
-      filters.month,
-      filters.year,
-      filters.otType,
-      filters.department
-    );
     setWeeksData(weeks);
-    setSummary(summary);
-  }, [filters]);
+  }, [dashboardData, filters.month, filters.year]);
 
   // ----- Handlers -----
   const handleFilterChange = (field, value) => {
@@ -163,63 +273,71 @@ const OTDashboard = () => {
   };
 
   const handleSearch = () => {
-    console.log("Search clicked with filters:", filters);
+    fetchDashboardData();
   };
 
   const handleReset = () => {
+    const today = new Date();
     setFilters({
-      month: "August",
-      year: "2026",
-      otType: "All OT",
-      department: "All Departments",
+      month: String(today.getMonth() + 1),
+      year: String(today.getFullYear()),
+      otId: "",
+      departmentId: "",
     });
   };
 
-  const handleDayClick = (dayData) => {
-    if (dayData) {
-      setSelectedDay(dayData);
-      setShowModal(true);
+  const handleDayClick = async (dayData) => {
+    if (!dayData) return;
+    setSelectedDay(dayData);
+    setShowModal(true);
+
+    // Fetch matching bookings for that scheduled date from API
+    try {
+      setLoadingModalBookings(true);
+      let url = `${OT_BOOKING_HISTORY}?scheduledDate=${encodeURIComponent(
+        dayData.dateStr
+      )}&page=0&size=50`;
+
+      if (filters.otId) {
+        url += `&otId=${encodeURIComponent(filters.otId)}`;
+      }
+      if (filters.departmentId) {
+        url += `&departmentId=${encodeURIComponent(filters.departmentId)}`;
+      }
+
+      const res = await getRequest(url);
+      const list =
+        res?.response?.content ||
+        (Array.isArray(res?.response) ? res.response : []);
+      setModalBookings(list);
+    } catch (err) {
+      console.error("Error fetching day booking history:", err);
+      setModalBookings([]);
+    } finally {
+      setLoadingModalBookings(false);
     }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedDay(null);
+    setModalBookings([]);
   };
 
-  // ----- Options -----
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const years = ["2023", "2024", "2025", "2026", "2027"];
-  const otOptions = ["All OT", "OT-01", "OT-02", "OT-03", "OT-04", "OT-05"];
-  const departmentOptions = [
-    "All Departments",
-    "General Surgery",
-    "Cardiology",
-    "Orthopedics",
-    "Neurology",
-  ];
-
-  // ----- Render -----
   return (
-    <div className="content-wrapper">
+    <>
+      <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">OT BOOKING DASHBOARD</h4>
+              {loadingDashboard && (
+                <span className="text-muted small">
+                  <span className="spinner-border spinner-border-sm me-1" />
+                  Updating dashboard...
+                </span>
+              )}
             </div>
             <div className="card-body">
               {/* Filter Section */}
@@ -236,12 +354,13 @@ const OTDashboard = () => {
                         }
                       >
                         {months.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
+                          <option key={m.value} value={m.value}>
+                            {m.label}
                           </option>
                         ))}
                       </select>
                     </div>
+
                     <div className="col-md-2">
                       <label className="form-label fw-bold">Year *</label>
                       <select
@@ -258,50 +377,59 @@ const OTDashboard = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="col-md-2">
+
+                    <div className="col-md-3">
                       <label className="form-label fw-bold">OT</label>
                       <select
                         className="form-select"
-                        value={filters.otType}
+                        value={filters.otId}
                         onChange={(e) =>
-                          handleFilterChange("otType", e.target.value)
+                          handleFilterChange("otId", e.target.value)
                         }
+                        disabled={loadingDropdowns}
                       >
+                        <option value="">All OT</option>
                         {otOptions.map((ot) => (
-                          <option key={ot} value={ot}>
-                            {ot}
+                          <option key={ot.otId} value={ot.otId}>
+                            {ot.otName}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div className="col-md-2">
+
+                    <div className="col-md-3">
                       <label className="form-label fw-bold">Department</label>
                       <select
                         className="form-select"
-                        value={filters.department}
+                        value={filters.departmentId}
                         onChange={(e) =>
-                          handleFilterChange("department", e.target.value)
+                          handleFilterChange("departmentId", e.target.value)
                         }
+                        disabled={loadingDropdowns}
                       >
+                        <option value="">All Departments</option>
                         {departmentOptions.map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
+                          <option key={dept.id} value={dept.id}>
+                            {dept.name}
                           </option>
                         ))}
                       </select>
                     </div>
+
                     <div className="col-md-2 d-flex gap-2">
                       <button
                         type="button"
                         className="btn btn-primary"
                         onClick={handleSearch}
+                        disabled={loadingDashboard}
                       >
-                        SEARCH
+                        {loadingDashboard ? "SEARCHING..." : "SEARCH"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
                         onClick={handleReset}
+                        disabled={loadingDashboard}
                       >
                         RESET
                       </button>
@@ -310,33 +438,73 @@ const OTDashboard = () => {
                 </div>
               </div>
 
-              {/* Booking Summary (colored) */}
-              <div className="row mb-3">
-                <div className="col-12">
-                  <div className="d-flex flex-wrap gap-3">
-                    <div className="card bg-primary text-white p-3 flex-fill" style={{ minWidth: "120px" }}>
-                      <div className="small">Total Cases</div>
-                      <div className="h4 mb-0">{summary.totalCases}</div>
-                    </div>
-                    <div className="card bg-info text-white p-3 flex-fill" style={{ minWidth: "120px" }}>
-                      <div className="small">Scheduled</div>
-                      <div className="h4 mb-0">{summary.scheduled}</div>
-                    </div>
-                    <div className="card bg-success text-white p-3 flex-fill" style={{ minWidth: "120px" }}>
-                      <div className="small">Completed</div>
-                      <div className="h4 mb-0">{summary.completed}</div>
-                    </div>
-                    <div className="card bg-danger text-white p-3 flex-fill" style={{ minWidth: "120px" }}>
-                      <div className="small">Cancelled</div>
-                      <div className="h4 mb-0">{summary.cancelled}</div>
-                    </div>
+
+              {/* Booking Summary (colored cards) */}
+              <div class="statsGrid mb-3">
+                {/* Total Cases */}
+                <div class="statCard total">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    </svg>
                   </div>
+                  <p>Total Cases</p>
+                  <h2>{summary.totalCases}</h2>
+                  <span>Total registered cases</span>
+                </div>
+
+                {/* Scheduled */}
+                <div class="statCard scheduled">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M16 3v4M8 3v4M3 10h18M8 14l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p>Scheduled</p>
+                  <h2>{summary.scheduled}</h2>
+                  <span>Cases awaiting completion</span>
+                </div>
+
+                {/* Completed */}
+                <div class="statCard completed">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8 12 3 3 5-6" />
+                    </svg>
+                  </div>
+                  <p>Completed</p>
+                  <h2>{summary.completed}</h2>
+                  <span>Successfully completed cases</span>
+                </div>
+
+                {/* Cancelled / Rejected  */}
+                <div class="statCard cancelled">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m9 9 6 6m0-6-6 6" />
+                    </svg>
+                  </div>
+                  <p>Cancelled / Rejected</p>
+                  <h2>{summary.cancelled}</h2>
+                  <span>Cancelled or rejected cases</span>
                 </div>
               </div>
 
+              {/* Calendar Grid */}
               <div className="calendar-container">
                 <div className="row g-2 mb-2">
-                  {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((day) => (
+                  {[
+                    "MONDAY",
+                    "TUESDAY",
+                    "WEDNESDAY",
+                    "THURSDAY",
+                    "FRIDAY",
+                    "SATURDAY",
+                    "SUNDAY",
+                  ].map((day) => (
                     <div key={day} className="col text-center fw-bold">
                       {day}
                     </div>
@@ -344,35 +512,80 @@ const OTDashboard = () => {
                 </div>
 
                 {weeksData.map((week, weekIndex) => (
-                  <div key={weekIndex} className="row g-2 mb-3">
+                  <div key={weekIndex} className="row g-2 mb-2">
                     {week.map((day, dayIndex) => (
                       <div key={dayIndex} className="col">
                         <div
                           className="card p-2 h-100 border"
                           style={{
-                            minHeight: "140px",
-                            backgroundColor: "#fff9e6",
+                            minHeight: "100px",
+                            backgroundColor: day?.hasData
+                              ? "#fff9e6"
+                              : "#ffffff",
                             cursor: day ? "pointer" : "default",
+                            transition: "background-color 0.2s, box-shadow 0.2s",
                           }}
                           onClick={() => handleDayClick(day)}
                         >
                           {day ? (
                             <>
                               <div className="fw-bold small">{day.date}</div>
-                              <div className="small">Scheduled: {day.scheduled}</div>
-                              <div className="small text-success">Completed: {day.completed}</div>
-                              <div className="small text-danger">Cancelled: {day.cancelled}</div>
-                              {day.otList.length > 0 && (
-                                <div className="small text-muted mt-1">
-                                  {day.otList.join(", ")}
+
+                              {day.statuses && day.statuses.length > 0 ? (
+                                <div className="mt-1">
+                                  {day.statuses.map((st, i) => {
+                                    const sNameLower = (
+                                      st.statusName || ""
+                                    ).toLowerCase();
+                                    const isDone =
+                                      sNameLower.includes("complete");
+                                    const isReject =
+                                      sNameLower.includes("cancel") ||
+                                      sNameLower.includes("reject");
+                                    return (
+                                      <div
+                                        key={i}
+                                        className={`small fw-semibold ${isDone
+                                          ? "text-success"
+                                          : isReject
+                                            ? "text-danger"
+                                            : "text-dark"
+                                          }`}
+                                      >
+                                        {st.statusName}: {st.count}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="small text-muted mt-2">
+                                  No Bookings
                                 </div>
                               )}
-                              <div className="small text-primary mt-1">
-                                Click for details
-                              </div>
+
+                              {day.otNames && (
+                                <div
+                                  className="small text-muted mt-1 fw-bold text-truncate"
+                                  title={day.otNames}
+                                  style={{ fontSize: "0.72rem" }}
+                                >
+                                  {day.otNames}
+                                </div>
+                              )}
+
+                              {day.hasData && (
+                                <div
+                                  className="small text-primary mt-auto pt-1"
+                                  style={{ fontSize: "0.72rem" }}
+                                >
+                                  Click for details
+                                </div>
+                              )}
                             </>
                           ) : (
-                            <div className="text-muted small text-center">—</div>
+                            <div className="text-muted small text-center my-auto">
+                              —
+                            </div>
                           )}
                         </div>
                       </div>
@@ -384,15 +597,22 @@ const OTDashboard = () => {
               {/* Legend */}
               <div className="row mt-3">
                 <div className="col-12">
-                  <div className="d-flex gap-3 flex-wrap">
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-danger me-1">●</span> Cancelled
+                  <div className="badgeStyle">
+                    <span className="badge bg-light text-dark border cancelled">
+                      <span className="circle"></span>
+                      <span>Cancelled / Rejected</span>
                     </span>
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-warning me-1">●</span> Scheduled
+                    <span className="badge bg-light text-dark border scheduled">
+                      <span className="circle"></span>
+                      <span>Scheduled</span>
                     </span>
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-info me-1">●</span> Working Not Booked
+                    <span className="badge bg-light text-dark border completed">
+                      <span className="circle"></span>
+                      <span>Completed</span>
+                    </span>
+                    <span className="badge bg-light text-dark border available">
+                      <span className="circle"></span>
+                      <span>Bookings Available</span>
                     </span>
                   </div>
                 </div>
@@ -402,7 +622,7 @@ const OTDashboard = () => {
         </div>
       </div>
 
-      {/* ===== MODAL – styled exactly like DentalSection popups ===== */}
+      {/* ===== MODAL ===== */}
       {showModal && selectedDay && (
         <>
           {/* Backdrop overlay */}
@@ -418,7 +638,7 @@ const OTDashboard = () => {
             }}
             onClick={closeModal}
           />
-          {/* Modal container – fixed width, offset left, 90vh height */}
+          {/* Modal container */}
           <div
             className="modal show d-block"
             tabIndex={-1}
@@ -435,10 +655,15 @@ const OTDashboard = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div
+              className="modal-dialog modal-dialog-centered modal-xl"
+              role="document"
+            >
               <div className="modal-content">
-                <div className="modal-header bg-primary text-white">
-                  <h5 className="modal-title">OT Schedule – {selectedDay.date}</h5>
+                <div className="modal-header bg-primary text-white d-flex justify-content-between align-items-center">
+                  <h5 className="modal-title mb-0">
+                    OT Schedule – {selectedDay.date}
+                  </h5>
                   <button
                     type="button"
                     className="btn-close btn-close-white"
@@ -447,9 +672,65 @@ const OTDashboard = () => {
                   />
                 </div>
                 <div className="modal-body">
-                  {selectedDay.surgeries && selectedDay.surgeries.length > 0 ? (
+                  {/* Status Badges */}
+                  <div className="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <span className="fw-bold me-2">Overview:</span>
+                    {selectedDay.statuses && selectedDay.statuses.length > 0 ? (
+                      selectedDay.statuses.map((st, idx) => {
+                        const sNameLower = (st.statusName || "").toLowerCase();
+                        const badgeColor = sNameLower.includes("complete")
+                          ? "bg-success"
+                          : sNameLower.includes("cancel") ||
+                            sNameLower.includes("reject")
+                            ? "bg-danger"
+                            : "bg-warning text-dark";
+                        return (
+                          <span key={idx} className={`badge ${badgeColor}`}>
+                            {st.statusName}: {st.count}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="badge bg-secondary">
+                        No bookings recorded
+                      </span>
+                    )}
+
+                    {filters.otId && (
+                      <span className="badge bg-secondary">
+                        OT Filter:{" "}
+                        {otOptions.find(
+                          (o) => String(o.otId) === String(filters.otId)
+                        )?.otName || filters.otId}
+                      </span>
+                    )}
+                    {filters.departmentId && (
+                      <span className="badge bg-secondary">
+                        Dept Filter:{" "}
+                        {departmentOptions.find(
+                          (d) =>
+                            String(d.id || d.departmentId) ===
+                            String(filters.departmentId)
+                        )?.departmentName || filters.departmentId}
+                      </span>
+                    )}
+
+                    {selectedDay.otNames && (
+                      <span className="badge bg-info text-dark ms-auto">
+                        OT: {selectedDay.otNames}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Detailed Bookings Table */}
+                  {loadingModalBookings ? (
+                    <div className="text-center py-4">
+                      <span className="spinner-border spinner-border-sm me-2" />
+                      Loading bookings...
+                    </div>
+                  ) : modalBookings && modalBookings.length > 0 ? (
                     <div className="table-responsive">
-                      <table className="table table-bordered table-hover">
+                      <table className="table table-bordered table-hover align-middle mb-0">
                         <thead className="table-light">
                           <tr>
                             <th>Time</th>
@@ -458,38 +739,111 @@ const OTDashboard = () => {
                             <th>Patient</th>
                             <th>Surgery</th>
                             <th>Surgeon</th>
+                            <th>Priority</th>
                             <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedDay.surgeries.map((s, idx) => (
-                            <tr key={idx}>
-                              <td>{s.time}</td>
-                              <td>{s.ot}</td>
-                              <td>{s.uhid}</td>
-                              <td>{s.patient}</td>
-                              <td>{s.surgery}</td>
-                              <td>{s.surgeon}</td>
-                              <td>
-                                <span
-                                  className={`badge ${
-                                    s.status === "Scheduled"
-                                      ? "bg-warning"
-                                      : s.status === "Completed"
-                                      ? "bg-success"
-                                      : "bg-danger"
-                                  }`}
-                                >
-                                  {s.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                          {modalBookings.map((b, idx) => {
+                            const surgName =
+                              b.surgeries
+                                ?.map((s) => s.surgeryName)
+                                .filter(Boolean)
+                                .join(", ") ||
+                              b.surgeryName ||
+                              b.surgery ||
+                              "-";
+                            const timeStr =
+                              b.preferredStartTime && b.preferredEndTime
+                                ? `${b.preferredStartTime} - ${b.preferredEndTime}`
+                                : b.preferredStartTime || b.time || "-";
+                            const sName =
+                              b.statusName || b.status || "Scheduled";
+                            const sLower = sName.toLowerCase();
+                            const badgeClass = sLower.includes("complete")
+                              ? "bg-success"
+                              : sLower.includes("reject") ||
+                                sLower.includes("cancel")
+                                ? "bg-danger"
+                                : "bg-warning text-dark";
+
+                            return (
+                              <tr key={b.otBookingId || idx}>
+                                <td>{timeStr}</td>
+                                <td>{b.otName || "-"}</td>
+                                <td>{b.uhidNo || b.uhid || "-"}</td>
+                                <td className="fw-semibold">
+                                  {b.patientName || "-"}
+                                </td>
+                                <td>{surgName}</td>
+                                <td>
+                                  {b.surgeonName || b.primarySurgeon || "-"}
+                                </td>
+                                <td>
+                                  <span className="badge bg-secondary">
+                                    {b.priority || "ELECTIVE"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className={`badge ${badgeClass}`}>
+                                    {sName}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <p className="text-muted">No surgeries scheduled for this day.</p>
+                    <div>
+                      {selectedDay.statuses &&
+                        selectedDay.statuses.length > 0 ? (
+                        <div className="table-responsive">
+                          <table className="table table-bordered table-hover align-middle mb-0">
+                            <thead className="table-light">
+                              <tr>
+                                <th style={{ width: "60px" }}>#</th>
+                                <th>Operation Theatre</th>
+                                <th>Booking Status</th>
+                                <th style={{ width: "120px" }}>Count</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedDay.statuses.map((st, idx) => {
+                                const sNameLower = (
+                                  st.statusName || ""
+                                ).toLowerCase();
+                                const badgeClass = sNameLower.includes(
+                                  "complete"
+                                )
+                                  ? "bg-success"
+                                  : sNameLower.includes("reject") ||
+                                    sNameLower.includes("cancel")
+                                    ? "bg-danger"
+                                    : "bg-warning text-dark";
+                                return (
+                                  <tr key={idx}>
+                                    <td>{idx + 1}</td>
+                                    <td>{selectedDay.otNames || "-"}</td>
+                                    <td>
+                                      <span className={`badge ${badgeClass}`}>
+                                        {st.statusName}
+                                      </span>
+                                    </td>
+                                    <td className="fw-bold">{st.count}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-muted mb-0">
+                          No surgeries scheduled for this day.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="modal-footer">
@@ -507,7 +861,105 @@ const OTDashboard = () => {
         </>
       )}
     </div>
+
+    <style>
+        {`
+          .calendar-container .card {
+            transition: all .30s ease !important;
+        }
+
+        .calendar-container .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 10px rgba(30, 50, 90, .09);
+        }
+
+        .badgeStyle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badgeStyle .badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badgeStyle .circle {
+            display: block;
+            width: 10px;
+            height: 10px;
+            border-radius: 30px;
+            background: #fff;
+        }
+
+        .badgeStyle .cancelled {
+            background: #fff0f1 !important;
+            color: #e34b5b !important;
+            border-color: #fdd0d5 !important;
+        }
+
+        .badgeStyle .cancelled .circle {
+            background: #e34b5b;
+        }
+
+        .badgeStyle .scheduled {
+            background: #ffe3b0 !important;
+            color: #a86d0b !important;
+            border-color: #ffe2b5 !important;
+        }
+
+        .badgeStyle .scheduled .circle {
+            background: #a86d0b;
+        }
+
+        .badgeStyle .completed {
+            background: #e4f8ef !important;
+            color: #159b65 !important;
+            border-color: #b3e1cc !important;
+        }
+
+        .badgeStyle .completed .circle {
+            background: #159b65;
+        }
+
+        .badgeStyle .available {
+            background: #E6FBFF !important;
+            color: #0DCAF0 !important;
+            border-color: #A3F0FF !important
+        }
+
+        .badgeStyle .available .circle {
+            background: #0DCAF0;
+        }
+
+        `}
+      </style>
+    </>
   );
 };
 
 export default OTDashboard;
+
+
+
+{/* <span className="badge bg-light text-dark border">
+                      <span className="circle text-danger">●</span>
+                      <span>Cancelled / Rejected</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-warning">●</span>
+                      <span>Scheduled</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-success">●</span>
+                      <span>Completed</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-info">●</span>
+                      <span>Bookings Available</span>
+                    </span> */}

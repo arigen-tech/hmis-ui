@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_PROCEDURE_TYPE } from "../../../config/apiConfig";
+import { MAS_PROCEDURE_TYPE, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ACTIVATE_PROCEDURE_TYPE_ERR_MSG, ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, ADD_PROCEDURE_TYPE_SUCC_MSG, DUPLICATE_PROCEDURE_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PROCEDURE_TYPE_ERR_MSG, UPDATE_PROCEDURE_TYPE_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const ProcedureTypeMaster = () => {
   const [procedureTypeData, setProcedureTypeData] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
@@ -21,6 +22,7 @@ const ProcedureTypeMaster = () => {
     procedureTypeName: "",
     description: "",
     procedureTypeCode: "",
+    departmentId: "",
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,6 +57,20 @@ const ProcedureTypeMaster = () => {
     }
   };
 
+  // Fetch department options for dropdown
+  const fetchDepartmentOptions = async () => {
+    try {
+      const response = await getRequest(
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`
+      );
+      if (response && response.response) {
+        setDepartmentOptions(response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching department options:", err);
+    }
+  };
+
   // Fetch procedure type data
   const fetchProcedureTypeData = async (flag = 0) => {
     try {
@@ -66,6 +82,8 @@ const ProcedureTypeMaster = () => {
           procedureTypeName: item.procedureTypeName,
           description: item.description || "N/A",
           procedureTypeCode: item.procedureTypeCode || "",
+          departmentId: item.departmentId || null,
+          departmentName: item.departmentName || "N/A",
           status: item.status,
           lastUpdated: formatDate(item.lastUpdateDate),
           createdBy: item.createdBy || "",
@@ -84,13 +102,15 @@ const ProcedureTypeMaster = () => {
   // Initial data load
   useEffect(() => {
     fetchProcedureTypeData(0);
+    fetchDepartmentOptions();
   }, []);
 
   // Filter data based on search query
   const filteredProcedureTypeData = procedureTypeData.filter(procedureType =>
     procedureType.procedureTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    procedureType.procedureTypeCode?.toLowerCase().includes(searchQuery.toLowerCase())
+    procedureType.procedureTypeCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    procedureType.departmentName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -106,18 +126,19 @@ const ProcedureTypeMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { procedureTypeName, description, procedureTypeCode } = formData;
+      const { procedureTypeName, description, procedureTypeCode, departmentId } = formData;
       return (
         procedureTypeName.trim() !== "" &&
         description.trim() !== "" &&
-        procedureTypeCode.trim() !== ""
+        procedureTypeCode.trim() !== "" &&
+        Boolean(departmentId)
       );
     };
     setIsFormValid(validateForm());
   }, [formData]);
 
   const resetForm = () => {
-    setFormData({ procedureTypeName: "", description: "", procedureTypeCode: "" });
+    setFormData({ procedureTypeName: "", description: "", procedureTypeCode: "", departmentId: "" });
     setIsFormValid(false);
     setEditingProcedureType(null);
   };
@@ -126,14 +147,30 @@ const ProcedureTypeMaster = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleEdit = (procedureType) => {
+  const handleEdit = async (procedureType) => {
     setEditingProcedureType(procedureType);
     setFormData({
       procedureTypeName: procedureType.procedureTypeName || "",
-      description: procedureType.description || "",
+      description: procedureType.description !== "N/A" ? (procedureType.description || "") : "",
       procedureTypeCode: procedureType.procedureTypeCode || "",
+      departmentId: procedureType.departmentId ? String(procedureType.departmentId) : "",
     });
     setShowForm(true);
+
+    try {
+      const response = await getRequest(`${MAS_PROCEDURE_TYPE}/getById/${procedureType.id}`);
+      const data = response?.response || response;
+      if (data && typeof data === "object") {
+        setFormData({
+          procedureTypeName: data.procedureTypeName ?? procedureType.procedureTypeName ?? "",
+          description: data.description ?? (procedureType.description !== "N/A" ? procedureType.description : "") ?? "",
+          procedureTypeCode: data.procedureTypeCode ?? procedureType.procedureTypeCode ?? "",
+          departmentId: data.departmentId ? String(data.departmentId) : (procedureType.departmentId ? String(procedureType.departmentId) : ""),
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching procedure type by id:", err);
+    }
   };
 
   const handleSave = async (e) => {
@@ -161,9 +198,10 @@ const ProcedureTypeMaster = () => {
 
     try {
       const requestData = {
-        procedureTypeName: formData.procedureTypeName,
-        description: formData.description,
-        procedureTypeCode: formData.procedureTypeCode
+        procedureTypeName: formData.procedureTypeName.trim(),
+        description: formData.description.trim(),
+        procedureTypeCode: formData.procedureTypeCode.trim(),
+        departmentId: formData.departmentId ? Number(formData.departmentId) : 0,
       };
 
       if (editingProcedureType) {
@@ -280,6 +318,7 @@ const ProcedureTypeMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     fetchProcedureTypeData();
+    fetchDepartmentOptions();
   };
 
   // Handle activate for deactive records in edit mode
@@ -375,6 +414,7 @@ const ProcedureTypeMaster = () => {
                         <tr>
                           <th>Procedure Type Name</th>
                           <th>Code</th>
+                          <th>Department Name</th>
                           <th>Description</th>
                           <th>Last Updated</th>
                           <th>Status</th>
@@ -387,6 +427,7 @@ const ProcedureTypeMaster = () => {
                             <tr key={procedureType.id}>
                               <td>{procedureType.procedureTypeName || "N/A"}</td>
                               <td>{procedureType.procedureTypeCode || "N/A"}</td>
+                              <td>{procedureType.departmentName || "N/A"}</td>
                               <td>{procedureType.description}</td>
                               <td>{procedureType.lastUpdated}</td>
                               <td>
@@ -419,7 +460,7 @@ const ProcedureTypeMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No Records Found</td>
+                            <td colSpan="7" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
@@ -437,7 +478,7 @@ const ProcedureTypeMaster = () => {
 
               {showForm && (
                 <form className="row" onSubmit={handleSave}>
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
                     <label>Procedure Type Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -452,7 +493,7 @@ const ProcedureTypeMaster = () => {
                     />
                   </div>
 
-                  <div className="form-group col-md-6">
+                  <div className="form-group col-md-4">
                     <label>Procedure Type Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -470,6 +511,25 @@ const ProcedureTypeMaster = () => {
                       maxLength={PROCEDURE_TYPE_CODE_MAX_LENGTH}
                       required
                     />
+                  </div>
+
+                  <div className="form-group col-md-4">
+                    <label>Department <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="departmentId"
+                      name="departmentId"
+                      value={formData.departmentId}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {departmentOptions.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.departmentName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="form-group col-md-12">

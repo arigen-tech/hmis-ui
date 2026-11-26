@@ -111,7 +111,7 @@ const Login = () => {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
           sessionStorage.setItem("username", username);
-          localStorage.setItem("userId", userId);
+          sessionStorage.setItem("userId", userId);
           sessionStorage.setItem("roleId", roleId);
           sessionStorage.setItem("activeRoleId", roleId);
           sessionStorage.setItem("assignedRoleIds", roleId);
@@ -276,13 +276,13 @@ const Login = () => {
                       <div className="text-center mb-4">
                         <h1 className="login-title">Sign In</h1>
                         <span className="version-badge">
-                          Version 2.50.7
+                          Version 2.50.8
                           <button
                             type="button"
                             className="info-tooltip-btn ms-1"
                             data-bs-toggle="tooltip"
                             data-bs-placement="right"
-                            title="Now Release Version 2.50.4 — Under Testing"
+                            title="Now Release Version 2.50.8 — Under Testing"
                           >
                             <i className="bi bi-info-circle text-muted"></i>
                           </button>
