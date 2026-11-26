@@ -1066,7 +1066,6 @@ const OTSurgeryExecution = () => {
       const res = await postRequest(SURGERY_DRUG_CONSUMABLE_TEMPLATE, payload);
       if (res?.status === 200 || res?.response) {
         showPopup(
-          drugTemplateForm.id
           drugTemplateForm.id || drugTemplateForm.templateId
             ? "Drug template updated successfully!"
             : "Drug template created successfully!",
@@ -1363,7 +1362,6 @@ const OTSurgeryExecution = () => {
       const res = await postRequest(SURGERY_DRUG_CONSUMABLE_TEMPLATE, payload);
       if (res?.status === 200 || res?.response) {
         showPopup(
-          consumableTemplateForm.id
           consumableTemplateForm.id || consumableTemplateForm.templateId
             ? "Consumable template updated successfully!"
             : "Consumable template created successfully!",
@@ -2221,7 +2219,6 @@ const OTSurgeryExecution = () => {
     }
   };
 
-  const handleSaveTab = (tabLabel) => {
     const handleSaveTab = async (tabLabel) => {
       if (isSelectedPatientPacPending) {
         showPopup(
