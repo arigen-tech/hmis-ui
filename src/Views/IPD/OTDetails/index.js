@@ -114,13 +114,13 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     bookingData?.preferredDate
       ? formatDateForDisplay(bookingData.preferredDate)
       : bookingData?.bookedDate
-      ? formatDateForDisplay(bookingData.bookedDate)
-      : (bookingData ? "-" : formatDateForDisplay(DUMMY_BOOKING.surgeryDate))
+        ? formatDateForDisplay(bookingData.bookedDate)
+        : (bookingData ? "-" : formatDateForDisplay(DUMMY_BOOKING.surgeryDate))
   const scheduledTime =
     bookingData?.preferredStartTime && bookingData?.preferredEndTime
       ? `${bookingData.preferredStartTime} - ${bookingData.preferredEndTime}`
       : bookingData?.preferredStartTime ||
-        (bookingData ? "-" : DUMMY_BOOKING.scheduledTime)
+      (bookingData ? "-" : DUMMY_BOOKING.scheduledTime)
   const otStatus =
     bookingData?.statusName ||
     bookingData?.bookingStatus ||
@@ -131,6 +131,12 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     Boolean(bookingData) &&
     (String(otStatus).trim().toLowerCase() === "scheduled" ||
       bookingData?.bookingStatusId === 3)
+
+  // PAC pending check: PAC required is 'Y' and PAC done is not 'Y'
+  const isPacPending =
+    Boolean(bookingData) &&
+    String(bookingData?.pacRequired || "").trim().toUpperCase() === "Y" &&
+    String(bookingData?.pacDone || "").trim().toUpperCase() !== "Y"
 
   // ─── OT PREPARATION FORM ─────────────────────────────────
   const [preparation, setPreparation] = useState({
@@ -194,6 +200,15 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
   const canSendToOT = allReady || (isEmergency && overrideReason.trim().length > 0)
 
   const handleSendToOT = () => {
+    if (isPacPending) {
+      Swal.fire({
+        title: "Warning",
+        text: "Pls PAC form submit first",
+        icon: "warning",
+      })
+      return
+    }
+
     const otBookingId = bookingData?.otBookingId
     if (!otBookingId) {
       Swal.fire({
@@ -241,11 +256,11 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
             setBookingData((prev) =>
               prev
                 ? {
-                    ...prev,
-                    statusName: "Sent to OT",
-                    status: "SENT_TO_OT",
-                    bookingStatusId: 4,
-                  }
+                  ...prev,
+                  statusName: "Sent to OT",
+                  status: "SENT_TO_OT",
+                  bookingStatusId: 4,
+                }
                 : prev
             )
 
@@ -321,44 +336,16 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
     <div>
       {/* ─── SURGERY / BOOKING (read-only) ─── */}
       <div className="mb-4">
-        <div className="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <h6 className="fw-bold mb-0">Surgery / Booking</h6>
-            {bookingData?.bookingNo && (
-              <span
-                className="badge bg-secondary font-weight-normal"
-                style={{ fontSize: "0.75rem" }}
-              >
-                Booking No: {bookingData.bookingNo}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            className="btn btn-warning btn-sm fw-semibold"
-            disabled={!isScheduled || isSendingToOT}
-            onClick={handleSendToOT}
-            title={
-              !isScheduled
-                ? "Available only when OT Status is Scheduled"
-                : "Send patient to OT"
-            }
-          >
-            {isSendingToOT ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-1"
-                  role="status"
-                />
-                Sending to OT...
-              </>
-            ) : (
-              <>
-                <i className="fa fa-paper-plane me-1" />
-                Send to OT
-              </>
-            )}
-          </button>
+        <div className="d-flex align-items-center gap-2 border-bottom pb-1 mb-3">
+          <h6 className="fw-bold mb-0">Surgery / Booking</h6>
+          {bookingData?.bookingNo && (
+            <span
+              className="badge bg-secondary font-weight-normal"
+              style={{ fontSize: "0.75rem" }}
+            >
+              Booking No: {bookingData.bookingNo}
+            </span>
+          )}
         </div>
 
         {loadingBooking ? (
@@ -473,11 +460,10 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
                           <td>{surg.surgeryLevel || "-"}</td>
                           <td className="text-center">
                             <span
-                              className={`badge ${
-                                surg.anesthesiaRequired === "Y"
+                              className={`badge ${surg.anesthesiaRequired === "Y"
                                   ? "bg-warning text-dark"
                                   : "bg-secondary"
-                              }`}
+                                }`}
                             >
                               {surg.anesthesiaRequired === "Y" ? "Yes" : "No"}
                             </span>
@@ -490,6 +476,44 @@ const OTDetails = ({ selectedPatient, selectedWard }) => {
               </div>
             )}
           </>
+        )}
+      </div>
+
+      {/* ─── SEND TO OT BUTTON (Above Pre-Anaesthesia) ─── */}
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <button
+          type="button"
+          className="btn btn-warning btn-sm fw-semibold"
+          disabled={!isScheduled || isSendingToOT || isPacPending}
+          onClick={handleSendToOT}
+          title={
+            isPacPending
+              ? "Pls PAC form submit first"
+              : !isScheduled
+              ? "Available only when OT Status is Scheduled"
+              : "Send patient to OT"
+          }
+        >
+          {isSendingToOT ? (
+            <>
+              <span
+                className="spinner-border spinner-border-sm me-1"
+                role="status"
+              />
+              Sending to OT...
+            </>
+          ) : (
+            <>
+              <i className="fa fa-paper-plane me-1" />
+              Send to OT
+            </>
+          )}
+        </button>
+        {isPacPending && (
+          <span className="text-danger small fw-semibold">
+            <i className="fa fa-exclamation-circle me-1" />
+            Pls PAC form submit first
+          </span>
         )}
       </div>
 
