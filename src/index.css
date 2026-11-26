@@ -22949,7 +22949,8 @@ body.rtl_mode .modal.right.fade.show .modal-dialog {
   gap: 10px;
   padding: 10px 12px;
 }
-.modal .modal-footer button{
+
+.modal .modal-footer button {
   margin: 0;
 }
 
@@ -26724,3 +26725,92 @@ table td .status {
   font-size: 13px !important;
   margin-bottom: 0;
 }
+
+/* ************State Cards*********** */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.statsGrid .statCard {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #edf0f5;
+  /* box-shadow: 0 4px 18px rgba(30, 50, 90, .045); */
+  transition: all .25s ease;
+}
+
+.statsGrid .statCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 10px rgba(30, 50, 90, .09);
+}
+
+.statsGrid .cardIcon {
+  background: rgb(255 255 255 /0.2);
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 15px;
+  top: 15px;
+}
+
+.statsGrid p {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 0;
+  padding-right: 50px;
+}
+
+.statsGrid .cardIcon svg {
+  width: 30px;
+  height: 30px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: #fff;
+}
+
+.statsGrid h2 {
+  font-size: 30px !important;
+  color: #fff;
+  letter-spacing: -1px;
+  font-weight: 600;
+  line-height: normal;
+  margin-bottom: 0;
+}
+
+.statsGrid span {
+  font-size: 11px;
+  color: rgb(255 255 255/0.80);
+  margin-bottom: 0;
+  display: block;
+}
+
+.statsGrid .total {
+  background: #356cf6;
+}
+
+.statsGrid .scheduled {
+  background: #12b9d2;
+}
+
+.statsGrid .completed {
+  background: #18a66d;
+}
+
+.statsGrid .cancelled {
+  background: #e34b5b;
+}
+
+/* ********************** */

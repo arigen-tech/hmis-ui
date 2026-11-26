@@ -294,9 +294,9 @@ const OTDashboard = () => {
     // Fetch matching bookings for that scheduled date from API
     try {
       setLoadingModalBookings(true);
-        let url = `${OT_BOOKING_HISTORY}?scheduledDate=${encodeURIComponent(
-          dayData.dateStr
-        )}&page=0&size=50`;
+      let url = `${OT_BOOKING_HISTORY}?scheduledDate=${encodeURIComponent(
+        dayData.dateStr
+      )}&page=0&size=50`;
 
       if (filters.otId) {
         url += `&otId=${encodeURIComponent(filters.otId)}`;
@@ -325,7 +325,8 @@ const OTDashboard = () => {
   };
 
   return (
-    <div className="content-wrapper">
+    <>
+      <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -437,39 +438,58 @@ const OTDashboard = () => {
                 </div>
               </div>
 
+
               {/* Booking Summary (colored cards) */}
-              <div className="row mb-3">
-                <div className="col-12">
-                  <div className="d-flex flex-wrap gap-3">
-                    <div
-                      className="card bg-primary text-white p-3 flex-fill"
-                      style={{ minWidth: "120px" }}
-                    >
-                      <div className="small">Total Cases</div>
-                      <div className="h4 mb-0">{summary.totalCases}</div>
-                    </div>
-                    <div
-                      className="card bg-info text-white p-3 flex-fill"
-                      style={{ minWidth: "120px" }}
-                    >
-                      <div className="small">Scheduled</div>
-                      <div className="h4 mb-0">{summary.scheduled}</div>
-                    </div>
-                    <div
-                      className="card bg-success text-white p-3 flex-fill"
-                      style={{ minWidth: "120px" }}
-                    >
-                      <div className="small">Completed</div>
-                      <div className="h4 mb-0">{summary.completed}</div>
-                    </div>
-                    <div
-                      className="card bg-danger text-white p-3 flex-fill"
-                      style={{ minWidth: "120px" }}
-                    >
-                      <div className="small">Cancelled / Rejected</div>
-                      <div className="h4 mb-0">{summary.cancelled}</div>
-                    </div>
+              <div class="statsGrid mb-3">
+                {/* Total Cases */}
+                <div class="statCard total">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    </svg>
                   </div>
+                  <p>Total Cases</p>
+                  <h2>{summary.totalCases}</h2>
+                  <span>Total registered cases</span>
+                </div>
+
+                {/* Scheduled */}
+                <div class="statCard scheduled">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M16 3v4M8 3v4M3 10h18M8 14l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p>Scheduled</p>
+                  <h2>{summary.scheduled}</h2>
+                  <span>Cases awaiting completion</span>
+                </div>
+
+                {/* Completed */}
+                <div class="statCard completed">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8 12 3 3 5-6" />
+                    </svg>
+                  </div>
+                  <p>Completed</p>
+                  <h2>{summary.completed}</h2>
+                  <span>Successfully completed cases</span>
+                </div>
+
+                {/* Cancelled / Rejected  */}
+                <div class="statCard cancelled">
+                  <div class="cardIcon">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m9 9 6 6m0-6-6 6" />
+                    </svg>
+                  </div>
+                  <p>Cancelled / Rejected</p>
+                  <h2>{summary.cancelled}</h2>
+                  <span>Cancelled or rejected cases</span>
                 </div>
               </div>
 
@@ -492,13 +512,13 @@ const OTDashboard = () => {
                 </div>
 
                 {weeksData.map((week, weekIndex) => (
-                  <div key={weekIndex} className="row g-2 mb-3">
+                  <div key={weekIndex} className="row g-2 mb-2">
                     {week.map((day, dayIndex) => (
                       <div key={dayIndex} className="col">
                         <div
                           className="card p-2 h-100 border"
                           style={{
-                            minHeight: "140px",
+                            minHeight: "100px",
                             backgroundColor: day?.hasData
                               ? "#fff9e6"
                               : "#ffffff",
@@ -526,10 +546,10 @@ const OTDashboard = () => {
                                       <div
                                         key={i}
                                         className={`small fw-semibold ${isDone
-                                            ? "text-success"
-                                            : isReject
-                                              ? "text-danger"
-                                              : "text-dark"
+                                          ? "text-success"
+                                          : isReject
+                                            ? "text-danger"
+                                            : "text-dark"
                                           }`}
                                       >
                                         {st.statusName}: {st.count}
@@ -577,18 +597,22 @@ const OTDashboard = () => {
               {/* Legend */}
               <div className="row mt-3">
                 <div className="col-12">
-                  <div className="d-flex gap-3 flex-wrap">
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-danger me-1">●</span> Cancelled / Rejected
+                  <div className="badgeStyle">
+                    <span className="badge bg-light text-dark border cancelled">
+                      <span className="circle"></span>
+                      <span>Cancelled / Rejected</span>
                     </span>
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-warning me-1">●</span> Scheduled
+                    <span className="badge bg-light text-dark border scheduled">
+                      <span className="circle"></span>
+                      <span>Scheduled</span>
                     </span>
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-success me-1">●</span> Completed
+                    <span className="badge bg-light text-dark border completed">
+                      <span className="circle"></span>
+                      <span>Completed</span>
                     </span>
-                    <span className="badge bg-light text-dark border">
-                      <span className="text-info me-1">●</span> Bookings Available
+                    <span className="badge bg-light text-dark border available">
+                      <span className="circle"></span>
+                      <span>Bookings Available</span>
                     </span>
                   </div>
                 </div>
@@ -837,7 +861,105 @@ const OTDashboard = () => {
         </>
       )}
     </div>
+
+    <style>
+        {`
+          .calendar-container .card {
+            transition: all .30s ease !important;
+        }
+
+        .calendar-container .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 10px rgba(30, 50, 90, .09);
+        }
+
+        .badgeStyle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badgeStyle .badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badgeStyle .circle {
+            display: block;
+            width: 10px;
+            height: 10px;
+            border-radius: 30px;
+            background: #fff;
+        }
+
+        .badgeStyle .cancelled {
+            background: #fff0f1 !important;
+            color: #e34b5b !important;
+            border-color: #fdd0d5 !important;
+        }
+
+        .badgeStyle .cancelled .circle {
+            background: #e34b5b;
+        }
+
+        .badgeStyle .scheduled {
+            background: #ffe3b0 !important;
+            color: #a86d0b !important;
+            border-color: #ffe2b5 !important;
+        }
+
+        .badgeStyle .scheduled .circle {
+            background: #a86d0b;
+        }
+
+        .badgeStyle .completed {
+            background: #e4f8ef !important;
+            color: #159b65 !important;
+            border-color: #b3e1cc !important;
+        }
+
+        .badgeStyle .completed .circle {
+            background: #159b65;
+        }
+
+        .badgeStyle .available {
+            background: #E6FBFF !important;
+            color: #0DCAF0 !important;
+            border-color: #A3F0FF !important
+        }
+
+        .badgeStyle .available .circle {
+            background: #0DCAF0;
+        }
+
+        `}
+      </style>
+    </>
   );
 };
 
 export default OTDashboard;
+
+
+
+{/* <span className="badge bg-light text-dark border">
+                      <span className="circle text-danger">●</span>
+                      <span>Cancelled / Rejected</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-warning">●</span>
+                      <span>Scheduled</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-success">●</span>
+                      <span>Completed</span>
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <span className="circle text-info">●</span>
+                      <span>Bookings Available</span>
+                    </span> */}
